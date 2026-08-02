@@ -1,0 +1,43 @@
+[
+  {
+    "version": "v0.3.1-Beta",
+    "date": "2026-07-30",
+    "notes": [
+      "Charge management: hold limit on AC, charge to 100%, discharge while plugged in",
+      "Menubar controls for manage charging and limit slider",
+      "Power distribution (CPU/GPU/ANE/Memory)",
+      "Accurate SMC percent and remaining time",
+      "Customize window for menu bar, layout, charging, alerts"
+    ]
+  },
+  {
+    "version": "v0.2.42-Beta",
+    "date": "2026-07-30",
+    "notes": [
+      "SMC gauge accuracy: % and remaining from TimeRemaining / StateOfCharge",
+      "Click outside the panel to close",
+      "Click menubar icon to toggle panel",
+      "Hide system battery icon"
+    ]
+  },
+  {
+    "version": "v0.2.38-Beta",
+    "date": "2026-07-30",
+    "notes": [
+      "Stable battery remaining time (no thrash)",
+      "SMC AvgTime primary + spike rejection",
+      "Hide system battery icon (Fathom-only)",
+      "Chemical/raw SOC"
+    ]
+  },
+  {
+    "version": "v0.2.31-Beta",
+    "date": "2026-07-30",
+    "notes": [
+      "Six battery sources (IOPS, SmartBattery raw, Gauge SOC, PowerTelemetry, pmset, ioreg)",
+      "Correct signed InstantAmperage for pack watts & time remaining",
+      "Weighted SOC merge (raw 50% \u00b7 gauge 35% \u00b7 IOPS 15%)",
+      "BatFi-style menubar"
+    ]
+  }
+]

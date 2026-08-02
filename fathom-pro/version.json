@@ -1,0 +1,11 @@
+{
+  "latest": "v0.1.6-Pro-Beta",
+  "pro": "v0.1.6-Pro-Beta",
+  "product": "Fathom Pro",
+  "releases": {
+    "pro": {
+      "zip": "FathomPro-v0.1.6-Pro-Beta.zip",
+      "sha256": "44de3ce25c6edb3272a451214fe2107eefd388c44ab778aea6fc2b93ae798ea4"
+    }
+  }
+}

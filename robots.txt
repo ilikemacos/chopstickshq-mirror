@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chopstickshq.com/sitemap.xml
+Sitemap: https://chopstickshq.com/rnitro/sitemap.xml

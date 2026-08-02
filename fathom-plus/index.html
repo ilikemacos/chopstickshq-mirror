@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fathom Pro — Chopsticks HQ</title>
+<meta name="description" content="Fathom Pro for macOS: premium battery menu bar with local weather and multi-provider AI chat. Unlock via a hidden code on chopstickshq.com.">
+<link rel="canonical" href="https://chopstickshq.com/fathom-pro/">
+<link rel="icon" href="/favicon.ico">
+<style>
+:root { --bg:#0a0a0c; --card:#121216; --border:#26262e; --text:#f2f2f5; --muted:#8b8b9a; --green:#3bff6e; --accent:#7ec8ff; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+.wrap{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+.nav{display:flex;gap:16px;align-items:center;margin-bottom:40px;font-size:14px}
+.nav a{color:var(--muted)}
+.nav a:hover{color:var(--text)}
+.badge{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);margin-bottom:14px}
+h1{font-size:clamp(2rem,5vw,2.75rem);letter-spacing:-.03em;margin-bottom:12px}
+.lead{color:var(--muted);font-size:1.05rem;margin-bottom:16px;max-width:54ch}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin:16px 0}
+.card h2{font-size:1.05rem;margin-bottom:8px}
+.card p,.card li{color:var(--muted);font-size:.95rem}
+.card ul,.card ol{padding-left:1.2rem;margin-top:8px}
+.card li{margin:4px 0}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid var(--border);cursor:pointer;font-family:inherit;text-decoration:none;color:inherit}
+.btn-primary{background:#f2f2f5;color:#0a0a0c;border-color:#f2f2f5}
+.btn-outline{background:transparent;color:var(--text)}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:#18181e;padding:2px 6px;border-radius:6px;color:#9effc0}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--muted)}
+.foot{margin-top:40px;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 16px}
+.tab{font-size:13px;padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer}
+.tab.is-active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.panel{display:none}.panel.is-active{display:block}
+.hint{border-left:3px solid rgba(158,255,192,.35);padding:10px 14px;margin-top:10px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a href="/">Chopsticks HQ</a>
+    <a href="/fathom/">Fathom</a>
+    <a href="/shaders/">Shaders</a>
+    <a href="/rnitro/">rNitro</a>
+  </nav>
+  <div class="badge">macOS 14+ · menu bar · local-first</div>
+  <h1>Fathom Pro</h1>
+  <p class="lead">Everything in Fathom — battery life, power draw, process energy, experimental charge limit — plus local weather and multi-provider AI chat with your own keys. Unlock is a scavenger hunt: find the hidden code somewhere on chopstickshq.com. Client-side easter egg, not a paid license or free OpenAI/OpenRouter key.</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab is-active" data-tab="overview">Overview</button>
+    <button type="button" class="tab" data-tab="unlock">Unlock</button>
+    <button type="button" class="tab" data-tab="install">Install</button>
+  </div>
+
+  <div id="panel-overview" class="panel is-active">
+    <div class="btns">
+      <a class="btn btn-primary" id="zip" href="FathomPro-v0.1.0-Pro-Beta.zip" download>Download ZIP</a>
+      <a class="btn btn-outline" href="install-fathom-pro.sh" download>Installer .sh</a>
+      <a class="btn btn-outline" href="#unlock" id="go-unlock">How to unlock</a>
+    </div>
+    <p class="mono">Current · <span id="ver">v0.1.0-Pro-Beta</span></p>
+
+    <div class="card">
+      <h2>What&rsquo;s included</h2>
+      <ul>
+        <li>Full Fathom battery menu bar (accurate SMC gauge, process energy, drain insights)</li>
+        <li>Local weather from your Mac&rsquo;s location (Open-Meteo)</li>
+        <li>AI chat with <strong style="color:var(--text)">OpenRouter, Gemini, OpenAI, and Anthropic</strong> — your API keys, on-device</li>
+        <li>Power distribution, click-off panel, menubar toggle</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="panel-unlock" class="panel">
+    <div class="card">
+      <h2>Scavenger unlock</h2>
+      <p>There is a single unlock code planted somewhere on this website — not in this paragraph, not in a download button, and not from Doomlike FPS anymore.</p>
+      <ol>
+        <li>Open the Chopsticks HQ homepage.</li>
+        <li>In “Small lab. Sharp tools.” click the first <strong style="color:var(--text)">L</strong> after the A in “Small”.</li>
+        <li>Copy the code that appears and paste it into Fathom Pro.</li>
+        <li>Then open <strong style="color:var(--text)">API Config</strong> and add your own provider keys.</li>
+      </ol>
+      <div class="hint">Clue: on the HQ homepage headline — the first L after the A in “Small”.</div>
+    </div>
+    <div class="card">
+      <h2>In the app</h2>
+      <ol>
+        <li>Activate with the code you found</li>
+        <li>Customize → <strong style="color:var(--text)">AI</strong> → <strong style="color:var(--text)">API Config</strong> subtab</li>
+        <li>Save provider keys; pick an OpenRouter model if you use OpenRouter</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="panel-install" class="panel">
+    <div class="card">
+      <h2>Install</h2>
+      <p>One-liner:</p>
+      <p style="margin-top:8px"><code style="display:block;padding:10px 12px;overflow:auto">curl -fsSL https://chopstickshq.com/fathom-pro/install-fathom-pro.sh | bash</code></p>
+    </div>
+  </div>
+
+  <p class="foot">
+    <a href="version.json">version.json</a> ·
+    <a href="/fathom/">Standard Fathom</a> ·
+    Chopsticks HQ
+  </p>
+</div>
+<script>
+fetch('version.json').then(r=>r.json()).then(v=>{
+  const el=document.getElementById('ver');
+  if(el&&v.latest) el.textContent=v.latest;
+  const z=document.getElementById('zip');
+  const zip=v.releases&&v.releases.plus&&v.releases.plus.zip;
+  if(z&&zip) z.href=zip;
+}).catch(()=>{});
+
+const panels={
+  overview:document.getElementById('panel-overview'),
+  unlock:document.getElementById('panel-unlock'),
+  install:document.getElementById('panel-install')
+};
+function activate(id){
+  Object.keys(panels).forEach(k=>{
+    panels[k].classList.toggle('is-active', k===id);
+  });
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.classList.toggle('is-active', btn.getAttribute('data-tab')===id);
+  });
+  try{
+    const u=new URL(location.href);
+    u.searchParams.set('tab', id);
+    history.replaceState(null,'', u.pathname+u.search);
+  }catch(e){}
+}
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>activate(btn.getAttribute('data-tab')));
+});
+const go=document.getElementById('go-unlock');
+if(go) go.addEventListener('click', e=>{ e.preventDefault(); activate('unlock'); });
+try{
+  const want=new URLSearchParams(location.search).get('tab');
+  if(want==='api') activate('unlock');
+  else if(want && panels[want]) activate(want);
+}catch(e){}
+</script>
+</body>
+</html>

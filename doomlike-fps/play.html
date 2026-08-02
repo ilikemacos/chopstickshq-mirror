@@ -1,0 +1,3876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOOMLIKE™ — Doomlike-FPS™ Raycast FPS</title>
+<!-- Cloud accounts/progress/storage use Supabase. This is the one intentional
+     external dependency in an otherwise self-contained file: talking to a
+     remote backend for accounts inherently requires leaving the page. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ============================================================
+     GLOBAL / RESET
+     ============================================================ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #000; font-family: 'Courier New', monospace;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  #gameCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    cursor: none;
+  }
+
+  /* ============================================================
+     HUD
+     ============================================================ */
+  #hud {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; color: #e8e8e8; text-shadow: 0 0 4px #000, 0 0 2px #000;
+  }
+
+  .hud-corner {
+    position: absolute; display: flex; flex-direction: column; gap: 4px;
+  }
+  #hud-bottom-left { bottom: 18px; left: 22px; }
+  #hud-bottom-right { bottom: 18px; right: 22px; text-align: right; }
+  #hud-top-left { top: 14px; left: 18px; }
+  #hud-top-right { top: 14px; right: 18px; text-align: right; }
+
+  .stat-label { font-size: 12px; opacity: 0.7; letter-spacing: 1px; }
+  .stat-value { font-size: 30px; font-weight: bold; line-height: 1; }
+  #healthValue.low { color: #ff3b3b; animation: pulse 0.6s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  #healthBarWrap {
+    width: 160px; height: 10px; background: rgba(0,0,0,0.5);
+    border: 1px solid #555; margin-top: 3px; border-radius: 2px; overflow: hidden;
+  }
+  #healthBarFill { height: 100%; background: linear-gradient(90deg,#ff3b3b,#ff9d3b); width: 100%; transition: width 0.15s; }
+
+  #armorLabel.zero, #armorValue.zero, #armorBarWrap.zero { opacity: 0.35; }
+  #armorBarWrap {
+    width: 160px; height: 10px; background: rgba(0,0,0,0.5);
+    border: 1px solid #555; margin-top: 3px; border-radius: 2px; overflow: hidden;
+  }
+  #armorBarFill { height: 100%; background: linear-gradient(90deg,#2b7bd6,#5bb8ff); width: 0%; transition: width 0.15s; }
+
+  #ammoText { font-size: 30px; font-weight: bold; }
+  #ammoReserve { font-size: 14px; opacity: 0.65; }
+
+  #crosshair {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: var(--crosshair-size, 22px); height: var(--crosshair-size, 22px);
+    pointer-events: none;
+  }
+  #crosshair.style-cross::before, #crosshair.style-cross::after {
+    content: ''; position: absolute; background: var(--crosshair-color, #d6ffe0);
+  }
+  #crosshair.style-cross::before { left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; }
+  #crosshair.style-cross::after { top: 50%; left: 0; height: 2px; width: 100%; margin-top: -1px; }
+  #crosshair.style-dot::before {
+    content: ''; position: absolute; left: 50%; top: 50%; width: 30%; height: 30%;
+    transform: translate(-50%,-50%); border-radius: 50%; background: var(--crosshair-color, #d6ffe0);
+  }
+  #crosshair.style-circle::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; box-sizing: border-box;
+    border: 2px solid var(--crosshair-color, #d6ffe0);
+  }
+  #crosshair.hit::before, #crosshair.hit::after { background: #ff3b3b !important; border-color: #ff3b3b !important; }
+
+  #fpsCounter { font-size: 12px; opacity: 0.6; }
+  #waveText { font-size: 14px; opacity: 0.85; }
+  #scoreValue { font-size: 26px; font-weight: bold; color: #ffd23b; }
+
+  #reloadIndicator {
+    position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%);
+    font-size: 14px; letter-spacing: 3px; color: #ffd23b; opacity: 0;
+  }
+  #reloadIndicator.show { opacity: 1; }
+
+  #hitFlash {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: radial-gradient(ellipse at center, rgba(255,0,0,0) 40%, rgba(180,0,0,0.55) 100%);
+    opacity: 0; pointer-events: none; transition: opacity 0.1s;
+  }
+
+  #lowHealthVignette {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    box-shadow: inset 0 0 140px 40px rgba(200,0,0,0.7);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+
+  #centerMsg {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 26px; color: #ffd23b; text-align: center; opacity: 0; transition: opacity 0.3s;
+  }
+
+  /* ============================================================
+     WEAPON VIEWMODEL + MUZZLE FLASH (CSS overlay, not 3D geometry)
+     ============================================================ */
+  #weaponViewmodel {
+    position: absolute; right: 3%; bottom: 0; width: 300px; height: 260px;
+    pointer-events: none;
+  }
+  #wvBody { position: absolute; left: 20%; top: 42%; width: 58%; height: 52%; background: #23262b; border-radius: 2px 2px 0 0; }
+  #wvBarrel { position: absolute; left: 35%; top: 10%; width: 25%; height: 35%; background: #15171a; }
+  #wvGrip { position: absolute; left: 10%; top: 72%; width: 22%; height: 28%; background: #3a3f47; }
+  #muzzleFlashOverlay {
+    position: absolute; right: 16%; bottom: 42%; width: 130px; height: 130px;
+    margin-right: -65px; margin-bottom: -65px; border-radius: 50%; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle, rgba(255,240,180,0.95) 0%, rgba(255,180,60,0.5) 45%, rgba(255,180,60,0) 72%);
+  }
+
+  /* ============================================================
+     OVERLAY MENUS
+     ============================================================ */
+  .menu-overlay {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: rgba(6,8,10,0.92); color: #e8e8e8;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; z-index: 20;
+  }
+  .hidden { display: none !important; }
+
+  .menu-title {
+    font-size: 52px; letter-spacing: 6px; color: #ff3b3b;
+    text-shadow: 0 0 20px rgba(255,50,50,0.7); margin-bottom: 10px;
+  }
+  .menu-sub { font-size: 15px; opacity: 0.75; margin-bottom: 30px; max-width: 560px; line-height: 1.6; }
+
+  .menu-btn {
+    font-family: inherit; font-size: 18px; letter-spacing: 2px;
+    background: #1c2126; color: #e8e8e8; border: 2px solid #444;
+    padding: 14px 38px; margin: 8px; cursor: pointer; pointer-events: all;
+    transition: all 0.15s; border-radius: 3px;
+  }
+  .menu-btn:hover { background: #ff3b3b; border-color: #ff3b3b; color: #111; transform: scale(1.04); }
+
+  .menu-stats { font-size: 16px; margin: 14px 0 26px 0; opacity: 0.9; line-height: 1.8; }
+  .menu-stats span { color: #ffd23b; font-weight: bold; }
+
+  .controls-grid {
+    display: grid; grid-template-columns: auto auto; gap: 4px 22px;
+    font-size: 13px; opacity: 0.8; margin-top: 24px; text-align: left;
+  }
+  .controls-grid b { color: #ffd23b; }
+
+  .menu-btn.small { font-size: 13px; padding: 8px 18px; margin: 0; }
+
+  /* ============================================================
+     SETTINGS PANEL
+     ============================================================ */
+  .settings-panel {
+    width: min(760px, 92vw); max-height: 86vh; background: #12151a;
+    border: 2px solid #333; border-radius: 6px; display: flex; flex-direction: column;
+    pointer-events: all; box-shadow: 0 10px 60px rgba(0,0,0,0.7); text-align: left;
+  }
+  .settings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; border-bottom: 1px solid #2a2f36; flex-shrink: 0;
+  }
+  .settings-tabs {
+    display: flex; gap: 2px; padding: 0 22px; border-bottom: 1px solid #2a2f36;
+    background: #0d0f13; flex-shrink: 0; overflow-x: auto;
+  }
+  .tab-btn {
+    font-family: inherit; font-size: 12px; letter-spacing: 1px; background: transparent;
+    color: #8a8f96; border: none; padding: 12px 14px; cursor: pointer;
+    border-bottom: 2px solid transparent; white-space: nowrap; pointer-events: all;
+  }
+  .tab-btn:hover { color: #e8e8e8; }
+  .tab-btn.active { color: #ff3b3b; border-bottom-color: #ff3b3b; }
+  .settings-body { padding: 6px 24px; overflow-y: auto; flex: 1; }
+  .tab-panel[hidden] { display: none; }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 11px 0; border-bottom: 1px solid #1c2025;
+  }
+  .setting-row label, .setting-row span.row-label { font-size: 13px; color: #c8ccd2; flex: 1; }
+  .setting-row .row-controls { display: flex; align-items: center; }
+  .setting-row input[type=range] { width: 160px; accent-color: #ff3b3b; pointer-events: all; }
+  .setting-row .setting-val {
+    font-size: 12px; color: #ffd23b; min-width: 48px; text-align: right;
+    display: inline-block; margin-left: 10px;
+  }
+  .setting-row select {
+    font-family: inherit; font-size: 13px; background: #1c2126; color: #e8e8e8;
+    border: 1px solid #444; padding: 6px 10px; border-radius: 3px; pointer-events: all;
+  }
+  .setting-row input[type=color] {
+    width: 38px; height: 28px; border: 1px solid #444; background: none; padding: 0;
+    cursor: pointer; pointer-events: all; border-radius: 3px;
+  }
+  .setting-row input[type=checkbox] { width: 18px; height: 18px; accent-color: #ff3b3b; pointer-events: all; }
+  .keybind-btn {
+    font-family: inherit; font-size: 12px; letter-spacing: 1px; background: #1c2126; color: #e8e8e8;
+    border: 1px solid #444; padding: 8px 16px; min-width: 100px; cursor: pointer;
+    border-radius: 3px; pointer-events: all;
+  }
+  .keybind-btn:hover { border-color: #ff3b3b; }
+  .keybind-btn.listening { color: #ffd23b; border-color: #ffd23b; }
+  .settings-footer {
+    padding: 14px 20px; border-top: 1px solid #2a2f36; display: flex;
+    justify-content: center; flex-shrink: 0;
+  }
+  .settings-hint { font-size: 11px; opacity: 0.55; text-align: center; padding: 0 22px 12px; }
+
+  /* ============================================================
+     ACCOUNT PANEL
+     ============================================================ */
+  .account-panel {
+    width: min(420px, 92vw); background: #12151a; border: 2px solid #333; border-radius: 6px;
+    display: flex; flex-direction: column; pointer-events: all;
+    box-shadow: 0 10px 60px rgba(0,0,0,0.7); text-align: left;
+  }
+  .account-body { padding: 22px 26px; }
+  .account-field { margin-bottom: 14px; }
+  .account-field label { display: block; font-size: 11px; color: #8a8f96; letter-spacing: 1px; margin-bottom: 5px; }
+  .account-field input[type=email], .account-field input[type=password], .account-field input[type=text] {
+    width: 100%; font-family: inherit; font-size: 14px; background: #1c2126; color: #e8e8e8;
+    border: 1px solid #444; padding: 10px 12px; border-radius: 3px; pointer-events: all;
+  }
+  .account-field input:focus { outline: none; border-color: #ff3b3b; }
+  .account-btn-row { display: flex; gap: 10px; margin-top: 18px; }
+  .account-btn-row .menu-btn { flex: 1; margin: 0; padding: 12px 10px; font-size: 14px; }
+  .account-status {
+    font-size: 12px; margin-top: 12px; min-height: 16px; text-align: center;
+  }
+  .account-status.error { color: #ff6b6b; }
+  .account-status.ok { color: #6bffa0; }
+  .account-guest-link {
+    display: block; text-align: center; margin-top: 16px; font-size: 12px;
+    color: #8a8f96; text-decoration: underline; cursor: pointer; pointer-events: all;
+  }
+  .account-guest-link:hover { color: #e8e8e8; }
+
+  .account-profile-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .avatar-circle {
+    width: 64px; height: 64px; border-radius: 50%; background: #1c2126; border: 2px solid #444;
+    background-size: cover; background-position: center; flex-shrink: 0; position: relative; overflow: hidden;
+  }
+  .avatar-circle svg { width: 100%; height: 100%; padding: 14px; box-sizing: border-box; opacity: 0.4; }
+  .account-name { font-size: 17px; font-weight: bold; color: #e8e8e8; }
+  .account-email { font-size: 12px; color: #8a8f96; margin-top: 2px; }
+  .account-upload-label {
+    display: inline-block; font-size: 11px; color: #ffd23b; margin-top: 6px; cursor: pointer;
+    text-decoration: underline; pointer-events: all;
+  }
+  .account-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+  }
+  .account-stat-box { background: #0d0f13; border: 1px solid #262b32; border-radius: 4px; padding: 12px; text-align: center; }
+  .account-stat-box .stat-num { font-size: 22px; font-weight: bold; color: #ffd23b; }
+  .account-stat-box .stat-label { font-size: 10px; color: #8a8f96; letter-spacing: 1px; margin-top: 4px; }
+
+  /* ============================================================
+     LOBBY (weapons / armor loadout cards)
+     ============================================================ */
+  .loadout-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 16px; margin-bottom: 10px; background: #0d0f13;
+    border: 1px solid #262b32; border-radius: 5px;
+  }
+  .loadout-card.equipped { border-color: #3bff6e; }
+  .loadout-card-info { flex: 1; min-width: 0; }
+  .loadout-card-name { font-size: 15px; font-weight: bold; color: #e8e8e8; }
+  .loadout-card-name .lvl-tag { color: #ffd23b; font-size: 11px; font-weight: normal; margin-left: 8px; }
+  .loadout-card-stats { font-size: 11px; color: #8a8f96; margin-top: 5px; letter-spacing: 0.5px; }
+  .loadout-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .loadout-btn {
+    font-family: inherit; font-size: 11px; letter-spacing: 1px; background: #1c2126; color: #e8e8e8;
+    border: 1px solid #444; padding: 9px 14px; cursor: pointer; border-radius: 3px;
+    pointer-events: all; white-space: nowrap;
+  }
+  .loadout-btn:hover:not(:disabled) { border-color: #ff3b3b; }
+  .loadout-btn:disabled { opacity: 0.35; cursor: default; }
+  .loadout-btn.equipped-btn { border-color: #3bff6e; color: #3bff6e; cursor: default; }
+
+  /* ============================================================
+     LEADERBOARD
+     ============================================================ */
+  .leaderboard-header-row, .leaderboard-row {
+    display: grid; grid-template-columns: 40px 1fr 80px 90px; align-items: center;
+    padding: 9px 6px; gap: 6px;
+  }
+  .leaderboard-header-row {
+    font-size: 10px; color: #8a8f96; letter-spacing: 1px; border-bottom: 1px solid #2a2f36;
+  }
+  .leaderboard-row { border-bottom: 1px solid #1c2025; font-size: 13px; }
+  .leaderboard-row.you { background: rgba(59, 255, 110, 0.08); }
+  .leaderboard-row.you .lb-name { color: #3bff6e; }
+  .leaderboard-row .lb-rank { color: #8a8f96; }
+  .leaderboard-row .lb-name { color: #e8e8e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .leaderboard-row .lb-score { color: #ffd23b; font-weight: bold; }
+  .leaderboard-row .lb-wave { color: #8a8f96; font-size: 11px; }
+  .leaderboard-status { padding: 24px 6px; text-align: center; color: #8a8f96; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="webgpuError" class="menu-overlay hidden">
+  <div class="menu-title" style="font-size:32px;">WEBGPU REQUIRED</div>
+  <div class="menu-sub">This build renders with WebGPU instead of the old 2D raycaster. Your browser doesn't expose it (or it's disabled). Try a recent version of Chrome or Edge, or enable it in your browser's experimental-features flags.</div>
+</div>
+
+<!-- ================= HUD ================= -->
+<div id="hud">
+  <div class="hud-corner" id="hud-bottom-left">
+    <div class="stat-label">HEALTH</div>
+    <div class="stat-value" id="healthValue">100</div>
+    <div id="healthBarWrap"><div id="healthBarFill"></div></div>
+    <div class="stat-label" id="armorLabel" style="margin-top:8px;">ARMOR</div>
+    <div class="stat-value" id="armorValue" style="color:#5bb8ff;">0</div>
+    <div id="armorBarWrap"><div id="armorBarFill"></div></div>
+  </div>
+
+  <div class="hud-corner" id="hud-bottom-right">
+    <div class="stat-label" id="weaponNameText">PISTOL</div>
+    <div id="ammoText">12 <span id="ammoReserve">/ 96</span></div>
+  </div>
+
+  <div class="hud-corner" id="hud-top-left">
+    <div class="stat-label">SCORE</div>
+    <div id="scoreValue">0</div>
+  </div>
+
+  <div class="hud-corner" id="hud-top-right">
+    <div id="waveText">WAVE 1</div>
+    <div id="enemiesText">ENEMIES: 0</div>
+    <div id="fpsCounter">FPS: 0</div>
+  </div>
+
+  <div id="reloadIndicator">RELOADING</div>
+  <div id="centerMsg"></div>
+  <div id="crosshair"></div>
+
+  <!-- Weapon viewmodel + muzzle flash: moved out of the 3D scene into a
+       CSS/DOM overlay layer. Avoids needing a second render pass with its
+       own mini-camera just to keep the gun from clipping into world
+       geometry — the classic FPS "viewmodel" problem — for free. -->
+  <div id="weaponViewmodel">
+    <div id="wvBody"></div>
+    <div id="wvBarrel"></div>
+    <div id="wvGrip"></div>
+  </div>
+  <div id="muzzleFlashOverlay"></div>
+</div>
+
+<div id="hitFlash"></div>
+<div id="lowHealthVignette"></div>
+
+<!-- ================= START MENU ================= -->
+<div id="startMenu" class="menu-overlay">
+  <div class="menu-title">DOOMLIKE™</div>
+  <div class="menu-sub">A lightweight raycast FPS. Survive the monster waves. Click START to lock your mouse and begin.</div>
+  <button class="menu-btn" id="btnStart">START GAME</button>
+  <button class="menu-btn" id="btnOptionsStart">OPTIONS</button>
+  <button class="menu-btn" id="btnAccountStart">ACCOUNT</button>
+  <button class="menu-btn" id="btnLeaderboardStart">LEADERBOARD</button>
+  <div class="controls-grid">
+    <div><b>W A S D</b></div><div>Move / Strafe</div>
+    <div><b>Mouse</b></div><div>Look Around</div>
+    <div><b>Left Click</b></div><div>Shoot</div>
+    <div><b>Right Click</b></div><div>Aim</div>
+    <div><b>Shift</b></div><div>Sprint</div>
+    <div><b>Space</b></div><div>Jump</div>
+    <div><b>R</b></div><div>Reload</div>
+    <div><b>Esc</b></div><div>Pause</div>
+  </div>
+</div>
+
+<!-- ================= PAUSE MENU ================= -->
+<div id="pauseMenu" class="menu-overlay hidden">
+  <div class="menu-title" style="font-size:38px;">PAUSED</div>
+  <button class="menu-btn" id="btnResume">RESUME</button>
+  <button class="menu-btn" id="btnOptionsPause">OPTIONS</button>
+  <button class="menu-btn" id="btnAccountPause">ACCOUNT</button>
+  <button class="menu-btn" id="btnLeaderboardPause">LEADERBOARD</button>
+  <button class="menu-btn" id="btnRestartFromPause">RESTART</button>
+</div>
+
+<!-- ================= GAME OVER ================= -->
+<div id="gameOverMenu" class="menu-overlay hidden">
+  <div class="menu-title">YOU DIED</div>
+  <div class="menu-stats">Final Score: <span id="goScore">0</span> &nbsp;|&nbsp; Wave Reached: <span id="goWave">1</span> &nbsp;|&nbsp; +<span id="goCredits">0</span> Credits</div>
+  <button class="menu-btn" id="btnRestartFromGameOver">TRY AGAIN</button>
+</div>
+
+<!-- ================= VICTORY ================= -->
+<div id="victoryMenu" class="menu-overlay hidden">
+  <div class="menu-title" style="color:#3bff6e; text-shadow:0 0 20px rgba(60,255,110,0.7);">VICTORY</div>
+  <div class="menu-stats">All waves cleared! Final Score: <span id="vScore">0</span> &nbsp;|&nbsp; +<span id="vCredits">0</span> Credits</div>
+  <button class="menu-btn" id="btnRestartFromVictory">PLAY AGAIN</button>
+</div>
+
+<!-- ================= LOBBY (loadout: weapons + armor) ================= -->
+<div id="lobbyMenu" class="menu-overlay hidden">
+  <div class="settings-panel" style="width:min(820px, 94vw);">
+    <div class="settings-header">
+      <div class="menu-title" style="font-size:28px; margin-bottom:0;">LOBBY</div>
+      <div style="display:flex; align-items:center; gap:18px; pointer-events:all;">
+        <div style="font-size:14px; color:#ffd23b; letter-spacing:1px;">CREDITS: <span id="lobbyCredits">0</span></div>
+        <button class="menu-btn small" id="btnLobbyBack">BACK</button>
+      </div>
+    </div>
+    <div class="settings-tabs">
+      <button class="tab-btn active" data-lobbytab="weapons">WEAPONS</button>
+      <button class="tab-btn" data-lobbytab="armor">ARMOR</button>
+    </div>
+    <div class="settings-body">
+      <div class="tab-panel" data-lobbypanel="weapons">
+        <div id="weaponCardList"></div>
+      </div>
+      <div class="tab-panel" data-lobbypanel="armor" hidden>
+        <div id="armorCardList"></div>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <button class="menu-btn" id="btnDeploy" style="border-color:#3bff6e; color:#3bff6e;">DEPLOY</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SETTINGS / OPTIONS ================= -->
+<div id="settingsMenu" class="menu-overlay hidden">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <div class="menu-title" style="font-size:28px; margin-bottom:0;">OPTIONS</div>
+      <button class="menu-btn small" id="btnSettingsClose">CLOSE</button>
+    </div>
+    <div class="settings-tabs">
+      <button class="tab-btn active" data-tab="gameplay">GAMEPLAY</button>
+      <button class="tab-btn" data-tab="graphics">GRAPHICS</button>
+      <button class="tab-btn" data-tab="audio">AUDIO</button>
+      <button class="tab-btn" data-tab="combat">COMBAT</button>
+      <button class="tab-btn" data-tab="controls">CONTROLS</button>
+    </div>
+    <div class="settings-body">
+
+      <div class="tab-panel" data-panel="gameplay">
+        <div class="setting-row">
+          <label for="setFov">Field of View</label>
+          <div class="row-controls"><input type="range" id="setFov" min="60" max="120" step="1"><span class="setting-val" id="valFov"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setAimFov">Aim (Zoom) FOV</label>
+          <div class="row-controls"><input type="range" id="setAimFov" min="15" max="70" step="1"><span class="setting-val" id="valAimFov"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setMouseSens">Mouse Sensitivity</label>
+          <div class="row-controls"><input type="range" id="setMouseSens" min="0.2" max="3" step="0.05"><span class="setting-val" id="valMouseSens"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setAimSens">Aim Sensitivity Multiplier</label>
+          <div class="row-controls"><input type="range" id="setAimSens" min="0.1" max="1" step="0.05"><span class="setting-val" id="valAimSens"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setInvertY">Invert Mouse Y</label>
+          <div class="row-controls"><input type="checkbox" id="setInvertY"></div>
+        </div>
+        <div class="setting-row">
+          <label for="setMoveSpeed">Move Speed</label>
+          <div class="row-controls"><input type="range" id="setMoveSpeed" min="1.5" max="7" step="0.1"><span class="setting-val" id="valMoveSpeed"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setSprintMult">Sprint Multiplier</label>
+          <div class="row-controls"><input type="range" id="setSprintMult" min="1" max="3" step="0.05"><span class="setting-val" id="valSprintMult"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setJumpVel">Jump Height</label>
+          <div class="row-controls"><input type="range" id="setJumpVel" min="2" max="6" step="0.1"><span class="setting-val" id="valJumpVel"></span></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="graphics" hidden>
+        <div class="setting-row">
+          <label for="setResolutionTier">Display Resolution</label>
+          <div class="row-controls">
+            <select id="setResolutionTier">
+              <option value="360p">360p (fastest · recommended for laptops)</option>
+              <option value="480p">480p (lightweight · default)</option>
+              <option value="720p">720p (balanced)</option>
+              <option value="1080p">1080p (Full HD · heavy)</option>
+              <option value="1440p">1440p (QHD · very heavy)</option>
+              <option value="2160p">2160p (4K · extreme)</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="setRayTracing">Ray Tracing</label>
+          <div class="row-controls">
+            <select id="setRayTracing">
+              <option value="low">Low (no shadow rays)</option>
+              <option value="medium">Medium (lamp shadows)</option>
+              <option value="high">High (all lights shadowed)</option>
+              <option value="ultra">Ultra (soft shadows)</option>
+              <option value="extreme">EXTREME (max quality, expensive)</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="setFogDist">Fog Distance</label>
+          <div class="row-controls"><input type="range" id="setFogDist" min="5" max="25" step="1"><span class="setting-val" id="valFogDist"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setBrightness">Brightness</label>
+          <div class="row-controls"><input type="range" id="setBrightness" min="0.6" max="1.6" step="0.05"><span class="setting-val" id="valBrightness"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setShowFPS">Show FPS Counter</label>
+          <div class="row-controls"><input type="checkbox" id="setShowFPS"></div>
+        </div>
+        <div class="setting-row">
+          <label for="setCrosshairStyle">Crosshair Style</label>
+          <div class="row-controls">
+            <select id="setCrosshairStyle">
+              <option value="cross">Cross</option>
+              <option value="dot">Dot</option>
+              <option value="circle">Circle</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="setCrosshairColor">Crosshair Color</label>
+          <div class="row-controls"><input type="color" id="setCrosshairColor"></div>
+        </div>
+        <div class="setting-row">
+          <label for="setCrosshairSize">Crosshair Size</label>
+          <div class="row-controls"><input type="range" id="setCrosshairSize" min="12" max="40" step="1"><span class="setting-val" id="valCrosshairSize"></span></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="audio" hidden>
+        <div class="setting-row">
+          <label for="setMasterVolume">Master Volume</label>
+          <div class="row-controls"><input type="range" id="setMasterVolume" min="0" max="100" step="1"><span class="setting-val" id="valMasterVolume"></span></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="combat" hidden>
+        <div class="setting-row">
+          <label for="setDifficulty">Difficulty</label>
+          <div class="row-controls">
+            <select id="setDifficulty">
+              <option value="easy">Easy</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Hard</option>
+              <option value="nightmare">Nightmare</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="setWeaponDamage">Weapon Damage Multiplier</label>
+          <div class="row-controls"><input type="range" id="setWeaponDamage" min="0.5" max="3" step="0.05"><span class="setting-val" id="valWeaponDamage"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setReserveAmmo">Max Reserve Ammo</label>
+          <div class="row-controls"><input type="range" id="setReserveAmmo" min="30" max="300" step="5"><span class="setting-val" id="valReserveAmmo"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setMaxHealth">Max Health</label>
+          <div class="row-controls"><input type="range" id="setMaxHealth" min="50" max="300" step="5"><span class="setting-val" id="valMaxHealth"></span></div>
+        </div>
+        <div class="setting-row">
+          <label for="setTotalWaves">Total Waves</label>
+          <div class="row-controls"><input type="range" id="setTotalWaves" min="3" max="10" step="1"><span class="setting-val" id="valTotalWaves"></span></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="controls" hidden>
+        <div class="setting-row"><span class="row-label">Move Forward</span><button class="keybind-btn" data-action="forward"></button></div>
+        <div class="setting-row"><span class="row-label">Move Backward</span><button class="keybind-btn" data-action="back"></button></div>
+        <div class="setting-row"><span class="row-label">Strafe Left</span><button class="keybind-btn" data-action="left"></button></div>
+        <div class="setting-row"><span class="row-label">Strafe Right</span><button class="keybind-btn" data-action="right"></button></div>
+        <div class="setting-row"><span class="row-label">Sprint</span><button class="keybind-btn" data-action="sprint"></button></div>
+        <div class="setting-row"><span class="row-label">Jump</span><button class="keybind-btn" data-action="jump"></button></div>
+        <div class="setting-row"><span class="row-label">Reload</span><button class="keybind-btn" data-action="reload"></button></div>
+      </div>
+
+    </div>
+    <div class="settings-hint">Settings save automatically and persist between sessions.</div>
+    <div class="settings-footer">
+      <button class="menu-btn small" id="btnResetDefaults">RESET TO DEFAULTS</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ACCOUNT (Supabase) ================= -->
+<div id="accountMenu" class="menu-overlay hidden">
+  <div class="account-panel">
+    <div class="settings-header">
+      <div class="menu-title" style="font-size:28px; margin-bottom:0;">ACCOUNT</div>
+      <button class="menu-btn small" id="btnAccountClose">CLOSE</button>
+    </div>
+    <div class="account-body">
+
+      <!-- Logged out: sign in / sign up form -->
+      <div id="accountLoggedOut">
+        <div class="account-field">
+          <label for="acctEmail">EMAIL</label>
+          <input type="email" id="acctEmail" autocomplete="email">
+        </div>
+        <div class="account-field">
+          <label for="acctPassword">PASSWORD</label>
+          <input type="password" id="acctPassword" autocomplete="current-password">
+        </div>
+        <div class="account-btn-row">
+          <button class="menu-btn" id="btnSignIn">SIGN IN</button>
+          <button class="menu-btn" id="btnSignUp">SIGN UP</button>
+        </div>
+        <div class="account-status" id="acctStatus"></div>
+        <span class="account-guest-link" id="btnContinueGuest">Continue without an account</span>
+      </div>
+
+      <!-- Logged in: profile + cloud progress -->
+      <div id="accountLoggedIn" class="hidden">
+        <div class="account-profile-row">
+          <div class="avatar-circle" id="avatarCircle">
+            <svg viewBox="0 0 24 24" fill="#e8e8e8"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.5c-3.3 0-9.8 1.6-9.8 4.9v2.4h19.6v-2.4c0-3.3-6.5-4.9-9.8-4.9z"/></svg>
+          </div>
+          <div>
+            <div class="account-name" id="acctUsername">—</div>
+            <div class="account-email" id="acctEmailDisplay">—</div>
+            <label class="account-upload-label" id="btnUploadAvatar">Upload avatar…</label>
+            <input type="file" id="acctAvatarFile" accept="image/*" style="display:none;">
+          </div>
+        </div>
+        <div class="account-stats">
+          <div class="account-stat-box"><div class="stat-num" id="acctBestScore">0</div><div class="stat-label">BEST SCORE</div></div>
+          <div class="account-stat-box"><div class="stat-num" id="acctBestWave">0</div><div class="stat-label">BEST WAVE</div></div>
+        </div>
+        <div class="account-btn-row">
+          <button class="menu-btn" id="btnSaveNow">SAVE NOW</button>
+          <button class="menu-btn" id="btnSignOut">SIGN OUT</button>
+        </div>
+        <div class="account-status" id="acctStatusLoggedIn"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= LEADERBOARD (Supabase) ================= -->
+<div id="leaderboardMenu" class="menu-overlay hidden">
+  <div class="settings-panel" style="width:min(520px, 92vw);">
+    <div class="settings-header">
+      <div class="menu-title" style="font-size:28px; margin-bottom:0;">LEADERBOARD</div>
+      <div style="display:flex; align-items:center; gap:10px; pointer-events:all;">
+        <button class="menu-btn small" id="btnLeaderboardRefresh">REFRESH</button>
+        <button class="menu-btn small" id="btnLeaderboardClose">CLOSE</button>
+      </div>
+    </div>
+    <div class="settings-body">
+      <div class="leaderboard-header-row">
+        <span class="lb-rank">#</span><span class="lb-name">PLAYER</span><span class="lb-score">SCORE</span><span class="lb-wave">BEST</span>
+      </div>
+      <div id="leaderboardList"><div class="leaderboard-status">Loading…</div></div>
+    </div>
+    <div class="settings-hint">Sign in from ACCOUNT to submit your runs — everyone can view the board.</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ==================================================================================
+   DOOMLIKE™ / Doomlike-FPS™ — a self-contained raycast FPS.
+   Trademark of chopsticks. Not affiliated with id Software or ZeniMax.
+   Rendering: classic grid-based DDA raycasting (Wolfenstein-style) onto a low
+   internal resolution buffer that is CSS-scaled to fill the window. This keeps the
+   per-frame column loop cheap (bounded column count) regardless of display size,
+   which is the single biggest lever for hitting a stable 60+ FPS target.
+   ================================================================================== */
+
+// ============================================================================
+// CONFIG / CONSTANTS
+// BASE_CONFIG holds the game's original, never-mutated default values. CONFIG
+// is a live copy that gameplay code actually reads from; the Settings system
+// (further below) recomputes CONFIG's fields from BASE_CONFIG + the user's
+// settings every time an option changes, so nothing ever compounds across
+// repeated adjustments.
+// ============================================================================
+const BASE_CONFIG = {
+  FOV: Math.PI / 2,             // 90 degrees
+  AIM_FOV: Math.PI / 5.2,       // narrower FOV while aiming (zoom feel)
+  MOVE_SPEED: 3.0,              // map units / second
+  SPRINT_MULT: 1.7,
+  STRAFE_MULT: 0.9,
+  PLAYER_RADIUS: 0.22,
+  MOUSE_SENSITIVITY: 0.0022,
+  AIM_SENSITIVITY_MULT: 0.55,
+  PITCH_SENSITIVITY: 0.0022,    // radians per mouse-Y unit (real camera pitch, not the old pixel-shift hack)
+  PITCH_MAX: 1.3,                // radians (~74 degrees)
+  RECOIL_KICK: 0.026,            // camera pitch (radians) added per shot — real muzzle kick, not just a viewmodel jiggle
+  RECOIL_RECOVERY: 3.2,          // radians/sec the recoil kick settles back down at
+  JUMP_VELOCITY: 3.4,
+  GRAVITY: 9.0,
+  MAX_HEALTH: 100,
+  MAG_SIZE: 12,
+  MAX_RESERVE_AMMO: 96,
+  RELOAD_TIME: 1.25,
+  FIRE_COOLDOWN: 0.16,
+  BULLET_RANGE: 20,
+  BULLET_DAMAGE: 26,
+  BULLET_SPREAD: 0.018,
+  MONSTER_POOL_SIZE: 40,
+  MONSTER_BASE_HEALTH: 60,
+  MONSTER_BASE_SPEED: 1.35,
+  MONSTER_ATTACK_RANGE: 0.9,
+  MONSTER_ATTACK_DAMAGE: 8,
+  MONSTER_ATTACK_COOLDOWN: 1.0,
+  MONSTER_DETECT_RANGE: 9,
+  MONSTER_RADIUS: 0.28,
+  PARTICLE_POOL_SIZE: 96,
+  FURNITURE_POOL_SIZE: 20,
+  PROJECTILE_POOL_SIZE: 16,
+  DECAL_POOL_SIZE: 20,
+  AMMO_PICKUP_POOL_SIZE: 12,
+  HEALTH_PICKUP_POOL_SIZE: 8,
+  TOTAL_WAVES: 5,
+  FOG_DISTANCE: 10,             // distance at which fog fully obscures
+  BRIGHTNESS: 1.25,              // multiplier on final wall/ceiling/floor color
+  RT_QUALITY: 0,                 // ray-traced shadow tier, 0=low..4=extreme (see RAYTRACE_TIERS)
+  // Frame pacing — keep GPU/CPU out of a tight unlimited spin
+  TARGET_FPS_PLAY: 45,
+  TARGET_FPS_MENU: 12,
+  MAX_INTERNAL_WIDTH: 1280,      // hard cap on render buffer width
+};
+const CONFIG = Object.assign({}, BASE_CONFIG);
+
+// Internal render buffer target heights. Lower defaults = much less GPU fill
+// + fewer RT samples. CSS still scales the canvas to the full window.
+const RESOLUTION_TIERS = {
+  '360p': 360,
+  '480p': 480,
+  '720p': 720,
+  '1080p': 1080,
+  '1440p': 1440,
+  '2160p': 2160,
+};
+
+// Ray tracing quality — real shadow rays marched through the level grid in
+// the fragment shader (mapGrid uploaded as a storage buffer), not a fake
+// screen-space effect. Higher tiers shadow-test more lights and use more
+// jittered samples per light for soft shadows, at real GPU cost — Extreme
+// is deliberately expensive.
+const RAYTRACE_TIERS = { low: 0, medium: 1, high: 2, ultra: 3, extreme: 4 };
+
+// ============================================================================
+// DIFFICULTY PRESETS — scale monster stats & ammo economy without touching
+// the base values directly, so switching difficulty is always relative to
+// BASE_CONFIG (never compounds).
+// ============================================================================
+const DIFFICULTY_PRESETS = {
+  easy:      { healthMult: 0.7, dmgMult: 0.6, speedMult: 0.85, ammoMult: 1.4 },
+  normal:    { healthMult: 1.0, dmgMult: 1.0, speedMult: 1.0,  ammoMult: 1.0 },
+  hard:      { healthMult: 1.35, dmgMult: 1.4, speedMult: 1.15, ammoMult: 0.75 },
+  nightmare: { healthMult: 1.8, dmgMult: 1.8, speedMult: 1.3,  ammoMult: 0.55 },
+};
+
+// ============================================================================
+// USER SETTINGS — everything the Options panel exposes. Persisted to
+// localStorage so choices survive a page reload.
+// ============================================================================
+const DEFAULT_SETTINGS = {
+  // Gameplay / look
+  fovDeg: 90, aimFovDeg: 35, mouseSensitivity: 1.0, aimSensitivityMult: 0.55,
+  invertY: false, moveSpeed: 3.0, sprintMult: 1.7, jumpVelocity: 3.4,
+  // Graphics — lightweight defaults (users can raise in Options)
+  resolutionTier: '480p', fogDistance: 10, brightness: 1.25, showFPS: true,
+  crosshairColor: '#d6ffe0', crosshairSize: 22, crosshairStyle: 'cross',
+  rayTracingQuality: 'low',
+  // Audio
+  masterVolume: 55,
+  // Combat / difficulty
+  difficulty: 'normal', weaponDamageMult: 1.0,
+  reserveAmmo: 96, maxHealth: 100, totalWaves: 5,
+};
+const SETTINGS = Object.assign({}, DEFAULT_SETTINGS);
+
+const DEFAULT_KEYBINDS = {
+  forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD',
+  sprint: 'ShiftLeft', jump: 'Space', reload: 'KeyR',
+};
+const KEYBINDS = Object.assign({}, DEFAULT_KEYBINDS);
+
+// v2: force lighter graphics defaults so old 1080p/medium saves don't keep
+// the game in top CPU processes after this optimization pass.
+const SETTINGS_STORAGE_KEY = 'doomlike_settings_v2';
+const KEYBINDS_STORAGE_KEY = 'doomlike_keybinds_v1';
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(SETTINGS)); } catch (e) { /* storage unavailable */ }
+}
+function saveKeybinds() {
+  try { localStorage.setItem(KEYBINDS_STORAGE_KEY, JSON.stringify(KEYBINDS)); } catch (e) { /* storage unavailable */ }
+}
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) Object.assign(SETTINGS, JSON.parse(raw));
+  } catch (e) { /* storage unavailable or corrupt */ }
+  try {
+    const rawKeys = localStorage.getItem(KEYBINDS_STORAGE_KEY);
+    if (rawKeys) Object.assign(KEYBINDS, JSON.parse(rawKeys));
+  } catch (e) { /* storage unavailable or corrupt */ }
+}
+
+// ============================================================================
+// MAP DATA
+// 0 = floor, 1-4 = wall (the digit selects a material — brick/metal/wood/
+// tech-panel — colored in the level fragment shader). Border is fully enclosed.
+// Procedurally generated (rooms + MST corridors + a few extra loop links),
+// then validated for full floor connectivity offline before being baked in
+// here as static data, so every playthrough uses the same tested layout.
+// A large room in the top-left (wood-walled, material 3) is reserved as the
+// player's BASE — see BASE_ROOM_BOUNDS below — for the furniture system.
+// ============================================================================
+const MAP_ROWS = [
+  "1111111111111111111111111111111111111111111111",
+  "1133333333333311111111111111111111111111111111",
+  "1300000000000031111111111111111111111111111111",
+  "1300000000000031111111111111111111111111111111",
+  "1300000000000031111111110000000111111111111111",
+  "1300000000000033111111110000000111110000001111",
+  "1300000000000000000000000000000111110000001111",
+  "1300000000000033000011110000000111110000001111",
+  "1300000000000031000011110000000111110000001111",
+  "1300000000000031000000000000000000000000111111",
+  "1300000000000031000011110000001111111110111111",
+  "1133333303333311000011110000001111111000001111",
+  "1111111303111111000011110000001111111000001111",
+  "1111111101111111111111110000001111111000001111",
+  "1111111100000000000000000000000000000000000111",
+  "1111111111111111111111110000001111110000000111",
+  "1111111111111111111111110000001111110000000111",
+  "1111100000001111110000111110111111110000000111",
+  "1111100000001111110000111110111111110110110111",
+  "1111100000001111110000111110111111110110110111",
+  "1111100000000000000000000000000000000000000021",
+  "1111100000001111110000100000004004000004000001",
+  "1111100000001111110000000000000000000000000041",
+  "1111100000001111110000100000000400000000000001",
+  "1111111101111111111111114204004004000004004001",
+  "1111111101100000000100000200000040000000000041",
+  "1100000001100000000100000400000000400000000401",
+  "1100000001100000000100000200000004000000000001",
+  "1100000000000000000000000000000040000000000041",
+  "1100000001100000000100000400000000000000000401",
+  "1100000001100000000100000200000004000000000001",
+  "1100000001111111111111112200000040000000000041",
+  "1100000001111111111111112400000000400400400001",
+  "1111111111111111111111114204004004004004004001",
+  "1111111111111111111111112240040040040040040041",
+  "1111111111111111111111111111111111111111111111",
+];
+const MAP_W = MAP_ROWS[0].length;
+const MAP_H = MAP_ROWS.length;
+const BASE_ROOM_BOUNDS = { x0: 2, y0: 2, w: 12, h: 9 }; // matches the generator's fixed BASE room
+const mapGrid = new Uint8Array(MAP_W * MAP_H); // 0 = open, 1-4 = wall material id
+for (let y = 0; y < MAP_H; y++) {
+  for (let x = 0; x < MAP_W; x++) {
+    mapGrid[y * MAP_W + x] = MAP_ROWS[y].charCodeAt(x) - 48; // '0'-'4' -> 0-4
+  }
+}
+// Static ceiling lamps — real point lights mounted at the ceiling (not just
+// the ambient/directional wash), placed at verified-open tiles reused from
+// layoutDefaultFurniture so they're guaranteed to sit in real rooms rather
+// than inside a wall. Spread across every distinct area of the map. Height
+// 0.94 puts them right up against the 1.0-unit ceiling.
+const LAMP_LIGHTS = [
+  { x: 6.5, y: 4.5, z: 0.94, radius: 5.5, color: [1.0, 0.82, 0.56], intensity: 1.1 },
+  { x: 20.5, y: 27.5, z: 0.94, radius: 5.5, color: [0.65, 0.82, 1.0], intensity: 1.0 },
+  { x: 39.5, y: 6.5, z: 0.94, radius: 5.5, color: [1.0, 0.82, 0.56], intensity: 1.1 },
+  { x: 10.5, y: 18.5, z: 0.94, radius: 5.0, color: [0.65, 0.82, 1.0], intensity: 1.0 },
+  { x: 31.5, y: 26.5, z: 0.94, radius: 5.0, color: [1.0, 0.82, 0.56], intensity: 1.0 },
+  { x: 30.5, y: 22.5, z: 0.94, radius: 5.0, color: [0.65, 0.82, 1.0], intensity: 1.0 },
+  { x: 39.5, y: 8.5, z: 0.94, radius: 5.0, color: [1.0, 0.82, 0.56], intensity: 1.0 },
+  { x: 39.5, y: 17.5, z: 0.94, radius: 5.0, color: [0.65, 0.82, 1.0], intensity: 1.0 },
+];
+
+function isWall(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  if (ix < 0 || iy < 0 || ix >= MAP_W || iy >= MAP_H) return true;
+  return mapGrid[iy * MAP_W + ix] !== 0;
+}
+
+// Collect open floor tiles for spawn placement.
+const openTiles = [];
+for (let y = 1; y < MAP_H - 1; y++) {
+  for (let x = 1; x < MAP_W - 1; x++) {
+    if (mapGrid[y * MAP_W + x] === 0) openTiles.push({ x: x + 0.5, y: y + 0.5 });
+  }
+}
+
+// ============================================================================
+// MATRIX MATH — minimal column-major mat4 helpers (WGSL's mat4x4<f32> layout
+// matches a flat 16-float column-major array, so these Float32Arrays upload
+// directly as uniform data with no conversion). Just enough for a
+// perspective projection and a yaw/pitch FPS camera — no general-purpose
+// scene-graph transform stack, since the game only ever needs those two.
+// ============================================================================
+function mat4Perspective(fovY, aspect, near, far) {
+  const f = 1.0 / Math.tan(fovY / 2);
+  const out = new Float32Array(16);
+  out[0] = f / aspect;
+  out[5] = f;
+  out[11] = -1;
+  const nf = 1 / (near - far);
+  out[10] = far * nf;       // WebGPU clip-space depth is [0,1], not GL's [-1,1]
+  out[14] = far * near * nf;
+  return out;
+}
+
+// Standard lookAt construction (eye/target/up -> view matrix). Used with a
+// target computed from the player's yaw+pitch each frame.
+function mat4LookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ) {
+  let z0 = eyeX - targetX, z1 = eyeY - targetY, z2 = eyeZ - targetZ;
+  let len = Math.hypot(z0, z1, z2);
+  if (len > 1e-6) { z0 /= len; z1 /= len; z2 /= len; }
+
+  let x0 = upY * z2 - upZ * z1;
+  let x1 = upZ * z0 - upX * z2;
+  let x2 = upX * z1 - upY * z0;
+  len = Math.hypot(x0, x1, x2);
+  if (len > 1e-6) { x0 /= len; x1 /= len; x2 /= len; } else { x0 = 0; x1 = 0; x2 = 0; }
+
+  const y0 = z1 * x2 - z2 * x1;
+  const y1 = z2 * x0 - z0 * x2;
+  const y2 = z0 * x1 - z1 * x0;
+
+  const out = new Float32Array(16);
+  out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+  out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+  out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+  out[12] = -(x0 * eyeX + x1 * eyeY + x2 * eyeZ);
+  out[13] = -(y0 * eyeX + y1 * eyeY + y2 * eyeZ);
+  out[14] = -(z0 * eyeX + z1 * eyeY + z2 * eyeZ);
+  out[15] = 1;
+  return out;
+}
+
+function mat4Multiply(a, b) {
+  const out = new Float32Array(16);
+  for (let col = 0; col < 4; col++) {
+    for (let row = 0; row < 4; row++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++) sum += a[k * 4 + row] * b[col * 4 + k];
+      out[col * 4 + row] = sum;
+    }
+  }
+  return out;
+}
+
+// ============================================================================
+// MESH GENERATION — a unit box and a low-poly unit sphere (both centered on
+// origin, positions only — props use a cheap local-Y height gradient for
+// shading instead of true per-face normals, see the prop shader below, so no
+// normal attribute is needed here). Triangle winding is intentionally not
+// guaranteed consistent (the level/prop pipelines both disable backface
+// culling), which trades a small amount of overdraw for zero risk of
+// "missing face" bugs from a winding mistake.
+// ============================================================================
+function buildUnitBoxPositions() {
+  const faces = [
+    [[0.5, -0.5, -0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [0.5, 0.5, 0.5], [0.5, 0.5, -0.5]],
+    [[-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5], [-0.5, 0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, 0.5, -0.5], [-0.5, 0.5, 0.5]],
+    [[-0.5, 0.5, -0.5], [0.5, 0.5, -0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]],
+    [[-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, 0.5], [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5]],
+    [[0.5, -0.5, 0.5], [-0.5, -0.5, 0.5], [-0.5, 0.5, 0.5], [0.5, -0.5, 0.5], [-0.5, 0.5, 0.5], [0.5, 0.5, 0.5]],
+    [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5]],
+  ];
+  const verts = faces.flat();
+  const arr = new Float32Array(verts.length * 3);
+  for (let i = 0; i < verts.length; i++) { arr[i * 3] = verts[i][0]; arr[i * 3 + 1] = verts[i][1]; arr[i * 3 + 2] = verts[i][2]; }
+  return arr;
+}
+
+function buildUnitSpherePositions(segments, rings) {
+  function vertAt(ring, seg) {
+    const theta = (ring / rings) * Math.PI;
+    const phi = (seg / segments) * Math.PI * 2;
+    const y = Math.cos(theta) * 0.5;
+    const r = Math.sin(theta) * 0.5;
+    return [Math.cos(phi) * r, y, Math.sin(phi) * r];
+  }
+  const verts = [];
+  for (let ring = 0; ring < rings; ring++) {
+    for (let seg = 0; seg < segments; seg++) {
+      const a = vertAt(ring, seg), b = vertAt(ring, seg + 1);
+      const c = vertAt(ring + 1, seg), d = vertAt(ring + 1, seg + 1);
+      verts.push(a, c, b, b, c, d);
+    }
+  }
+  const arr = new Float32Array(verts.length * 3);
+  for (let i = 0; i < verts.length; i++) { arr[i * 3] = verts[i][0]; arr[i * 3 + 1] = verts[i][1]; arr[i * 3 + 2] = verts[i][2]; }
+  return arr;
+}
+
+// Extrudes the 2D map grid into real 3D geometry: a vertical quad for every
+// wall face that borders open space (skips faces between two wall cells,
+// since those are never visible), plus one big floor quad and one big
+// ceiling quad. Each vertex packs [x,y,z,material] + [nx,ny,nz,0] (8 floats,
+// interleaved) — material 0 is reused by floor/ceiling and disambiguated in
+// the shader by normal.y sign. Built once at load; the map is static.
+function buildLevelGeometry() {
+  const data = [];
+  function addQuad(p0, p1, p2, p3, normal, material) {
+    const quad = [p0, p1, p2, p0, p2, p3];
+    for (const p of quad) {
+      data.push(p[0], p[1], p[2], material, normal[0], normal[1], normal[2], 0);
+    }
+  }
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const cell = mapGrid[y * MAP_W + x];
+      if (cell === 0) continue;
+      const material = cell;
+      if (x > 0 && mapGrid[y * MAP_W + (x - 1)] === 0) {
+        addQuad([x, 0, y], [x, 0, y + 1], [x, 1, y + 1], [x, 1, y], [-1, 0, 0], material);
+      }
+      if (x < MAP_W - 1 && mapGrid[y * MAP_W + (x + 1)] === 0) {
+        addQuad([x + 1, 0, y + 1], [x + 1, 0, y], [x + 1, 1, y], [x + 1, 1, y + 1], [1, 0, 0], material);
+      }
+      if (y > 0 && mapGrid[(y - 1) * MAP_W + x] === 0) {
+        addQuad([x + 1, 0, y], [x, 0, y], [x, 1, y], [x + 1, 1, y], [0, 0, -1], material);
+      }
+      if (y < MAP_H - 1 && mapGrid[(y + 1) * MAP_W + x] === 0) {
+        addQuad([x, 0, y + 1], [x + 1, 0, y + 1], [x + 1, 1, y + 1], [x, 1, y + 1], [0, 0, 1], material);
+      }
+    }
+  }
+  addQuad([0, 0, 0], [MAP_W, 0, 0], [MAP_W, 0, MAP_H], [0, 0, MAP_H], [0, 1, 0], 0);   // floor
+  addQuad([0, 1, 0], [0, 1, MAP_H], [MAP_W, 1, MAP_H], [MAP_W, 1, 0], [0, -1, 0], 0); // ceiling
+  return { vertices: new Float32Array(data), vertexCount: data.length / 8 };
+}
+
+// ============================================================================
+// WEBGPU SETUP — device/context/pipelines. WebGPU is the browser-native
+// counterpart to Vulkan's design (explicit, low-overhead, modern GPU command
+// model) — real Vulkan cannot run in a browser at all, it has zero JS
+// exposure. This replaces the old CPU-side raycasting renderer with true 3D
+// geometry, a real depth buffer (so occlusion just works, no more manual
+// zBuffer sampling hacks), and a real yaw+pitch camera instead of the old
+// fake vertical-shift pitch trick.
+// ============================================================================
+const canvas = document.getElementById('gameCanvas');
+let gpuDevice = null;
+let gpuContext = null;
+let gpuFormat = null;
+let depthTexture = null;
+let depthView = null;
+
+let internalW = 1280, internalH = 720; // canvas pixel size (renamed concept from the old low-res raycast buffer — this is now the actual GPU render target size)
+
+const LEVEL_SHADER_SRC = `
+struct Scene {
+  viewProj: mat4x4<f32>,
+  cameraPos: vec4<f32>,   // xyz, w unused
+  fogParams: vec4<f32>,   // x=fogDistance, y=brightness, z=ambient, w=time
+  lightDir: vec4<f32>,    // xyz normalized, w unused
+  rtParams: vec4<f32>,    // x=mapW, y=mapH, z=rtQuality (0..4), w unused
+  lights: array<vec4<f32>, 18>, // NUM_LIGHTS(9) point lights, each 2 slots: [pos.xyz,radius], [color.rgb,intensity]
+};
+@group(0) @binding(0) var<uniform> scene: Scene;
+@group(0) @binding(1) var<storage, read> mapGridBuf: array<f32>;
+
+// Real shadow ray: 2D DDA march through the level grid (same technique as
+// the gameplay-side line-of-sight check) from a surface point to a light,
+// returning 1.0 if nothing occludes it or 0.0 if a wall cell is hit first.
+// Walls span full floor-to-ceiling height, so XZ-plane occlusion is exact
+// regardless of the light's or surface's Y height.
+fn shadowRay(fromXZ: vec2<f32>, toXZ: vec2<f32>) -> f32 {
+  let delta = toXZ - fromXZ;
+  let dist = length(delta);
+  if (dist < 0.05) { return 1.0; }
+  var rayDir = delta / dist;
+  if (abs(rayDir.x) < 0.0001) { rayDir.x = 0.0001; }
+  if (abs(rayDir.y) < 0.0001) { rayDir.y = 0.0001; }
+  var mapX = i32(floor(fromXZ.x));
+  var mapY = i32(floor(fromXZ.y));
+  let deltaDistX = abs(1.0 / rayDir.x);
+  let deltaDistY = abs(1.0 / rayDir.y);
+  var stepX: i32; var sideDistX: f32;
+  if (rayDir.x < 0.0) { stepX = -1; sideDistX = (fromXZ.x - f32(mapX)) * deltaDistX; }
+  else { stepX = 1; sideDistX = (f32(mapX) + 1.0 - fromXZ.x) * deltaDistX; }
+  var stepY: i32; var sideDistY: f32;
+  if (rayDir.y < 0.0) { stepY = -1; sideDistY = (fromXZ.y - f32(mapY)) * deltaDistY; }
+  else { stepY = 1; sideDistY = (f32(mapY) + 1.0 - fromXZ.y) * deltaDistY; }
+  let mapW = i32(scene.rtParams.x);
+  let mapH = i32(scene.rtParams.y);
+  for (var i = 0; i < 48; i = i + 1) {
+    var t: f32;
+    if (sideDistX < sideDistY) { t = sideDistX; sideDistX = sideDistX + deltaDistX; mapX = mapX + stepX; }
+    else { t = sideDistY; sideDistY = sideDistY + deltaDistY; mapY = mapY + stepY; }
+    if (t >= dist) { return 1.0; }
+    if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH) { return 0.0; }
+    let idx = u32(mapY * mapW + mapX);
+    if (mapGridBuf[idx] > 0.5) { return 0.0; }
+  }
+  return 1.0;
+}
+
+fn pointLightContrib(worldPos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+  var total = vec3<f32>(0.0, 0.0, 0.0);
+  let quality = scene.rtParams.z;
+  for (var i = 0; i < 9; i = i + 1) {
+    let p = scene.lights[i * 2];
+    let c = scene.lights[i * 2 + 1];
+    let toLight = p.xyz - worldPos;
+    let dist = length(toLight);
+    let atten = clamp(1.0 - dist / max(p.w, 0.001), 0.0, 1.0);
+    let ndotl = max(dot(normal, toLight / max(dist, 0.001)), 0.0);
+    var shadow = 1.0;
+    let shadowThisLight = quality >= 2.0 || (quality >= 1.0 && i > 0);
+    if (shadowThisLight && atten > 0.001) {
+      if (quality >= 3.0) {
+        let samples = select(3, 5, quality >= 4.0);
+        var sum = 0.0;
+        for (var s = 0; s < 5; s = s + 1) {
+          if (s >= samples) { continue; }
+          let angle = f32(s) * 1.2566371;
+          let offset = vec2<f32>(cos(angle), sin(angle)) * 0.35;
+          sum = sum + shadowRay(worldPos.xz, p.xz + offset);
+        }
+        shadow = sum / f32(samples);
+      } else {
+        shadow = shadowRay(worldPos.xz, p.xz);
+      }
+    }
+    total = total + c.rgb * c.w * atten * atten * ndotl * shadow;
+  }
+  return total;
+}
+
+struct VOut {
+  @builtin(position) clipPos: vec4<f32>,
+  @location(0) worldPos: vec3<f32>,
+  @location(1) normal: vec3<f32>,
+  @location(2) material: f32,
+};
+
+@vertex
+fn vs_main(@location(0) posMat: vec4<f32>, @location(1) normSide: vec4<f32>) -> VOut {
+  var out: VOut;
+  out.worldPos = posMat.xyz;
+  out.clipPos = scene.viewProj * vec4<f32>(posMat.xyz, 1.0);
+  out.normal = normSide.xyz;
+  out.material = posMat.w;
+  return out;
+}
+
+fn materialColor(material: f32, isFloor: bool) -> vec3<f32> {
+  if (material < 0.5) {
+    if (isFloor) { return vec3<f32>(0.16, 0.14, 0.11); }
+    return vec3<f32>(0.09, 0.10, 0.16);
+  } else if (material < 1.5) {
+    return vec3<f32>(0.59, 0.24, 0.24); // brick
+  } else if (material < 2.5) {
+    return vec3<f32>(0.37, 0.41, 0.46); // metal
+  } else if (material < 3.5) {
+    return vec3<f32>(0.48, 0.35, 0.21); // wood
+  }
+  return vec3<f32>(0.27, 0.50, 0.50);   // tech-panel
+}
+
+// Cheap hash noise (no textures) — gives walls/floor a faint grain instead
+// of a flat plastic-solid look. Deliberately coarse and low-amplitude.
+fn hash2(p: vec2<f32>) -> f32 {
+  return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+}
+
+@fragment
+fn fs_main(in: VOut) -> @location(0) vec4<f32> {
+  let isFloor = in.normal.y > 0.5;
+  let isCeiling = in.normal.y < -0.5;
+  let isWallFace = !isFloor && !isCeiling;
+  var base = materialColor(in.material, isFloor);
+
+  // Procedural banding (mortar/panel lines), a real per-pixel equivalent of
+  // the original 2D renderer's column banding — uses whichever world axis
+  // runs "along" the face so it doesn't smear with distance.
+  if (material_uses_banding(in.material)) {
+    let alongFace = select(in.worldPos.x, in.worldPos.z, abs(in.normal.x) > 0.5);
+    let vBand = fract(alongFace * 3.0) < 0.5;
+    let hBand = fract(in.worldPos.y * 4.0) < 0.5;
+    if (vBand != hBand) { base = base * 0.82; }
+  }
+
+  // Baseboard / crown trim: thin darker bands where wall meets floor and
+  // ceiling, purely in the shader (no extra geometry) — breaks up the
+  // "single flat slab" read of a wall quad.
+  if (isWallFace) {
+    if (in.worldPos.y < 0.09) { base = base * 0.6; }
+    else if (in.worldPos.y > 0.94) { base = base * 0.75; }
+  }
+
+  // Faint per-pixel grain, sampled in whichever plane the face actually
+  // spans, so it doesn't smear or swim with camera distance.
+  let grainUV = select(in.worldPos.xy, in.worldPos.zy, abs(in.normal.x) > 0.5);
+  let grain = (hash2(floor(grainUV * 24.0)) - 0.5) * 0.05;
+  base = base + grain;
+
+  let diffuse = max(dot(in.normal, scene.lightDir.xyz), 0.0) * 0.35 + 0.65;
+  var lit = base * diffuse * scene.fogParams.y;
+  lit = lit + pointLightContrib(in.worldPos, in.normal) * base;
+
+  let dist = distance(in.worldPos, scene.cameraPos.xyz);
+  let fogT = clamp(dist / scene.fogParams.x, 0.0, 1.0);
+  let fogColor = vec3<f32>(0.04, 0.05, 0.07);
+  let finalColor = mix(lit, fogColor, fogT);
+  return vec4<f32>(finalColor, 1.0);
+}
+
+fn material_uses_banding(material: f32) -> bool {
+  return material > 0.5;
+}
+`;
+
+const PROP_SHADER_SRC = `
+struct Scene {
+  viewProj: mat4x4<f32>,
+  cameraPos: vec4<f32>,
+  fogParams: vec4<f32>,
+  lightDir: vec4<f32>,
+  rtParams: vec4<f32>,    // x=mapW, y=mapH, z=rtQuality (0..4), w unused
+  lights: array<vec4<f32>, 18>, // NUM_LIGHTS(9) point lights, each 2 slots: [pos.xyz,radius], [color.rgb,intensity]
+};
+
+fn shadowRay(fromXZ: vec2<f32>, toXZ: vec2<f32>) -> f32 {
+  let delta = toXZ - fromXZ;
+  let dist = length(delta);
+  if (dist < 0.05) { return 1.0; }
+  var rayDir = delta / dist;
+  if (abs(rayDir.x) < 0.0001) { rayDir.x = 0.0001; }
+  if (abs(rayDir.y) < 0.0001) { rayDir.y = 0.0001; }
+  var mapX = i32(floor(fromXZ.x));
+  var mapY = i32(floor(fromXZ.y));
+  let deltaDistX = abs(1.0 / rayDir.x);
+  let deltaDistY = abs(1.0 / rayDir.y);
+  var stepX: i32; var sideDistX: f32;
+  if (rayDir.x < 0.0) { stepX = -1; sideDistX = (fromXZ.x - f32(mapX)) * deltaDistX; }
+  else { stepX = 1; sideDistX = (f32(mapX) + 1.0 - fromXZ.x) * deltaDistX; }
+  var stepY: i32; var sideDistY: f32;
+  if (rayDir.y < 0.0) { stepY = -1; sideDistY = (fromXZ.y - f32(mapY)) * deltaDistY; }
+  else { stepY = 1; sideDistY = (f32(mapY) + 1.0 - fromXZ.y) * deltaDistY; }
+  let mapW = i32(scene.rtParams.x);
+  let mapH = i32(scene.rtParams.y);
+  for (var i = 0; i < 48; i = i + 1) {
+    var t: f32;
+    if (sideDistX < sideDistY) { t = sideDistX; sideDistX = sideDistX + deltaDistX; mapX = mapX + stepX; }
+    else { t = sideDistY; sideDistY = sideDistY + deltaDistY; mapY = mapY + stepY; }
+    if (t >= dist) { return 1.0; }
+    if (mapX < 0 || mapY < 0 || mapX >= mapW || mapY >= mapH) { return 0.0; }
+    let idx = u32(mapY * mapW + mapX);
+    if (mapGridBuf[idx] > 0.5) { return 0.0; }
+  }
+  return 1.0;
+}
+
+fn pointLightContrib(worldPos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+  var total = vec3<f32>(0.0, 0.0, 0.0);
+  let quality = scene.rtParams.z;
+  for (var i = 0; i < 9; i = i + 1) {
+    let p = scene.lights[i * 2];
+    let c = scene.lights[i * 2 + 1];
+    let toLight = p.xyz - worldPos;
+    let dist = length(toLight);
+    let atten = clamp(1.0 - dist / max(p.w, 0.001), 0.0, 1.0);
+    let ndotl = max(dot(normal, toLight / max(dist, 0.001)), 0.0);
+    var shadow = 1.0;
+    let shadowThisLight = quality >= 2.0 || (quality >= 1.0 && i > 0);
+    if (shadowThisLight && atten > 0.001) {
+      if (quality >= 3.0) {
+        let samples = select(3, 5, quality >= 4.0);
+        var sum = 0.0;
+        for (var s = 0; s < 5; s = s + 1) {
+          if (s >= samples) { continue; }
+          let angle = f32(s) * 1.2566371;
+          let offset = vec2<f32>(cos(angle), sin(angle)) * 0.35;
+          sum = sum + shadowRay(worldPos.xz, p.xz + offset);
+        }
+        shadow = sum / f32(samples);
+      } else {
+        shadow = shadowRay(worldPos.xz, p.xz);
+      }
+    }
+    total = total + c.rgb * c.w * atten * atten * ndotl * shadow;
+  }
+  return total;
+}
+struct Instance {
+  position: vec4<f32>, // xyz world position, w = yaw radians
+  scale: vec4<f32>,    // xyz per-axis scale, w = glow flag (0 or 1)
+  color: vec4<f32>,    // rgb, a = opacity
+};
+@group(0) @binding(0) var<uniform> scene: Scene;
+@group(0) @binding(1) var<storage, read> instances: array<Instance>;
+@group(0) @binding(2) var<storage, read> mapGridBuf: array<f32>;
+
+struct VOut {
+  @builtin(position) clipPos: vec4<f32>,
+  @location(0) worldPos: vec3<f32>,
+  @location(1) localY: f32,
+  @location(2) color: vec4<f32>,
+  @location(3) glow: f32,
+};
+
+@vertex
+fn vs_main(@location(0) localPos: vec3<f32>, @builtin(instance_index) idx: u32) -> VOut {
+  var out: VOut;
+  let inst = instances[idx];
+  let scaled = localPos * inst.scale.xyz;
+  let yaw = inst.position.w;
+  let c = cos(yaw); let s = sin(yaw);
+  let rotated = vec3<f32>(scaled.x * c + scaled.z * s, scaled.y, -scaled.x * s + scaled.z * c);
+  let world = rotated + inst.position.xyz;
+  out.worldPos = world;
+  out.clipPos = scene.viewProj * vec4<f32>(world, 1.0);
+  out.localY = localPos.y;
+  out.color = inst.color;
+  out.glow = inst.scale.w;
+  return out;
+}
+
+@fragment
+fn fs_main(in: VOut) -> @location(0) vec4<f32> {
+  var rgb = in.color.rgb;
+  // Real per-face lighting: screen-space derivatives of the interpolated
+  // world position give the true geometric normal of whichever flat face
+  // (or low-poly facet) is under this fragment — every box side and every
+  // sphere facet now shades independently instead of sharing one fake
+  // height-based gradient, which is what was reading as "flat/blocky."
+  // dpdx/dpdy must run in uniform control flow, so this is computed
+  // unconditionally and only *used* inside the branch below.
+  let faceNormal = normalize(cross(dpdx(in.worldPos), dpdy(in.worldPos)));
+  if (in.glow < 0.5) {
+    let diffuse = max(dot(faceNormal, scene.lightDir.xyz), 0.0) * 0.5 + 0.5;
+    // cheap AO: local-height gradient kept as a subtle secondary term so
+    // object bases still read as grounded, not because faces need it now.
+    let heightAO = 0.88 + (in.localY + 0.5) * 0.12;
+    rgb = rgb * diffuse * heightAO * scene.fogParams.y;
+    rgb = rgb + pointLightContrib(in.worldPos, faceNormal) * in.color.rgb;
+
+    // Fresnel-style rim light — grazing angles catch a soft highlight,
+    // which is what makes rounded/faceted shapes read as 3D instead of
+    // flat-shaded cutouts.
+    let viewDir = normalize(scene.cameraPos.xyz - in.worldPos);
+    let rim = pow(1.0 - clamp(dot(faceNormal, viewDir), 0.0, 1.0), 3.0) * 0.3;
+    rgb = rgb + rim;
+  }
+  let dist = distance(in.worldPos, scene.cameraPos.xyz);
+  let fogT = clamp(dist / scene.fogParams.x, 0.0, 1.0);
+  let fogColor = vec3<f32>(0.04, 0.05, 0.07);
+  let mixed = mix(rgb, fogColor, fogT * (1.0 - in.glow * 0.7)); // glow objects resist fog a bit (they read as lit)
+  return vec4<f32>(mixed, in.color.a);
+}
+`;
+
+let levelPipeline = null, levelVertexBuffer = null, levelVertexCount = 0, levelSceneBindGroup = null;
+let propPipeline = null;
+let boxVertexBuffer = null, boxVertexCount = 0;
+let sphereVertexBuffer = null, sphereVertexCount = 0;
+let sceneUniformBuffer = null;
+const MAX_INSTANCES = 2048;
+let boxInstanceBuffer = null, sphereInstanceBuffer = null;
+let boxBindGroup = null, sphereBindGroup = null;
+let mapGridBuffer = null;
+const boxInstanceData = new Float32Array(MAX_INSTANCES * 12); // 3 vec4 per instance
+const sphereInstanceData = new Float32Array(MAX_INSTANCES * 12);
+let boxInstanceCount = 0, sphereInstanceCount = 0;
+
+async function initWebGPU() {
+  if (!navigator.gpu) return false;
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) return false;
+  gpuDevice = await adapter.requestDevice();
+  gpuContext = canvas.getContext('webgpu');
+  gpuFormat = navigator.gpu.getPreferredCanvasFormat();
+  gpuContext.configure({ device: gpuDevice, format: gpuFormat, alphaMode: 'opaque' });
+
+  const level = buildLevelGeometry();
+  levelVertexBuffer = gpuDevice.createBuffer({ size: level.vertices.byteLength, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+  gpuDevice.queue.writeBuffer(levelVertexBuffer, 0, level.vertices);
+  levelVertexCount = level.vertexCount;
+
+  const boxVerts = buildUnitBoxPositions();
+  boxVertexBuffer = gpuDevice.createBuffer({ size: boxVerts.byteLength, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+  gpuDevice.queue.writeBuffer(boxVertexBuffer, 0, boxVerts);
+  boxVertexCount = boxVerts.length / 3;
+
+  const sphereVerts = buildUnitSpherePositions(16, 10);
+  sphereVertexBuffer = gpuDevice.createBuffer({ size: sphereVerts.byteLength, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+  gpuDevice.queue.writeBuffer(sphereVertexBuffer, 0, sphereVerts);
+  sphereVertexCount = sphereVerts.length / 3;
+
+  sceneUniformBuffer = gpuDevice.createBuffer({ size: 16 * 4 + 16 * 3 + 16 + 16 * 18, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  boxInstanceBuffer = gpuDevice.createBuffer({ size: boxInstanceData.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  sphereInstanceBuffer = gpuDevice.createBuffer({ size: sphereInstanceData.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+
+  // Static level grid, uploaded once as a read-only storage buffer so both
+  // fragment shaders can shadow-ray-march through it (see shadowRay above) —
+  // any nonzero material cell fully occludes.
+  const mapGridF32 = new Float32Array(mapGrid.length);
+  for (let i = 0; i < mapGrid.length; i++) mapGridF32[i] = mapGrid[i];
+  mapGridBuffer = gpuDevice.createBuffer({ size: mapGridF32.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  gpuDevice.queue.writeBuffer(mapGridBuffer, 0, mapGridF32);
+
+  const levelModule = gpuDevice.createShaderModule({ code: LEVEL_SHADER_SRC });
+  const levelBindGroupLayout = gpuDevice.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+    ],
+  });
+  levelPipeline = gpuDevice.createRenderPipeline({
+    layout: gpuDevice.createPipelineLayout({ bindGroupLayouts: [levelBindGroupLayout] }),
+    vertex: {
+      module: levelModule, entryPoint: 'vs_main',
+      buffers: [{ arrayStride: 32, attributes: [
+        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+        { shaderLocation: 1, offset: 16, format: 'float32x4' },
+      ] }],
+    },
+    fragment: { module: levelModule, entryPoint: 'fs_main', targets: [{ format: gpuFormat }] },
+    primitive: { topology: 'triangle-list', cullMode: 'none' },
+    depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' },
+  });
+  levelSceneBindGroup = gpuDevice.createBindGroup({
+    layout: levelBindGroupLayout,
+    entries: [
+      { binding: 0, resource: { buffer: sceneUniformBuffer } },
+      { binding: 1, resource: { buffer: mapGridBuffer } },
+    ],
+  });
+
+  const propModule = gpuDevice.createShaderModule({ code: PROP_SHADER_SRC });
+  const propBindGroupLayout = gpuDevice.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+      { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+      { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+    ],
+  });
+  propPipeline = gpuDevice.createRenderPipeline({
+    layout: gpuDevice.createPipelineLayout({ bindGroupLayouts: [propBindGroupLayout] }),
+    vertex: {
+      module: propModule, entryPoint: 'vs_main',
+      buffers: [{ arrayStride: 12, attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x3' }] }],
+    },
+    fragment: {
+      module: propModule, entryPoint: 'fs_main',
+      targets: [{ format: gpuFormat, blend: {
+        color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+        alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+      } }],
+    },
+    primitive: { topology: 'triangle-list', cullMode: 'none' },
+    depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' },
+  });
+  boxBindGroup = gpuDevice.createBindGroup({
+    layout: propBindGroupLayout,
+    entries: [
+      { binding: 0, resource: { buffer: sceneUniformBuffer } },
+      { binding: 1, resource: { buffer: boxInstanceBuffer } },
+      { binding: 2, resource: { buffer: mapGridBuffer } },
+    ],
+  });
+  sphereBindGroup = gpuDevice.createBindGroup({
+    layout: propBindGroupLayout,
+    entries: [
+      { binding: 0, resource: { buffer: sceneUniformBuffer } },
+      { binding: 1, resource: { buffer: sphereInstanceBuffer } },
+      { binding: 2, resource: { buffer: mapGridBuffer } },
+    ],
+  });
+
+  return true;
+}
+
+function resizeCanvas() {
+  // Guard against a transiently zero/invalid viewport (e.g. a resize firing
+  // before layout settles) so the canvas can never collapse to 0 size.
+  const w = window.innerWidth || 1280, h = window.innerHeight || 720;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const aspect = w / h;
+  // Render target resolution still follows the chosen tier — now genuine
+  // GPU framebuffer resolution rather than a CPU-bound raycast buffer size.
+  const targetHeight = RESOLUTION_TIERS[CONFIG.RESOLUTION_TIER] || RESOLUTION_TIERS['480p'];
+  internalH = targetHeight;
+  internalW = Math.round(internalH * aspect);
+  // Cap width so ultrawide displays don't explode pixel count
+  const maxW = CONFIG.MAX_INTERNAL_WIDTH || 1280;
+  if (internalW > maxW) {
+    internalW = maxW;
+    internalH = Math.round(internalW / aspect);
+  }
+  // Avoid thrashing GPU textures on tiny dimension changes (e.g. scrollbars)
+  if (canvas.width === internalW && canvas.height === internalH && depthTexture) {
+    updateProjection();
+    return;
+  }
+  canvas.width = internalW;
+  canvas.height = internalH;
+  if (!gpuDevice) return; // resize can be called before WebGPU finishes initializing
+  if (depthTexture) depthTexture.destroy();
+  depthTexture = gpuDevice.createTexture({
+    size: [internalW, internalH], format: 'depth24plus', usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+  depthView = depthTexture.createView();
+  updateProjection();
+}
+function updateProjection() {
+  // No-op placeholder retained for call-site compatibility (FOV is read
+  // live from currentFOV() when building the projection matrix each frame
+  // in renderFrame(), so there's nothing to precompute here anymore).
+}
+
+// ============================================================================
+// AUDIO — procedurally generated sound effects via WebAudio (no files)
+// ============================================================================
+const AudioSys = {
+  ctx: null,
+  masterGain: null,
+  init() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = SETTINGS.masterVolume / 100;
+    this.masterGain.connect(this.ctx.destination);
+  },
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  tone(freq, dur, type, vol, freqEnd) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (freqEnd !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
+    gain.gain.setValueAtTime(vol !== undefined ? vol : 0.4, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain); gain.connect(this.masterGain);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  },
+  noise(dur, vol, filterFreq) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = filterFreq || 4000;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(vol !== undefined ? vol : 0.4, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(filter); filter.connect(gain); gain.connect(this.masterGain);
+    src.start(t0);
+  },
+  shoot() { this.tone(180, 0.09, 'square', 0.3, 60); this.noise(0.08, 0.25, 5000); },
+  emptyClick() { this.tone(320, 0.05, 'square', 0.15, 200); },
+  reloadClick(pitch) { this.tone(pitch || 500, 0.04, 'square', 0.18); },
+  hitMarker() { this.tone(900, 0.05, 'sine', 0.2, 1400); },
+  monsterGrowl() { this.tone(90 + Math.random() * 30, 0.35, 'sawtooth', 0.12, 50); },
+  monsterDeath() { this.tone(140, 0.3, 'sawtooth', 0.22, 30); this.noise(0.2, 0.15, 800); },
+  playerHurt() { this.noise(0.18, 0.3, 500); this.tone(120, 0.15, 'square', 0.15, 60); },
+  waveStart() { this.tone(220, 0.15, 'sine', 0.25, 440); },
+  jump() { this.tone(300, 0.1, 'sine', 0.15, 500); },
+  footstep() { this.noise(0.05, 0.05, 1200); },
+  spit() { this.tone(500, 0.12, 'sawtooth', 0.18, 200); this.noise(0.1, 0.1, 2500); },
+  pickupAmmo() { this.tone(440, 0.08, 'square', 0.2, 880); this.tone(660, 0.1, 'sine', 0.15, 1100); },
+  pickupHealth() { this.tone(520, 0.1, 'sine', 0.2, 1040); this.tone(780, 0.14, 'sine', 0.16, 1300); },
+};
+
+// ============================================================================
+// INPUT
+// ============================================================================
+const Input = {
+  keys: Object.create(null),
+  mouseDown: false,
+  aimDown: false,
+  movementX: 0,
+  movementY: 0,
+};
+// When non-null, the very next keydown is captured as a keybind rebind
+// instead of being treated as normal gameplay input (see the Controls tab
+// in the Settings panel).
+let listeningForAction = null;
+
+document.addEventListener('keydown', (e) => {
+  if (listeningForAction) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.code && e.code !== 'Escape') { KEYBINDS[listeningForAction] = e.code; saveKeybinds(); }
+    finishListenForKey();
+    return;
+  }
+  Input.keys[e.code] = true;
+  if (e.code === 'Escape') togglePause();
+  if (e.code === KEYBINDS.reload) tryReload();
+});
+document.addEventListener('keyup', (e) => { Input.keys[e.code] = false; });
+
+canvas.addEventListener('mousedown', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  if (e.button === 0) Input.mouseDown = true;
+  if (e.button === 2) Input.aimDown = true;
+});
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 0) Input.mouseDown = false;
+  if (e.button === 2) Input.aimDown = false;
+});
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas) return;
+  Input.movementX += e.movementX || 0;
+  Input.movementY += e.movementY || 0;
+});
+
+function requestLock() { canvas.requestPointerLock(); }
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && gameState === 'playing') {
+    setPaused(true);
+  }
+});
+
+// ============================================================================
+// PLAYER
+// ============================================================================
+const player = {
+  x: 8.5, y: 6.5, angle: 0,
+  pitch: 0,           // vertical look offset in pixels (fake-pitch)
+  velZ: 0, z: 0,      // jump height + velocity
+  health: CONFIG.MAX_HEALTH,
+  armor: 0, armorMax: 0,
+  ammo: CONFIG.MAG_SIZE,
+  reserveAmmo: CONFIG.MAX_RESERVE_AMMO,
+  isReloading: false,
+  reloadTimer: 0,
+  fireTimer: 0,
+  isAiming: false,
+  aimAmount: 0,       // lerp 0..1 for FOV / sway transitions
+  bobPhase: 0,
+  distanceWalked: 0,
+  recoil: 0,          // viewmodel kick
+  recoilPitch: 0,     // real camera-pitch kick (radians), on top of mouse-driven pitch
+  score: 0,
+  invulnTimer: 0,
+};
+
+function currentFOV() {
+  return CONFIG.FOV + (CONFIG.AIM_FOV - CONFIG.FOV) * player.aimAmount;
+}
+
+function placePlayerAtStart() {
+  player.x = 8.5; player.y = 6.5; player.angle = 0;
+  player.pitch = 0; player.z = 0; player.velZ = 0;
+  player.health = CONFIG.MAX_HEALTH;
+  const armorDef = getArmorDef(localProgress.equippedArmor);
+  player.armorMax = armorDef.capacity;
+  player.armor = armorDef.capacity;
+  player.ammo = CONFIG.MAG_SIZE;
+  player.reserveAmmo = CONFIG.MAX_RESERVE_AMMO;
+  player.isReloading = false; player.reloadTimer = 0;
+  player.score = 0; player.aimAmount = 0; player.recoil = 0; player.recoilPitch = 0;
+  player.invulnTimer = 0;
+}
+
+// Attempts to move the player by (dx, dy), sliding along walls on each axis
+// independently so corridors feel smooth instead of "sticky". Furniture
+// blocks the same way a wall would, except the player can push a piece
+// forward if there's room for it to slide into.
+function movePlayer(dx, dy) {
+  const r = CONFIG.PLAYER_RADIUS;
+  if (dx !== 0) {
+    const nx = player.x + dx;
+    if (!isWall(nx + Math.sign(dx) * r, player.y - r) && !isWall(nx + Math.sign(dx) * r, player.y + r)) {
+      const blocker = furnitureBlockingCircle(nx, player.y, r);
+      if (!blocker || tryPushFurniture(blocker, dx, 0)) player.x = nx;
+    }
+  }
+  if (dy !== 0) {
+    const ny = player.y + dy;
+    if (!isWall(player.x - r, ny + Math.sign(dy) * r) && !isWall(player.x + r, ny + Math.sign(dy) * r)) {
+      const blocker = furnitureBlockingCircle(player.x, ny, r);
+      if (!blocker || tryPushFurniture(blocker, 0, dy)) player.y = ny;
+    }
+  }
+}
+
+// ============================================================================
+// MONSTERS — fixed-size object pool to avoid per-wave GC churn.
+// ============================================================================
+// Monster type roster. Stats are multipliers applied on top of
+// CONFIG.MONSTER_BASE_HEALTH/SPEED/ATTACK_DAMAGE (which already carry the
+// wave and difficulty scaling), so a type's relative feel stays consistent
+// across waves/difficulty rather than needing its own tuning.
+const MONSTER_TYPES = {
+  grunt: {
+    name: 'Grunt', healthMult: 1.0, speedMult: 1.0, damageMult: 1.0, radiusMult: 1.0,
+    scoreValue: 100, ammoDrop: 3, color: [120, 40, 40], ranged: false, attackRange: null,
+  },
+  runner: {
+    name: 'Runner', healthMult: 0.5, speedMult: 1.8, damageMult: 0.55, radiusMult: 0.82,
+    scoreValue: 130, ammoDrop: 2, color: [150, 120, 30], ranged: false, attackRange: null,
+  },
+  brute: {
+    name: 'Brute', healthMult: 2.6, speedMult: 0.6, damageMult: 2.0, radiusMult: 1.45,
+    scoreValue: 220, ammoDrop: 6, color: [90, 30, 110], ranged: false, attackRange: null,
+  },
+  spitter: {
+    name: 'Spitter', healthMult: 0.65, speedMult: 0.85, damageMult: 1.3, radiusMult: 0.88,
+    scoreValue: 160, ammoDrop: 4, color: [30, 120, 100], ranged: true, attackRange: 6.5, projectileSpeed: 6,
+  },
+  boss: {
+    name: 'Overlord', healthMult: 9.0, speedMult: 0.5, damageMult: 3.2, radiusMult: 2.3,
+    scoreValue: 1000, ammoDrop: 30, color: [200, 15, 15], ranged: false, attackRange: null,
+  },
+};
+
+// Weighted-random type selection that phases in tougher/ranged types as
+// waves progress, so early waves stay simple (all Grunts) and later ones
+// get real variety.
+function pickMonsterType(waveNum) {
+  const roll = Math.random();
+  if (waveNum <= 1) return 'grunt';
+  if (waveNum === 2) return roll < 0.7 ? 'grunt' : 'runner';
+  if (waveNum === 3) return roll < 0.45 ? 'grunt' : roll < 0.75 ? 'runner' : 'spitter';
+  if (roll < 0.3) return 'grunt';
+  if (roll < 0.55) return 'runner';
+  if (roll < 0.8) return 'spitter';
+  return 'brute';
+}
+
+function createMonster() {
+  return {
+    active: false, x: 0, y: 0,
+    type: 'grunt', color: [120, 40, 40], radius: 0.28, ranged: false,
+    damage: 0, attackRange: 0.9, projectileSpeed: 0, scoreValue: 100, ammoDrop: 0,
+    health: 0, maxHealth: 0,
+    speed: 0,
+    state: 'idle',           // idle | chase | attack | dead
+    wanderTarget: null,
+    wanderTimer: 0,
+    attackTimer: 0,
+    hitFlash: 0,
+    deathTimer: 0,
+    animPhase: Math.random() * Math.PI * 2,
+    losLostTimer: 0,
+    growlTimer: Math.random() * 3,
+  };
+}
+const monsters = [];
+for (let i = 0; i < CONFIG.MONSTER_POOL_SIZE; i++) monsters.push(createMonster());
+let monstersAliveCount = 0;
+
+function distSq(x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1; return dx * dx + dy * dy; }
+
+// Coarse line-of-sight test: step along the segment in fixed increments and
+// bail out on the first wall tile encountered. Cheap and good enough for AI.
+function hasLineOfSight(x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const steps = Math.max(1, Math.ceil(dist / 0.4));
+  const stepX = dx / steps, stepY = dy / steps;
+  let cx = x0, cy = y0;
+  for (let i = 0; i < steps; i++) {
+    cx += stepX; cy += stepY;
+    if (isWall(cx, cy)) return false;
+  }
+  return true;
+}
+
+function spawnMonster(waveNum, forcedType) {
+  const slot = monsters.find((m) => !m.active);
+  if (!slot) return null;
+  // Find a spawn tile reasonably far from the player so monsters don't pop in on top of them.
+  let tile = null;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = openTiles[(Math.random() * openTiles.length) | 0];
+    if (distSq(candidate.x, candidate.y, player.x, player.y) > 16 && !furnitureBlockingCircle(candidate.x, candidate.y, CONFIG.MONSTER_RADIUS)) { tile = candidate; break; }
+  }
+  if (!tile) tile = openTiles[(Math.random() * openTiles.length) | 0];
+
+  const typeId = forcedType || pickMonsterType(waveNum);
+  const def = MONSTER_TYPES[typeId];
+
+  slot.active = true;
+  slot.type = typeId;
+  slot.color = def.color;
+  slot.radius = CONFIG.MONSTER_RADIUS * def.radiusMult;
+  slot.ranged = def.ranged;
+  slot.attackRange = def.attackRange || CONFIG.MONSTER_ATTACK_RANGE;
+  slot.projectileSpeed = def.projectileSpeed || 0;
+  slot.scoreValue = def.scoreValue;
+  slot.ammoDrop = def.ammoDrop || 0;
+  slot.damage = CONFIG.MONSTER_ATTACK_DAMAGE * def.damageMult;
+  slot.x = tile.x; slot.y = tile.y;
+  slot.maxHealth = (CONFIG.MONSTER_BASE_HEALTH + waveNum * 12) * def.healthMult;
+  slot.health = slot.maxHealth;
+  slot.speed = (CONFIG.MONSTER_BASE_SPEED + waveNum * 0.06) * def.speedMult;
+  slot.state = 'idle';
+  slot.wanderTarget = null;
+  slot.wanderTimer = 0;
+  slot.attackTimer = 0;
+  slot.hitFlash = 0;
+  slot.deathTimer = 0;
+  slot.losLostTimer = 0;
+  slot.growlTimer = Math.random() * 3;
+  monstersAliveCount++;
+  return slot;
+}
+
+function updateMonster(m, dt) {
+  if (!m.active) return;
+
+  if (m.state === 'dead') {
+    m.deathTimer += dt;
+    if (m.deathTimer > 1.0) { m.active = false; }
+    return;
+  }
+
+  if (m.hitFlash > 0) m.hitFlash -= dt;
+
+  const dSq = distSq(m.x, m.y, player.x, player.y);
+  const dist = Math.sqrt(dSq);
+
+  // Occasional ambient growl for atmosphere, throttled per-monster.
+  m.growlTimer -= dt;
+  if (m.growlTimer <= 0 && dist < 8) {
+    m.growlTimer = 3 + Math.random() * 4;
+    AudioSys.monsterGrowl();
+  }
+
+  const canSeePlayer = dist < CONFIG.MONSTER_DETECT_RANGE && hasLineOfSight(m.x, m.y, player.x, player.y);
+
+  if (canSeePlayer) {
+    m.losLostTimer = 0;
+    m.state = dist <= m.attackRange ? 'attack' : 'chase';
+  } else if (m.state === 'chase' || m.state === 'attack') {
+    m.losLostTimer += dt;
+    if (m.losLostTimer > 2.5) m.state = 'idle';
+  }
+
+  if (m.state === 'attack') {
+    m.attackTimer -= dt;
+    if (dist > m.attackRange * 1.3) { m.state = 'chase'; }
+    else if (m.attackTimer <= 0) {
+      m.attackTimer = CONFIG.MONSTER_ATTACK_COOLDOWN;
+      if (m.ranged) {
+        spawnProjectile(m.x, m.y, Math.atan2(player.y - m.y, player.x - m.x), m.projectileSpeed, m.damage);
+        AudioSys.spit();
+      } else {
+        damagePlayer(m.damage);
+      }
+    }
+    return; // no movement while attacking (ranged types hold their distance this way)
+  }
+
+  let moveX = 0, moveY = 0;
+  if (m.state === 'chase') {
+    const dx = player.x - m.x, dy = player.y - m.y;
+    const len = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy));
+    moveX = (dx / len) * m.speed * dt;
+    moveY = (dy / len) * m.speed * dt;
+  } else {
+    // idle wander: pick a random nearby target periodically
+    m.wanderTimer -= dt;
+    if (!m.wanderTarget || m.wanderTimer <= 0) {
+      m.wanderTimer = 2 + Math.random() * 3;
+      const angle = Math.random() * Math.PI * 2;
+      const wx = m.x + Math.cos(angle) * 3;
+      const wy = m.y + Math.sin(angle) * 3;
+      m.wanderTarget = isWall(wx, wy) ? null : { x: wx, y: wy };
+    }
+    if (m.wanderTarget) {
+      const dx = m.wanderTarget.x - m.x, dy = m.wanderTarget.y - m.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 0.2) { m.wanderTarget = null; }
+      else {
+        moveX = (dx / len) * m.speed * 0.5 * dt;
+        moveY = (dy / len) * m.speed * 0.5 * dt;
+      }
+    }
+  }
+
+  // Wall + furniture sliding, same technique as the player — but monsters
+  // never push furniture, only get blocked by it (that's what makes
+  // barricading a doorway with pushed crates actually work defensively).
+  const r = m.radius || CONFIG.MONSTER_RADIUS;
+  const startX = m.x, startY = m.y;
+  const intendedLen = Math.hypot(moveX, moveY);
+  const nx = m.x + moveX;
+  if (!isWall(nx + Math.sign(moveX) * r, m.y) && !furnitureBlockingCircle(nx, m.y, r)) m.x = nx; else m.wanderTarget = null;
+  const ny = m.y + moveY;
+  if (!isWall(m.x, ny + Math.sign(moveY) * r) && !furnitureBlockingCircle(m.x, ny, r)) m.y = ny; else m.wanderTarget = null;
+
+  // Obstacle steering: a chasing monster whose direct line to the player is
+  // mostly blocked (wall/furniture edge-on) sidesteps perpendicular to that
+  // line instead of just grinding against it — a cheap stand-in for real
+  // pathfinding that's enough to route monsters around corners and pushed
+  // furniture rather than beelining into them forever. "Blocked" is judged
+  // by how much of the intended move actually landed, not exact equality —
+  // a monster sliding along an obstacle edge still makes some incidental
+  // progress each frame, and resetting on any nonzero progress would cancel
+  // the sidestep before it actually clears the obstacle. The chosen side
+  // persists while still mostly blocked (avoids flip-flopping) and resets
+  // once the monster is moving mostly freely again.
+  const actualLen = Math.hypot(m.x - startX, m.y - startY);
+  const isBlocked = m.state === 'chase' && intendedLen > 0.0001 && actualLen < intendedLen * 0.4;
+  if (isBlocked) {
+    const dx = player.x - m.x, dy = player.y - m.y;
+    const len = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy));
+    if (!m.avoidSide) m.avoidSide = Math.random() < 0.5 ? -1 : 1;
+    const sideX = (-dy / len) * m.avoidSide;
+    const sideY = (dx / len) * m.avoidSide;
+    const sx = m.x + sideX * m.speed * dt;
+    if (!isWall(sx + Math.sign(sideX) * r, m.y) && !furnitureBlockingCircle(sx, m.y, r)) m.x = sx;
+    const sy = m.y + sideY * m.speed * dt;
+    if (!isWall(m.x, sy + Math.sign(sideY) * r) && !furnitureBlockingCircle(m.x, sy, r)) m.y = sy;
+  } else {
+    m.avoidSide = 0;
+  }
+
+  m.animPhase += dt * (m.state === 'chase' ? 8 : 3);
+}
+
+function damageMonster(m, amount) {
+  if (m.state === 'dead') return;
+  m.health -= amount;
+  m.hitFlash = 0.12;
+  AudioSys.hitMarker();
+  if (m.health <= 0) {
+    m.state = 'dead';
+    m.deathTimer = 0;
+    monstersAliveCount--;
+    player.score += m.scoreValue || 100;
+    if (m.ammoDrop > 0) player.reserveAmmo = Math.min(CONFIG.MAX_RESERVE_AMMO, player.reserveAmmo + m.ammoDrop);
+    AudioSys.monsterDeath();
+    spawnParticleBurst(m.x, m.y, 0.4, '#7a1010', 10);
+    spawnDecal(m.x, m.y);
+    if (m.type === 'boss') {
+      spawnParticleBurst(m.x, m.y, 0.5, '#ff3b3b', 24);
+      showCenterMessage('BOSS DEFEATED!', 2.5);
+    }
+    checkWaveClear();
+  } else {
+    spawnParticleBurst(m.x, m.y, 0.3, '#b02020', 4);
+  }
+}
+
+// ============================================================================
+// PARTICLES — fixed pool, no per-frame allocation.
+// ============================================================================
+function createParticle() {
+  return { active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0, color: '#fff', size: 1 };
+}
+const particles = [];
+for (let i = 0; i < CONFIG.PARTICLE_POOL_SIZE; i++) particles.push(createParticle());
+
+function spawnParticle(x, y, z, vx, vy, vz, life, color, size) {
+  const p = particles.find((p) => !p.active);
+  if (!p) return;
+  p.active = true; p.x = x; p.y = y; p.z = z;
+  p.vx = vx; p.vy = vy; p.vz = vz;
+  p.life = life; p.maxLife = life; p.color = color; p.size = size;
+}
+function spawnParticleBurst(x, y, z, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.8 + Math.random() * 1.6;
+    spawnParticle(x, y, z + Math.random() * 0.4, Math.cos(angle) * speed, Math.sin(angle) * speed, Math.random() * 1.5, 0.35 + Math.random() * 0.25, color, 0.06 + Math.random() * 0.05);
+  }
+}
+function updateParticles(dt) {
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (!p.active) continue;
+    p.life -= dt;
+    if (p.life <= 0) { p.active = false; continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.vz -= 3 * dt;
+    p.vx *= 0.9; p.vy *= 0.9;
+  }
+}
+
+// ============================================================================
+// BLOOD DECALS — permanent-ish floor stains left where monsters die, purely
+// cosmetic detail. A ring buffer (oldest replaced first) instead of an
+// active/inactive pool since decals never expire on their own — capping
+// count by recycling is simpler than tracking lifetimes for something this
+// cheap to draw.
+// ============================================================================
+const decals = [];
+for (let i = 0; i < CONFIG.DECAL_POOL_SIZE; i++) decals.push({ active: false, x: 0, y: 0, size: 0.3 });
+let nextDecalIndex = 0;
+function spawnDecal(x, y) {
+  const d = decals[nextDecalIndex];
+  nextDecalIndex = (nextDecalIndex + 1) % decals.length;
+  d.active = true; d.x = x; d.y = y; d.size = 0.28 + Math.random() * 0.22;
+}
+// ============================================================================
+// FURNITURE — movable base-building props, fixed-size pool like everything
+// else. Sokoban-style physics: walking into a piece pushes it if the space
+// ahead is clear; monsters are blocked by furniture but never push it, so
+// shoving crates/tables into doorways creates real defensible chokepoints.
+// ============================================================================
+const FURNITURE_TYPES = {
+  crate: { radius: 0.32, height: 0.55, color: [140, 100, 55] },
+  barrel: { radius: 0.28, height: 0.62, color: [72, 76, 70] },
+  table: { radius: 0.42, height: 0.36, color: [112, 82, 48] },
+  bookshelf: { radius: 0.3, height: 0.92, color: [70, 48, 32] },
+};
+
+function createFurniture() { return { active: false, type: 'crate', x: 0, y: 0, radius: 0.3 }; }
+const furniture = [];
+for (let i = 0; i < CONFIG.FURNITURE_POOL_SIZE; i++) furniture.push(createFurniture());
+
+function spawnFurniture(type, x, y) {
+  const slot = furniture.find((f) => !f.active);
+  if (!slot) return null;
+  const def = FURNITURE_TYPES[type];
+  slot.active = true;
+  slot.type = type;
+  slot.x = x; slot.y = y;
+  slot.radius = def.radius;
+  return slot;
+}
+
+// Deterministic default arrangement: most pieces in the BASE room (usable
+// as barricade material), a handful scattered around the map so cover and
+// pushable chokepoints exist out in the fight too. Coordinates were
+// verified against the map data offline, but the isWall() guard is kept as
+// a defensive fallback regardless. Called fresh on every game start so the
+// base always begins tidy.
+function layoutDefaultFurniture() {
+  for (let i = 0; i < furniture.length; i++) furniture[i].active = false;
+  const placements = [
+    ['crate', 4.5, 4.5], ['crate', 6.5, 4.5], ['crate', 4.5, 6.5],
+    ['barrel', 9.5, 4.5], ['barrel', 11.5, 4.5],
+    ['table', 7.5, 8.5], ['table', 9.5, 8.5],
+    ['bookshelf', 4.5, 9.5], ['bookshelf', 11.5, 9.5],
+    ['crate', 6.5, 6.5], ['barrel', 3.5, 7.5],
+    ['crate', 30.5, 22.5], ['barrel', 31.5, 26.5], ['table', 20.5, 27.5],
+    ['crate', 39.5, 6.5], ['barrel', 39.5, 8.5],
+    ['crate', 10.5, 18.5], ['barrel', 39.5, 17.5],
+  ];
+  for (let i = 0; i < placements.length; i++) {
+    const [type, x, y] = placements[i];
+    if (!isWall(x, y)) spawnFurniture(type, x, y);
+  }
+}
+
+function furnitureBlockingCircle(x, y, r, exclude) {
+  for (let i = 0; i < furniture.length; i++) {
+    const f = furniture[i];
+    if (!f.active || f === exclude) continue;
+    const dx = x - f.x, dy = y - f.y;
+    const minDist = r + f.radius;
+    if (dx * dx + dy * dy < minDist * minDist) return f;
+  }
+  return null;
+}
+
+// Attempts to slide a furniture item by (dx, dy). Fails if the destination
+// overlaps a wall or another piece — the caller (movePlayer) treats failure
+// as "this push didn't happen" and keeps the player from moving too.
+function tryPushFurniture(item, dx, dy) {
+  const nx = item.x + dx, ny = item.y + dy;
+  const r = item.radius;
+  if (isWall(nx + Math.sign(dx) * r, ny) || isWall(nx, ny + Math.sign(dy) * r)) return false;
+  if (furnitureBlockingCircle(nx, ny, r, item)) return false;
+  item.x = nx; item.y = ny;
+  return true;
+}
+
+// ============================================================================
+// AMMO PICKUPS — static crates scattered around the map. Walk over one to
+// refill reserve ammo; it then goes on cooldown and reappears after a
+// while, so fights near a cache reward looping back through it instead of
+// being a one-time grab.
+// ============================================================================
+const AMMO_PICKUP_AMOUNT = 30;
+const AMMO_PICKUP_RESPAWN_TIME = 22;
+const AMMO_PICKUP_RADIUS = 0.5;
+
+// Coordinates verified against the map data offline (same process as the
+// furniture layout) and spread across rooms far from the base, so
+// resupplying means actually moving through the level during a wave.
+const AMMO_PICKUP_SPOTS = [
+  [17.5, 6.5], [28.5, 7.5], [37.5, 9.5], [12.5, 20.5],
+  [23.5, 23.5], [35.5, 25.5], [16.5, 29.5], [6.5, 26.5],
+  [42.5, 25.5], [27.5, 17.5], [19.5, 9.5], [36.5, 5.5],
+];
+
+function createAmmoPickup() { return { active: false, x: 0, y: 0, respawnTimer: 0 }; }
+const ammoPickups = [];
+for (let i = 0; i < CONFIG.AMMO_PICKUP_POOL_SIZE; i++) ammoPickups.push(createAmmoPickup());
+
+function layoutAmmoPickups() {
+  for (let i = 0; i < ammoPickups.length; i++) ammoPickups[i].active = false;
+  for (let i = 0; i < AMMO_PICKUP_SPOTS.length && i < ammoPickups.length; i++) {
+    const [x, y] = AMMO_PICKUP_SPOTS[i];
+    if (isWall(x, y)) continue;
+    const p = ammoPickups[i];
+    p.active = true; p.x = x; p.y = y; p.respawnTimer = 0;
+  }
+}
+
+function updateAmmoPickups(dt) {
+  for (let i = 0; i < ammoPickups.length; i++) {
+    const p = ammoPickups[i];
+    if (p.active) {
+      const dx = player.x - p.x, dy = player.y - p.y;
+      if (dx * dx + dy * dy < AMMO_PICKUP_RADIUS * AMMO_PICKUP_RADIUS && player.reserveAmmo < CONFIG.MAX_RESERVE_AMMO) {
+        player.reserveAmmo = Math.min(CONFIG.MAX_RESERVE_AMMO, player.reserveAmmo + AMMO_PICKUP_AMOUNT);
+        p.active = false;
+        p.respawnTimer = AMMO_PICKUP_RESPAWN_TIME;
+        AudioSys.pickupAmmo();
+        spawnParticleBurst(p.x, p.y, 0.4, '#ffd23b', 8);
+        showCenterMessage('+' + AMMO_PICKUP_AMOUNT + ' AMMO', 0.9);
+      }
+    } else if (p.respawnTimer > 0) {
+      p.respawnTimer -= dt;
+      if (p.respawnTimer <= 0) p.active = true;
+    }
+  }
+}
+
+// ============================================================================
+// HEALTH PICKUPS — same pattern as ammo pickups (pooled, respawn-on-cooldown
+// world objects), placed at a distinct set of verified map spots so ammo
+// and health caches pull the player toward different parts of the level.
+// ============================================================================
+const HEALTH_PICKUP_AMOUNT = 25;
+const HEALTH_PICKUP_RESPAWN_TIME = 30;
+const HEALTH_PICKUP_RADIUS = 0.5;
+
+const HEALTH_PICKUP_SPOTS = [
+  [21.5, 6.5], [32.5, 9.5], [9.5, 20.5], [41.5, 8.5], [30.5, 7.5],
+  [15.5, 25.5], [24.5, 29.5], [8.5, 26.5], [38.5, 22.5], [27.5, 10.5],
+];
+
+function createHealthPickup() { return { active: false, x: 0, y: 0, respawnTimer: 0 }; }
+const healthPickups = [];
+for (let i = 0; i < CONFIG.HEALTH_PICKUP_POOL_SIZE; i++) healthPickups.push(createHealthPickup());
+
+function layoutHealthPickups() {
+  for (let i = 0; i < healthPickups.length; i++) healthPickups[i].active = false;
+  for (let i = 0; i < HEALTH_PICKUP_SPOTS.length && i < healthPickups.length; i++) {
+    const [x, y] = HEALTH_PICKUP_SPOTS[i];
+    if (isWall(x, y)) continue;
+    const p = healthPickups[i];
+    p.active = true; p.x = x; p.y = y; p.respawnTimer = 0;
+  }
+}
+
+function updateHealthPickups(dt) {
+  for (let i = 0; i < healthPickups.length; i++) {
+    const p = healthPickups[i];
+    if (p.active) {
+      const dx = player.x - p.x, dy = player.y - p.y;
+      if (dx * dx + dy * dy < HEALTH_PICKUP_RADIUS * HEALTH_PICKUP_RADIUS && player.health < CONFIG.MAX_HEALTH) {
+        player.health = Math.min(CONFIG.MAX_HEALTH, player.health + HEALTH_PICKUP_AMOUNT);
+        p.active = false;
+        p.respawnTimer = HEALTH_PICKUP_RESPAWN_TIME;
+        AudioSys.pickupHealth();
+        spawnParticleBurst(p.x, p.y, 0.4, '#3bff6e', 8);
+        showCenterMessage('+' + HEALTH_PICKUP_AMOUNT + ' HEALTH', 0.9);
+      }
+    } else if (p.respawnTimer > 0) {
+      p.respawnTimer -= dt;
+      if (p.respawnTimer <= 0) p.active = true;
+    }
+  }
+}
+
+// ============================================================================
+// PROJECTILES — simple pooled entities for the ranged Spitter monster.
+// Straight-line travel, dies on wall contact or on touching the player.
+// ============================================================================
+function createProjectile() { return { active: false, x: 0, y: 0, vx: 0, vy: 0, damage: 0 }; }
+const projectiles = [];
+for (let i = 0; i < CONFIG.PROJECTILE_POOL_SIZE; i++) projectiles.push(createProjectile());
+
+function spawnProjectile(x, y, angle, speed, damage) {
+  const p = projectiles.find((p) => !p.active);
+  if (!p) return;
+  p.active = true; p.x = x; p.y = y;
+  p.vx = Math.cos(angle) * speed; p.vy = Math.sin(angle) * speed;
+  p.damage = damage;
+}
+
+function updateProjectiles(dt) {
+  for (let i = 0; i < projectiles.length; i++) {
+    const p = projectiles[i];
+    if (!p.active) continue;
+    const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
+    if (isWall(nx, ny)) {
+      p.active = false;
+      spawnParticleBurst(p.x, p.y, 0.5, '#4ae0c0', 4);
+      continue;
+    }
+    p.x = nx; p.y = ny;
+    const dx = p.x - player.x, dy = p.y - player.y;
+    if (dx * dx + dy * dy < 0.16) {
+      p.active = false;
+      damagePlayer(p.damage);
+      spawnParticleBurst(p.x, p.y, 0.5, '#4ae0c0', 6);
+    }
+  }
+}
+
+// ============================================================================
+// COMBAT
+// ============================================================================
+let muzzleFlashTimer = 0;
+let hitmarkerTimer = 0;
+
+function tryShoot() {
+  if (gameState !== 'playing') return;
+  if (player.isReloading) return;
+  if (player.fireTimer > 0) return;
+  if (player.ammo <= 0) { AudioSys.emptyClick(); return; }
+
+  player.ammo--;
+  player.fireTimer = CONFIG.FIRE_COOLDOWN;
+  player.recoil = 1.0;
+  player.recoilPitch = Math.min(CONFIG.PITCH_MAX * 0.6, player.recoilPitch + CONFIG.RECOIL_KICK);
+  muzzleFlashTimer = 0.06;
+  AudioSys.shoot();
+
+  // Multi-pellet weapons (shotgun) fire several independent hitscans per
+  // trigger pull, each with its own spread roll and damage/impact FX.
+  const pellets = CONFIG.BULLET_PELLETS || 1;
+  for (let i = 0; i < pellets; i++) fireSinglePellet();
+}
+
+function fireSinglePellet() {
+  const spread = (Math.random() - 0.5) * CONFIG.BULLET_SPREAD * (player.isAiming ? 0.3 : 1);
+  const shootAngle = player.angle + spread;
+  const dirX = Math.cos(shootAngle), dirY = Math.sin(shootAngle);
+
+  // Distance to nearest wall along the shot ray (for range limiting + impact FX).
+  const wallDist = castSingleRay(shootAngle).dist;
+  const maxDist = Math.min(wallDist, CONFIG.BULLET_RANGE);
+
+  if (CONFIG.BULLET_PIERCING) {
+    // Railgun-style: damages every monster along the ray up to the wall
+    // instead of stopping at the first one.
+    let anyHit = false;
+    for (let i = 0; i < monsters.length; i++) {
+      const m = monsters[i];
+      if (!m.active || m.state === 'dead') continue;
+      const dx = m.x - player.x, dy = m.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > maxDist) continue;
+      const angleTo = Math.atan2(dy, dx);
+      let diff = angleTo - shootAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      const hitRadius = (m.radius || CONFIG.MONSTER_RADIUS) + dist * 0.05;
+      if (Math.abs(diff) * dist < hitRadius + 0.15) {
+        damageMonster(m, CONFIG.BULLET_DAMAGE);
+        spawnParticleBurst(m.x, m.y, 0.5, '#c02020', 3);
+        anyHit = true;
+      }
+    }
+    if (anyHit) hitmarkerTimer = 0.12;
+    const impactX = player.x + dirX * wallDist;
+    const impactY = player.y + dirY * wallDist;
+    spawnParticleBurst(impactX, impactY, 0.5, '#e8c060', 5);
+    return;
+  }
+
+  // Find the closest monster whose angular position is within a tight cone
+  // of the shot direction and who isn't occluded by a nearer wall.
+  let closestMonster = null, closestDist = maxDist;
+  for (let i = 0; i < monsters.length; i++) {
+    const m = monsters[i];
+    if (!m.active || m.state === 'dead') continue;
+    const dx = m.x - player.x, dy = m.y - player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxDist) continue;
+    const angleTo = Math.atan2(dy, dx);
+    let diff = angleTo - shootAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const hitRadius = (m.radius || CONFIG.MONSTER_RADIUS) + dist * 0.05; // generous forgiving hitbox
+    if (Math.abs(diff) * dist < hitRadius + 0.15 && dist < closestDist) {
+      closestDist = dist;
+      closestMonster = m;
+    }
+  }
+
+  if (closestMonster) {
+    damageMonster(closestMonster, CONFIG.BULLET_DAMAGE);
+    spawnParticleBurst(closestMonster.x, closestMonster.y, 0.5, '#c02020', 3);
+    hitmarkerTimer = 0.12;
+  } else {
+    // Impact spark on the wall.
+    const impactX = player.x + dirX * wallDist;
+    const impactY = player.y + dirY * wallDist;
+    spawnParticleBurst(impactX, impactY, 0.5, '#e8c060', 5);
+  }
+}
+
+function tryReload() {
+  if (gameState !== 'playing') return;
+  if (player.isReloading || player.ammo === CONFIG.MAG_SIZE || player.reserveAmmo <= 0) return;
+  player.isReloading = true;
+  player.reloadTimer = CONFIG.RELOAD_TIME;
+  AudioSys.reloadClick(400);
+}
+function finishReload() {
+  const needed = CONFIG.MAG_SIZE - player.ammo;
+  const taken = Math.min(needed, player.reserveAmmo);
+  player.ammo += taken;
+  player.reserveAmmo -= taken;
+  player.isReloading = false;
+  AudioSys.reloadClick(700);
+}
+
+function damagePlayer(amount) {
+  if (player.invulnTimer > 0) return;
+  const armorDef = getArmorDef(localProgress.equippedArmor);
+  if (player.armor > 0 && armorDef.absorbRatio > 0) {
+    const toArmor = Math.min(player.armor, amount * armorDef.absorbRatio);
+    player.armor -= toArmor;
+    amount -= toArmor;
+  }
+  player.health -= amount;
+  player.invulnTimer = 0.25;
+  AudioSys.playerHurt();
+  flashHit();
+  if (player.health <= 0) {
+    player.health = 0;
+    endGame(false);
+  }
+}
+
+// ============================================================================
+// WAVES
+// ============================================================================
+let currentWave = 0;
+let waveInProgress = false;
+let waveBreakTimer = 0;
+let monstersToSpawnThisWave = 0;
+let spawnDripTimer = 0;
+let isBossWave = false;
+let bossSpawnedThisWave = false;
+
+function startNextWave() {
+  currentWave++;
+  if (currentWave > CONFIG.TOTAL_WAVES) { endGame(true); return; }
+  waveInProgress = true;
+  monstersToSpawnThisWave = 6 + currentWave * 3;
+  isBossWave = currentWave === CONFIG.TOTAL_WAVES;
+  bossSpawnedThisWave = false;
+  if (isBossWave) monstersToSpawnThisWave += 1; // the boss itself, spawned first (see updateWaveSystem)
+  spawnDripTimer = 0;
+  showCenterMessage(isBossWave ? 'FINAL WAVE — BOSS INCOMING' : 'WAVE ' + currentWave, 1.8);
+  AudioSys.waveStart();
+}
+
+function checkWaveClear() {
+  if (waveInProgress && monstersToSpawnThisWave <= 0 && monstersAliveCount <= 0) {
+    waveInProgress = false;
+    waveBreakTimer = 1.6;
+  }
+}
+
+function updateWaveSystem(dt) {
+  if (waveInProgress && monstersToSpawnThisWave > 0) {
+    spawnDripTimer -= dt;
+    if (spawnDripTimer <= 0) {
+      spawnDripTimer = 0.3;
+      if (isBossWave && !bossSpawnedThisWave) {
+        spawnMonster(currentWave, 'boss');
+        bossSpawnedThisWave = true;
+      } else {
+        spawnMonster(currentWave);
+      }
+      monstersToSpawnThisWave--;
+    }
+  } else if (!waveInProgress && waveBreakTimer > 0) {
+    waveBreakTimer -= dt;
+    if (waveBreakTimer <= 0) startNextWave();
+  }
+}
+
+// ============================================================================
+// HITSCAN RAYCASTING — pure map-space math, unrelated to the WebGPU
+// renderer. Still used for weapon hit detection (fireSinglePellet) and wall
+// distance queries; kept exactly as it was when it also drove the old 2D
+// renderer, since a DDA raycast is still the cheapest way to answer
+// "what's the first wall along this ray" for hitscan purposes.
+// ============================================================================
+// Casts a single ray using DDA and returns perpendicular-corrected distance
+// plus metadata about what it hit.
+function castSingleRay(rayAngle) {
+  const rayDirX = Math.cos(rayAngle), rayDirY = Math.sin(rayAngle);
+  let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
+
+  const deltaDistX = Math.abs(1 / rayDirX);
+  const deltaDistY = Math.abs(1 / rayDirY);
+
+  let stepX, stepY, sideDistX, sideDistY;
+  if (rayDirX < 0) { stepX = -1; sideDistX = (player.x - mapX) * deltaDistX; }
+  else { stepX = 1; sideDistX = (mapX + 1 - player.x) * deltaDistX; }
+  if (rayDirY < 0) { stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; }
+  else { stepY = 1; sideDistY = (mapY + 1 - player.y) * deltaDistY; }
+
+  let side = 0, hit = false, guard = 0, material = 1;
+  while (!hit && guard < 220) {
+    guard++;
+    if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+    else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+    if (mapX < 0 || mapY < 0 || mapX >= MAP_W || mapY >= MAP_H) { hit = true; material = 1; }
+    else {
+      const cell = mapGrid[mapY * MAP_W + mapX];
+      if (cell !== 0) { hit = true; material = cell; }
+    }
+  }
+
+  const rawDist = side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
+  // Convert ray-length distance into perpendicular (fisheye-corrected) distance.
+  const perpDist = rawDist * Math.cos(rayAngle - player.angle);
+
+  // Fractional hit position along the wall face, used for simple vertical banding.
+  let wallX;
+  if (side === 0) wallX = player.y + rawDist * rayDirY;
+  else wallX = player.x + rawDist * rayDirX;
+  wallX -= Math.floor(wallX);
+
+  return { dist: Math.max(perpDist, 0.0001), side, mapX, mapY, wallX, material };
+}
+
+// Precomputes a ceiling/floor color for every screen row (function of row
+// only, not column), so the per-column pixel loop can just look values up
+// instead of recomputing a gradient per pixel.
+function hexToRgb01(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function pushBoxInstance(x, y, z, yaw, sx, sy, sz, r, g, b, a, glow) {
+  if (boxInstanceCount >= MAX_INSTANCES) return;
+  const base = boxInstanceCount * 12;
+  boxInstanceData[base] = x; boxInstanceData[base + 1] = y; boxInstanceData[base + 2] = z; boxInstanceData[base + 3] = yaw;
+  boxInstanceData[base + 4] = sx; boxInstanceData[base + 5] = sy; boxInstanceData[base + 6] = sz; boxInstanceData[base + 7] = glow;
+  boxInstanceData[base + 8] = r; boxInstanceData[base + 9] = g; boxInstanceData[base + 10] = b; boxInstanceData[base + 11] = a;
+  boxInstanceCount++;
+}
+function pushSphereInstance(x, y, z, yaw, sx, sy, sz, r, g, b, a, glow) {
+  if (sphereInstanceCount >= MAX_INSTANCES) return;
+  const base = sphereInstanceCount * 12;
+  sphereInstanceData[base] = x; sphereInstanceData[base + 1] = y; sphereInstanceData[base + 2] = z; sphereInstanceData[base + 3] = yaw;
+  sphereInstanceData[base + 4] = sx; sphereInstanceData[base + 5] = sy; sphereInstanceData[base + 6] = sz; sphereInstanceData[base + 7] = glow;
+  sphereInstanceData[base + 8] = r; sphereInstanceData[base + 9] = g; sphereInstanceData[base + 10] = b; sphereInstanceData[base + 11] = a;
+  sphereInstanceCount++;
+}
+
+// Assembles every world object (monsters, furniture, pickups, particles,
+// projectiles, decals) into the box/sphere instance buffers for this frame.
+// Billboarding is now just "rotate the instance to face the player around
+// Y" instead of the old 2D angular-projection math — the depth buffer
+// handles all occlusion automatically, no more zBuffer sampling or
+// painter's-algorithm sorting needed anywhere.
+function assembleInstances() {
+  boxInstanceCount = 0;
+  sphereInstanceCount = 0;
+
+  for (let i = 0; i < monsters.length; i++) {
+    const m = monsters[i];
+    if (!m.active) continue;
+    const deathT = m.state === 'dead' ? Math.min(1, m.deathTimer / 0.9) : 0;
+    const sizeMult = (m.radius || CONFIG.MONSTER_RADIUS) / CONFIG.MONSTER_RADIUS;
+    const yawToPlayer = Math.atan2(player.x - m.x, player.y - m.y);
+    const hpRatio = m.maxHealth > 0 ? m.health / m.maxHealth : 1;
+    const flashT = m.hitFlash > 0 ? m.hitFlash / 0.12 : 0;
+    const baseColor = m.color || [120, 40, 40];
+    let cr = baseColor[0] / 255, cg = baseColor[1] / 255, cb = baseColor[2] / 255;
+    if (m.state === 'attack') { cr = Math.min(1, cr + 0.35); cg = Math.min(1, cg + 0.05); }
+    else { cr = Math.min(1, cr + (1 - hpRatio) * 0.25); }
+    if (flashT > 0) { cr = cr * (1 - flashT) + flashT; cg = cg * (1 - flashT) + flashT; cb = cb * (1 - flashT) + flashT; }
+    const alpha = 1 - deathT * 0.3;
+    const shrink = 1 - deathT * 0.5;
+    const sink = deathT * 0.4;
+    const bob = m.state !== 'dead' ? Math.sin(m.animPhase) * 0.03 : 0;
+    const s = sizeMult * shrink;
+
+    // Multi-part humanoid (legs + torso + arms + head) instead of one flat
+    // box — the whole model still yaws to face the player as a unit
+    // (billboarded), but is built from six pieces so it reads as a
+    // creature instead of a single rectangular slab. lateralX/lateralZ is
+    // the model's own "left/right" axis after that yaw.
+    const lateralX = Math.cos(yawToPlayer), lateralZ = Math.sin(yawToPlayer);
+    const limbSwing = m.state !== 'dead' ? Math.sin(m.animPhase) * 0.035 * s : 0;
+
+    const legH = 0.46 * s, legW = 0.15 * s, legD = 0.15 * s;
+    const torsoH = 0.38 * s, torsoW = 0.46 * s, torsoD = 0.30 * s;
+    const armW = 0.12 * s, armD = 0.12 * s, armH = 0.36 * s;
+    const headR = 0.25 * s;
+    const legOffset = torsoW * 0.32, armOffset = torsoW * 0.62;
+
+    const legBaseY = legH * 0.5 - sink + bob;
+    pushBoxInstance(m.x - legOffset * lateralX, legBaseY + limbSwing, m.y - legOffset * lateralZ, yawToPlayer, legW, legH, legD, cr, cg, cb, alpha, 0);
+    pushBoxInstance(m.x + legOffset * lateralX, legBaseY - limbSwing, m.y + legOffset * lateralZ, yawToPlayer, legW, legH, legD, cr, cg, cb, alpha, 0);
+
+    const torsoY = legH + torsoH * 0.5 - sink + bob;
+    pushBoxInstance(m.x, torsoY, m.y, yawToPlayer, torsoW, torsoH, torsoD, cr, cg, cb, alpha, 0);
+
+    const armBaseY = legH + torsoH * 0.6 - sink + bob;
+    pushBoxInstance(m.x - armOffset * lateralX, armBaseY - limbSwing * 0.7, m.y - armOffset * lateralZ, yawToPlayer, armW, armH, armD, cr, cg, cb, alpha, 0);
+    pushBoxInstance(m.x + armOffset * lateralX, armBaseY + limbSwing * 0.7, m.y + armOffset * lateralZ, yawToPlayer, armW, armH, armD, cr, cg, cb, alpha, 0);
+
+    const headY = legH + torsoH + headR * 0.75 - sink + bob;
+    pushSphereInstance(m.x, headY, m.y, yawToPlayer, headR * 2, headR * 2, headR * 2, cr, cg, cb, alpha, 0);
+
+    // Health bar as a thin flat box hovering above the head — cheap and
+    // reads fine at gameplay distances without needing a text-in-3D system.
+    if (m.state !== 'dead') {
+      const barY = headY + headR + 0.15;
+      pushBoxInstance(m.x, barY, m.y, yawToPlayer, 0.5 * sizeMult, 0.05, 0.02, 0.15, 0.15, 0.15, 0.7, 1);
+      const hpColor = hpRatio > 0.5 ? [0.23, 1, 0.43] : hpRatio > 0.25 ? [1, 0.82, 0.23] : [1, 0.23, 0.23];
+      const barW = 0.5 * sizeMult * Math.max(0.02, hpRatio);
+      pushBoxInstance(m.x - (0.5 * sizeMult - barW) / 2 * lateralX, barY, m.y - (0.5 * sizeMult - barW) / 2 * lateralZ, yawToPlayer, barW, 0.05, 0.025, hpColor[0], hpColor[1], hpColor[2], 0.95, 1);
+    }
+  }
+
+  for (let i = 0; i < furniture.length; i++) {
+    const f = furniture[i];
+    if (!f.active) continue;
+    const def = FURNITURE_TYPES[f.type];
+    const [r, g, b] = def.color;
+    const cr = r / 255, cg = g / 255, cb = b / 255;
+    const w = f.radius * 1.8;
+
+    if (f.type === 'table') {
+      // tabletop slab + 4 thin corner legs, instead of one squat box —
+      // reads as an actual table with a visible gap underneath.
+      const legH = def.height * 0.82, topH = def.height * 0.18;
+      const legInset = w * 0.36, legW = w * 0.1;
+      pushBoxInstance(f.x, def.height - topH * 0.5, f.y, 0, w, topH, w, cr, cg, cb, 1, 0);
+      for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        pushBoxInstance(f.x + ox * legInset, legH * 0.5, f.y + oz * legInset, 0, legW, legH, legW, cr * 0.75, cg * 0.75, cb * 0.75, 1, 0);
+      }
+    } else if (f.type === 'barrel') {
+      // rounded ellipsoid body + a smaller cap accent, instead of a box —
+      // barrels are round, not rectangular.
+      pushSphereInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
+      pushSphereInstance(f.x, def.height * 0.94, f.y, 0, w * 0.72, def.height * 0.18, w * 0.72, cr * 0.7, cg * 0.7, cb * 0.7, 1, 0);
+    } else if (f.type === 'bookshelf') {
+      // frame + 3 thin lighter shelf bands across the face, breaking up
+      // the flat slab into a recognizable paneled shelf.
+      pushBoxInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
+      const shelfColor = [Math.min(1, cr + 0.15), Math.min(1, cg + 0.12), Math.min(1, cb + 0.1)];
+      for (const t of [0.35, 0.62, 0.86]) {
+        pushBoxInstance(f.x, def.height * t, f.y, 0, w * 1.04, 0.03, w * 1.04, shelfColor[0], shelfColor[1], shelfColor[2], 1, 0);
+      }
+    } else {
+      // crate (and any other type): main box + a darker lid rim for a
+      // visible seam instead of one solid slab.
+      pushBoxInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
+      pushBoxInstance(f.x, def.height * 0.94, f.y, 0, w * 1.04, def.height * 0.1, w * 1.04, cr * 0.65, cg * 0.65, cb * 0.65, 1, 0);
+    }
+  }
+
+  const t = performance.now();
+  for (let i = 0; i < ammoPickups.length; i++) {
+    const p = ammoPickups[i];
+    if (!p.active) continue;
+    const pulse = 0.85 + Math.sin(t * 0.004 + i) * 0.15;
+    pushSphereInstance(p.x, 0.42 + Math.sin(t * 0.002 + i) * 0.05, p.y, t * 0.0012, 0.26 * pulse, 0.26 * pulse, 0.26 * pulse, 1.0, 0.82, 0.23, 1, 1);
+  }
+  for (let i = 0; i < healthPickups.length; i++) {
+    const p = healthPickups[i];
+    if (!p.active) continue;
+    const pulse = 0.85 + Math.sin(t * 0.004 + i) * 0.15;
+    pushSphereInstance(p.x, 0.42 + Math.sin(t * 0.002 + i) * 0.05, p.y, t * 0.0012, 0.26 * pulse, 0.26 * pulse, 0.26 * pulse, 0.31, 1.0, 0.55, 1, 1);
+  }
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (!p.active) continue;
+    const alpha = Math.max(0, p.life / p.maxLife);
+    const [r, g, b] = hexToRgb01(p.color);
+    pushBoxInstance(p.x, 0.4 + p.z, p.y, 0, p.size, p.size, p.size, r, g, b, alpha, 1);
+  }
+
+  for (let i = 0; i < projectiles.length; i++) {
+    const p = projectiles[i];
+    if (!p.active) continue;
+    pushSphereInstance(p.x, 0.5, p.y, 0, 0.22, 0.22, 0.22, 0.47, 1.0, 0.86, 1, 1);
+  }
+
+  for (let i = 0; i < decals.length; i++) {
+    const d = decals[i];
+    if (!d.active) continue;
+    pushBoxInstance(d.x, 0.008, d.y, 0, d.size * 1.6, 0.016, d.size * 1.6, 0.35, 0.05, 0.05, 0.6, 0);
+  }
+}
+
+function renderFrame() {
+  if (!gpuDevice) return;
+  const w = internalW, h = internalH;
+  const fov = currentFOV();
+  const aspect = w / h;
+
+  // Real yaw+pitch FPS camera (player.pitch is genuine radians now, not the
+  // old fake vertical-shift hack). Map-space (x,y) maps directly to
+  // world-space (X,Z); world Y is height. player.z (jump) is a true world
+  // height offset, scaled down a bit since the tuned jump velocity would
+  // otherwise put the camera uncomfortably close to the 1-unit ceiling.
+  const eyeX = player.x, eyeZ = player.y, eyeY = 0.55 + player.z * 0.5;
+  const viewPitch = Math.max(-CONFIG.PITCH_MAX, Math.min(CONFIG.PITCH_MAX, player.pitch + player.recoilPitch));
+  const cosPitch = Math.cos(viewPitch);
+  const forward = [cosPitch * Math.cos(player.angle), Math.sin(viewPitch), cosPitch * Math.sin(player.angle)];
+  const view = mat4LookAt(eyeX, eyeY, eyeZ, eyeX + forward[0], eyeY + forward[1], eyeZ + forward[2], 0, 1, 0);
+  const proj = mat4Perspective(fov, aspect, 0.05, 60);
+  const viewProj = mat4Multiply(proj, view);
+
+  const uniformData = new Float32Array(104);
+  uniformData.set(viewProj, 0);
+  uniformData[16] = eyeX; uniformData[17] = eyeY; uniformData[18] = eyeZ; uniformData[19] = 0;
+  uniformData[20] = CONFIG.FOG_DISTANCE; uniformData[21] = CONFIG.BRIGHTNESS; uniformData[22] = 0.35; uniformData[23] = performance.now() * 0.001;
+  const lightLen = Math.hypot(0.4, 1.0, 0.3);
+  uniformData[24] = 0.4 / lightLen; uniformData[25] = 1.0 / lightLen; uniformData[26] = 0.3 / lightLen; uniformData[27] = 0;
+  uniformData[28] = MAP_W; uniformData[29] = MAP_H; uniformData[30] = CONFIG.RT_QUALITY; uniformData[31] = 0;
+
+  // Point lights: slot 0 is the dynamic muzzle flash (follows the camera,
+  // intensity tied to the same recoil-decay timer as the viewmodel kick so
+  // it flares and fades with the shot), slots 1-8 are the static ceiling lamps.
+  const muzzleLightX = eyeX + Math.cos(player.angle) * 0.35;
+  const muzzleLightZ = eyeZ + Math.sin(player.angle) * 0.35;
+  uniformData[32] = muzzleLightX; uniformData[33] = eyeY; uniformData[34] = muzzleLightZ; uniformData[35] = 3.2;
+  uniformData[36] = 1.0; uniformData[37] = 0.55; uniformData[38] = 0.25; uniformData[39] = player.recoil * 2.2;
+  for (let i = 0; i < LAMP_LIGHTS.length; i++) {
+    const lamp = LAMP_LIGHTS[i];
+    const base = 40 + i * 8;
+    uniformData[base] = lamp.x; uniformData[base + 1] = lamp.z; uniformData[base + 2] = lamp.y; uniformData[base + 3] = lamp.radius;
+    uniformData[base + 4] = lamp.color[0]; uniformData[base + 5] = lamp.color[1]; uniformData[base + 6] = lamp.color[2]; uniformData[base + 7] = lamp.intensity;
+  }
+  gpuDevice.queue.writeBuffer(sceneUniformBuffer, 0, uniformData);
+
+  assembleInstances();
+  if (boxInstanceCount > 0) gpuDevice.queue.writeBuffer(boxInstanceBuffer, 0, boxInstanceData, 0, boxInstanceCount * 12);
+  if (sphereInstanceCount > 0) gpuDevice.queue.writeBuffer(sphereInstanceBuffer, 0, sphereInstanceData, 0, sphereInstanceCount * 12);
+
+  const encoder = gpuDevice.createCommandEncoder();
+  const pass = encoder.beginRenderPass({
+    colorAttachments: [{ view: gpuContext.getCurrentTexture().createView(), clearValue: { r: 0.04, g: 0.05, b: 0.07, a: 1 }, loadOp: 'clear', storeOp: 'store' }],
+    depthStencilAttachment: { view: depthView, depthClearValue: 1.0, depthLoadOp: 'clear', depthStoreOp: 'store' },
+  });
+
+  pass.setPipeline(levelPipeline);
+  pass.setBindGroup(0, levelSceneBindGroup);
+  pass.setVertexBuffer(0, levelVertexBuffer);
+  pass.draw(levelVertexCount);
+
+  pass.setPipeline(propPipeline);
+  if (boxInstanceCount > 0) {
+    pass.setBindGroup(0, boxBindGroup);
+    pass.setVertexBuffer(0, boxVertexBuffer);
+    pass.draw(boxVertexCount, boxInstanceCount);
+  }
+  if (sphereInstanceCount > 0) {
+    pass.setBindGroup(0, sphereBindGroup);
+    pass.setVertexBuffer(0, sphereVertexBuffer);
+    pass.draw(sphereVertexCount, sphereInstanceCount);
+  }
+
+  pass.end();
+  gpuDevice.queue.submit([encoder.finish()]);
+
+  updateWeaponOverlay();
+}
+
+// ============================================================================
+// UI HELPERS
+// ============================================================================
+const el = {
+  healthValue: document.getElementById('healthValue'),
+  healthBarFill: document.getElementById('healthBarFill'),
+  armorValue: document.getElementById('armorValue'),
+  armorBarFill: document.getElementById('armorBarFill'),
+  armorLabel: document.getElementById('armorLabel'),
+  armorBarWrap: document.getElementById('armorBarWrap'),
+  weaponNameText: document.getElementById('weaponNameText'),
+  ammoText: document.getElementById('ammoText'),
+  ammoReserve: document.getElementById('ammoReserve'),
+  scoreValue: document.getElementById('scoreValue'),
+  waveText: document.getElementById('waveText'),
+  enemiesText: document.getElementById('enemiesText'),
+  fpsCounter: document.getElementById('fpsCounter'),
+  reloadIndicator: document.getElementById('reloadIndicator'),
+  crosshair: document.getElementById('crosshair'),
+  hitFlash: document.getElementById('hitFlash'),
+  lowHealthVignette: document.getElementById('lowHealthVignette'),
+  centerMsg: document.getElementById('centerMsg'),
+  weaponViewmodel: document.getElementById('weaponViewmodel'),
+  wvBody: document.getElementById('wvBody'),
+  wvBarrel: document.getElementById('wvBarrel'),
+  wvGrip: document.getElementById('wvGrip'),
+  muzzleFlashOverlay: document.getElementById('muzzleFlashOverlay'),
+};
+
+// Per-weapon viewmodel color/proportions — same palette as before, just
+// applied via CSS instead of canvas fillRect calls.
+const WEAPON_VIEWMODEL_VARIANTS = {
+  pistol: { body: '#23262b', barrel: '#15171a', barrelLen: 35, barrelW: 32 },
+  smg: { body: '#1f2a22', barrel: '#12180f', barrelLen: 50, barrelW: 40 },
+  shotgun: { body: '#332821', barrel: '#4a3524', barrelLen: 65, barrelW: 26 },
+  rifle: { body: '#1c2333', barrel: '#0f131f', barrelLen: 70, barrelW: 20 },
+  minigun: { body: '#2b2320', barrel: '#5a5148', barrelLen: 60, barrelW: 50 },
+  railgun: { body: '#241c33', barrel: '#7a3ff2', barrelLen: 75, barrelW: 22 },
+};
+
+// Drives the weapon viewmodel + muzzle flash overlay each frame (called
+// from renderFrame). Bob/recoil/reload-dip/aim-slide all translate the
+// whole viewmodel container; per-weapon color/proportions update the two
+// inner divs directly.
+function updateWeaponOverlay() {
+  const bobX = Math.sin(player.bobPhase) * 14;
+  const bobY = Math.abs(Math.sin(player.bobPhase)) * 10;
+  const aimOffsetX = player.aimAmount * 90;
+  const aimOffsetY = player.aimAmount * 20;
+  const recoilY = player.recoil * 22;
+  const reloadDip = player.isReloading
+    ? Math.sin(Math.min(1, (CONFIG.RELOAD_TIME - player.reloadTimer) / CONFIG.RELOAD_TIME) * Math.PI) * 70
+    : 0;
+  const tx = bobX - aimOffsetX;
+  const ty = bobY - recoilY + reloadDip - aimOffsetY;
+  el.weaponViewmodel.style.transform = `translate(${tx}px, ${ty}px)`;
+
+  const v = WEAPON_VIEWMODEL_VARIANTS[localProgress.equippedWeapon] || WEAPON_VIEWMODEL_VARIANTS.pistol;
+  el.wvBody.style.background = v.body;
+  el.wvBarrel.style.background = v.barrel;
+  el.wvBarrel.style.height = v.barrelLen + '%';
+  el.wvBarrel.style.width = v.barrelW + '%';
+
+  if (muzzleFlashTimer > 0) {
+    const t = muzzleFlashTimer / 0.06;
+    el.muzzleFlashOverlay.style.opacity = t;
+    el.muzzleFlashOverlay.style.transform = `scale(${0.5 + t * 0.7})`;
+  } else if (el.muzzleFlashOverlay.style.opacity !== '0') {
+    el.muzzleFlashOverlay.style.opacity = 0;
+  }
+}
+
+let lastHudHealth = -1, lastHudArmor = -1, lastHudAmmo = -1, lastHudReserve = -1, lastHudScore = -1, lastHudWave = -1, lastHudEnemies = -1, lastHudWeapon = null;
+function updateHUD() {
+  if (player.health !== lastHudHealth) {
+    lastHudHealth = player.health;
+    const hp = Math.max(0, Math.ceil(player.health));
+    el.healthValue.textContent = hp;
+    el.healthValue.classList.toggle('low', hp <= 25);
+    el.healthBarFill.style.width = Math.max(0, (hp / CONFIG.MAX_HEALTH) * 100) + '%';
+    el.lowHealthVignette.style.opacity = hp <= 25 ? String(1 - hp / 25) : '0';
+  }
+  if (player.armor !== lastHudArmor) {
+    lastHudArmor = player.armor;
+    const ap = Math.max(0, Math.ceil(player.armor));
+    el.armorValue.textContent = ap;
+    el.armorBarFill.style.width = player.armorMax > 0 ? Math.max(0, (ap / player.armorMax) * 100) + '%' : '0%';
+    const zero = player.armorMax <= 0;
+    el.armorLabel.classList.toggle('zero', zero);
+    el.armorValue.classList.toggle('zero', zero);
+    el.armorBarWrap.classList.toggle('zero', zero);
+  }
+  if (localProgress.equippedWeapon !== lastHudWeapon) {
+    lastHudWeapon = localProgress.equippedWeapon;
+    el.weaponNameText.textContent = getWeaponDef(localProgress.equippedWeapon).name;
+  }
+  if (player.ammo !== lastHudAmmo) {
+    lastHudAmmo = player.ammo;
+    el.ammoText.firstChild.textContent = player.ammo + ' ';
+  }
+  if (player.reserveAmmo !== lastHudReserve) {
+    lastHudReserve = player.reserveAmmo;
+    el.ammoReserve.textContent = '/ ' + player.reserveAmmo;
+  }
+  if (player.score !== lastHudScore) {
+    lastHudScore = player.score;
+    el.scoreValue.textContent = player.score;
+  }
+  if (currentWave !== lastHudWave) {
+    lastHudWave = currentWave;
+    el.waveText.textContent = 'WAVE ' + Math.min(currentWave, CONFIG.TOTAL_WAVES) + ' / ' + CONFIG.TOTAL_WAVES;
+  }
+  if (monstersAliveCount !== lastHudEnemies) {
+    lastHudEnemies = monstersAliveCount;
+    el.enemiesText.textContent = 'ENEMIES: ' + monstersAliveCount;
+  }
+  el.reloadIndicator.classList.toggle('show', player.isReloading);
+}
+
+let hitFlashTimer = 0;
+function flashHit() {
+  hitFlashTimer = 0.25;
+}
+function updateHitFlash(dt) {
+  if (hitFlashTimer > 0) {
+    hitFlashTimer -= dt;
+    el.hitFlash.style.opacity = String(Math.max(0, hitFlashTimer / 0.25) * 0.8);
+  }
+}
+
+let centerMsgTimer = 0;
+function showCenterMessage(text, duration) {
+  el.centerMsg.textContent = text;
+  el.centerMsg.style.opacity = '1';
+  centerMsgTimer = duration;
+}
+function updateCenterMessage(dt) {
+  if (centerMsgTimer > 0) {
+    centerMsgTimer -= dt;
+    if (centerMsgTimer <= 0) el.centerMsg.style.opacity = '0';
+  }
+}
+
+// FPS counter, averaged over a rolling ~0.5s window to avoid jittery display.
+let fpsAccumTime = 0, fpsAccumFrames = 0, fpsDisplay = 0;
+function updateFPS(dt) {
+  fpsAccumTime += dt; fpsAccumFrames++;
+  if (fpsAccumTime >= 0.5) {
+    fpsDisplay = Math.round(fpsAccumFrames / fpsAccumTime);
+    el.fpsCounter.textContent = 'FPS: ' + fpsDisplay;
+    fpsAccumTime = 0; fpsAccumFrames = 0;
+  }
+}
+
+// ============================================================================
+// GAME STATE MACHINE
+// ============================================================================
+let gameState = 'menu'; // menu | playing | paused | gameover | victory
+
+function setPaused(paused) {
+  if (gameState !== 'playing' && gameState !== 'paused') return;
+  gameState = paused ? 'paused' : 'playing';
+  document.getElementById('pauseMenu').classList.toggle('hidden', !paused);
+  if (!paused) requestLock();
+}
+function togglePause() {
+  if (gameState === 'playing') setPaused(true);
+  else if (gameState === 'paused') setPaused(false);
+}
+
+function startGame() {
+  document.getElementById('startMenu').classList.add('hidden');
+  document.getElementById('gameOverMenu').classList.add('hidden');
+  document.getElementById('victoryMenu').classList.add('hidden');
+  document.getElementById('pauseMenu').classList.add('hidden');
+  document.getElementById('lobbyMenu').classList.add('hidden');
+
+  AudioSys.init();
+  AudioSys.resume();
+
+  refreshEquippedWeaponStats();
+  placePlayerAtStart();
+  layoutDefaultFurniture();
+  layoutAmmoPickups();
+  layoutHealthPickups();
+  for (let i = 0; i < monsters.length; i++) monsters[i].active = false;
+  for (let i = 0; i < projectiles.length; i++) projectiles[i].active = false;
+  for (let i = 0; i < decals.length; i++) decals[i].active = false;
+  monstersAliveCount = 0;
+  currentWave = 0;
+  waveInProgress = false;
+  waveBreakTimer = 0.6;
+
+  gameState = 'playing';
+  requestLock();
+}
+
+function endGame(victory) {
+  gameState = victory ? 'victory' : 'gameover';
+  document.exitPointerLock();
+  const creditsEarned = registerRunResult(player.score, Math.min(currentWave, CONFIG.TOTAL_WAVES));
+  submitToLeaderboard(player.score, Math.min(currentWave, CONFIG.TOTAL_WAVES));
+  if (victory) {
+    document.getElementById('vScore').textContent = player.score;
+    document.getElementById('vCredits').textContent = creditsEarned;
+    document.getElementById('victoryMenu').classList.remove('hidden');
+  } else {
+    document.getElementById('goScore').textContent = player.score;
+    document.getElementById('goWave').textContent = Math.min(currentWave, CONFIG.TOTAL_WAVES);
+    document.getElementById('goCredits').textContent = creditsEarned;
+    document.getElementById('gameOverMenu').classList.remove('hidden');
+  }
+}
+
+document.getElementById('btnStart').addEventListener('click', () => openLobby());
+document.getElementById('btnResume').addEventListener('click', () => setPaused(false));
+document.getElementById('btnRestartFromPause').addEventListener('click', () => { document.getElementById('pauseMenu').classList.add('hidden'); openLobby(); });
+document.getElementById('btnRestartFromGameOver').addEventListener('click', () => { document.getElementById('gameOverMenu').classList.add('hidden'); openLobby(); });
+document.getElementById('btnRestartFromVictory').addEventListener('click', () => { document.getElementById('victoryMenu').classList.add('hidden'); openLobby(); });
+
+// ============================================================================
+// MAIN UPDATE
+// ============================================================================
+function updatePlayer(dt) {
+  // Mouse look
+  const sensMult = player.isAiming ? CONFIG.AIM_SENSITIVITY_MULT : 1;
+  const pitchDir = SETTINGS.invertY ? 1 : -1;
+  player.angle += Input.movementX * CONFIG.MOUSE_SENSITIVITY * sensMult;
+  player.pitch += Input.movementY * CONFIG.PITCH_SENSITIVITY * sensMult * pitchDir;
+  player.pitch = Math.max(-CONFIG.PITCH_MAX, Math.min(CONFIG.PITCH_MAX, player.pitch));
+  Input.movementX = 0; Input.movementY = 0;
+
+  // Aiming (right click) — smoothly interpolate FOV/sway amount.
+  player.isAiming = Input.aimDown;
+  const aimTarget = player.isAiming ? 1 : 0;
+  player.aimAmount += (aimTarget - player.aimAmount) * Math.min(1, dt * 10);
+  updateProjection();
+
+  // Movement input
+  let moveX = 0, moveY = 0;
+  const forward = { x: Math.cos(player.angle), y: Math.sin(player.angle) };
+  const right = { x: -Math.sin(player.angle), y: Math.cos(player.angle) };
+  let moving = false;
+  if (Input.keys[KEYBINDS.forward]) { moveX += forward.x; moveY += forward.y; moving = true; }
+  if (Input.keys[KEYBINDS.back]) { moveX -= forward.x; moveY -= forward.y; moving = true; }
+  if (Input.keys[KEYBINDS.left]) { moveX -= right.x * CONFIG.STRAFE_MULT; moveY -= right.y * CONFIG.STRAFE_MULT; moving = true; }
+  if (Input.keys[KEYBINDS.right]) { moveX += right.x * CONFIG.STRAFE_MULT; moveY += right.y * CONFIG.STRAFE_MULT; moving = true; }
+
+  const len = Math.sqrt(moveX * moveX + moveY * moveY);
+  if (len > 0.0001) {
+    const sprinting = Input.keys[KEYBINDS.sprint];
+    const speed = CONFIG.MOVE_SPEED * (sprinting ? CONFIG.SPRINT_MULT : 1) * (player.isAiming ? 0.6 : 1);
+    moveX = (moveX / len) * speed * dt;
+    moveY = (moveY / len) * speed * dt;
+    movePlayer(moveX, moveY);
+    player.distanceWalked += speed * dt;
+    player.bobPhase += dt * speed * 3.2;
+  }
+
+  // Jump / gravity (visual — does not change collision, just camera height)
+  if (Input.keys[KEYBINDS.jump] && player.z <= 0 && player.velZ === 0) {
+    player.velZ = CONFIG.JUMP_VELOCITY;
+    AudioSys.jump();
+  }
+  if (player.z > 0 || player.velZ !== 0) {
+    player.velZ -= CONFIG.GRAVITY * dt;
+    player.z += player.velZ * dt;
+    if (player.z <= 0) { player.z = 0; player.velZ = 0; }
+  }
+
+  // Firing / reload timers
+  if (player.fireTimer > 0) player.fireTimer -= dt;
+  if (player.recoil > 0) player.recoil = Math.max(0, player.recoil - dt * 6);
+  if (player.recoilPitch > 0) player.recoilPitch = Math.max(0, player.recoilPitch - dt * CONFIG.RECOIL_RECOVERY);
+  if (player.isReloading) {
+    player.reloadTimer -= dt;
+    if (player.reloadTimer <= 0) finishReload();
+  }
+  if (player.invulnTimer > 0) player.invulnTimer -= dt;
+
+  if (Input.mouseDown) tryShoot();
+
+  if (muzzleFlashTimer > 0) muzzleFlashTimer -= dt;
+  if (hitmarkerTimer > 0) {
+    hitmarkerTimer -= dt;
+    el.crosshair.classList.toggle('hit', hitmarkerTimer > 0);
+  }
+}
+
+let lastFrameTime = performance.now();
+let lastHudTime = 0;
+let menuBackdropDrawn = false;
+let lastRenderedState = '';
+// Adaptive frame pacing — never burn 100% GPU/CPU when uncapped.
+function targetFrameMs() {
+  if (document.hidden) return 1000; // ~1 Hz when tab not visible
+  if (gameState === 'playing') return 1000 / (CONFIG.TARGET_FPS_PLAY || 45);
+  return 1000 / (CONFIG.TARGET_FPS_MENU || 12);
+}
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+
+  // Fully idle when the browser tab is in the background (biggest CPU saver).
+  if (document.hidden) {
+    lastFrameTime = now;
+    return;
+  }
+
+  const minDtMs = targetFrameMs();
+  if (now - lastFrameTime < minDtMs - 0.5) return;
+
+  let dt = (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+  dt = Math.min(dt, 0.1); // clamp to avoid spiral-of-death after tab-switch
+
+  updateFPS(dt);
+
+  if (gameState === 'playing') {
+    menuBackdropDrawn = false;
+    updatePlayer(dt);
+    for (let i = 0; i < monsters.length; i++) {
+      if (monsters[i].active) updateMonster(monsters[i], dt);
+    }
+    updateParticles(dt);
+    updateProjectiles(dt);
+    updateAmmoPickups(dt);
+    updateHealthPickups(dt);
+    updateWaveSystem(dt);
+    updateHitFlash(dt);
+    updateCenterMessage(dt);
+    // HUD DOM writes are expensive — throttle to ~10 Hz
+    if (now - lastHudTime > 100) {
+      lastHudTime = now;
+      updateHUD();
+    }
+    renderFrame();
+    lastRenderedState = gameState;
+  } else if (gameState === 'paused' || gameState === 'gameover' || gameState === 'victory') {
+    // One frozen frame is enough; only re-render if state just changed.
+    if (lastRenderedState !== gameState || !menuBackdropDrawn) {
+      renderFrame();
+      menuBackdropDrawn = true;
+      lastRenderedState = gameState;
+    }
+  } else {
+    // Main menu: draw backdrop once, then sit nearly idle.
+    if (!menuBackdropDrawn || lastRenderedState !== gameState) {
+      renderFrame();
+      menuBackdropDrawn = true;
+      lastRenderedState = gameState;
+    }
+  }
+}
+
+// Wake immediately when returning to the tab so the first frame isn't delayed.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    lastFrameTime = 0;
+    menuBackdropDrawn = false;
+  }
+});
+
+// ============================================================================
+// SETTINGS PANEL — wires every control in the Options overlay to the
+// SETTINGS/KEYBINDS objects, applies live changes to CONFIG, and persists
+// everything to localStorage. This is the single place that turns a raw
+// <input> value into actual gameplay/rendering behavior.
+// ============================================================================
+function applyCrosshairStyle() {
+  document.documentElement.style.setProperty('--crosshair-color', SETTINGS.crosshairColor);
+  document.documentElement.style.setProperty('--crosshair-size', SETTINGS.crosshairSize + 'px');
+  el.crosshair.classList.remove('style-cross', 'style-dot', 'style-circle');
+  el.crosshair.classList.add('style-' + SETTINGS.crosshairStyle);
+}
+
+// Recomputes every derived CONFIG field from BASE_CONFIG + SETTINGS, then
+// pushes the result into audio/HUD/crosshair. Pass {resize:true} when a
+// change affects the render buffer dimensions (only the resolution slider
+// needs this — everything else is a cheap in-place projection update).
+function applySettings(opts) {
+  opts = opts || {};
+  // Settings changes (esp. resolution / RT) need a fresh GPU frame.
+  if (typeof menuBackdropDrawn !== 'undefined') menuBackdropDrawn = false;
+  const preset = DIFFICULTY_PRESETS[SETTINGS.difficulty] || DIFFICULTY_PRESETS.normal;
+
+  CONFIG.FOV = SETTINGS.fovDeg * Math.PI / 180;
+  CONFIG.AIM_FOV = SETTINGS.aimFovDeg * Math.PI / 180;
+  CONFIG.MOUSE_SENSITIVITY = BASE_CONFIG.MOUSE_SENSITIVITY * SETTINGS.mouseSensitivity;
+  CONFIG.PITCH_SENSITIVITY = BASE_CONFIG.PITCH_SENSITIVITY * SETTINGS.mouseSensitivity;
+  CONFIG.AIM_SENSITIVITY_MULT = SETTINGS.aimSensitivityMult;
+  CONFIG.MOVE_SPEED = SETTINGS.moveSpeed;
+  CONFIG.SPRINT_MULT = SETTINGS.sprintMult;
+  CONFIG.JUMP_VELOCITY = SETTINGS.jumpVelocity;
+
+  CONFIG.RESOLUTION_TIER = SETTINGS.resolutionTier;
+  CONFIG.FOG_DISTANCE = SETTINGS.fogDistance;
+  CONFIG.BRIGHTNESS = SETTINGS.brightness;
+  CONFIG.RT_QUALITY = RAYTRACE_TIERS[SETTINGS.rayTracingQuality] ?? 1;
+
+  CONFIG.MONSTER_BASE_HEALTH = BASE_CONFIG.MONSTER_BASE_HEALTH * preset.healthMult;
+  CONFIG.MONSTER_BASE_SPEED = BASE_CONFIG.MONSTER_BASE_SPEED * preset.speedMult;
+  CONFIG.MONSTER_ATTACK_DAMAGE = BASE_CONFIG.MONSTER_ATTACK_DAMAGE * preset.dmgMult;
+  CONFIG.MAX_RESERVE_AMMO = Math.round(SETTINGS.reserveAmmo * preset.ammoMult);
+  CONFIG.TOTAL_WAVES = Math.round(SETTINGS.totalWaves);
+  CONFIG.MAX_HEALTH = SETTINGS.maxHealth;
+
+  // Damage/fire-rate/mag-size/reload/spread/pellets come from the equipped
+  // weapon + its upgrade level (see WEAPON_DEFS below), not from a flat
+  // setting — refreshEquippedWeaponStats() is what actually derives
+  // CONFIG.BULLET_DAMAGE etc. It still respects SETTINGS.weaponDamageMult
+  // as a difficulty-style multiplier layered on top.
+  refreshEquippedWeaponStats();
+
+  // Defensive clamps so a live change mid-run can't leave the player holding
+  // more ammo/health than the new caps allow.
+  if (player.ammo > CONFIG.MAG_SIZE) player.ammo = CONFIG.MAG_SIZE;
+  if (player.reserveAmmo > CONFIG.MAX_RESERVE_AMMO) player.reserveAmmo = CONFIG.MAX_RESERVE_AMMO;
+  if (player.health > CONFIG.MAX_HEALTH) player.health = CONFIG.MAX_HEALTH;
+
+  if (AudioSys.masterGain) AudioSys.masterGain.gain.value = SETTINGS.masterVolume / 100;
+
+  applyCrosshairStyle();
+  el.fpsCounter.style.display = SETTINGS.showFPS ? '' : 'none';
+
+  updateProjection();
+  if (opts.resize) resizeCanvas();
+}
+
+// Human-readable label for a KeyboardEvent.code, used on the rebind buttons.
+function keyLabel(code) {
+  if (!code) return '—';
+  if (code.indexOf('Key') === 0) return code.slice(3);
+  if (code.indexOf('Digit') === 0) return code.slice(5);
+  const specialNames = {
+    Space: 'SPACE', ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT',
+    ControlLeft: 'L-CTRL', ControlRight: 'R-CTRL', AltLeft: 'ALT', AltRight: 'ALT',
+    ArrowUp: 'UP', ArrowDown: 'DOWN', ArrowLeft: 'LEFT', ArrowRight: 'RIGHT',
+  };
+  return specialNames[code] || code.toUpperCase();
+}
+
+function refreshKeybindButtons() {
+  document.querySelectorAll('.keybind-btn').forEach((btn) => {
+    btn.textContent = keyLabel(KEYBINDS[btn.dataset.action]);
+    btn.classList.remove('listening');
+  });
+}
+function startListenForKey(action, btn) {
+  if (listeningForAction) return; // one rebind at a time
+  listeningForAction = action;
+  btn.textContent = 'PRESS A KEY…';
+  btn.classList.add('listening');
+}
+function finishListenForKey() {
+  listeningForAction = null;
+  refreshKeybindButtons();
+}
+
+// Binds a <input type=range> to a SETTINGS field: syncs its initial value,
+// live-updates the adjacent value label, and reapplies settings on input.
+function bindRange(inputId, valId, key, format, resize) {
+  const input = document.getElementById(inputId);
+  const valEl = document.getElementById(valId);
+  const sync = () => { input.value = SETTINGS[key]; valEl.textContent = format(SETTINGS[key]); };
+  sync();
+  input.addEventListener('input', () => {
+    SETTINGS[key] = parseFloat(input.value);
+    valEl.textContent = format(SETTINGS[key]);
+    applySettings({ resize });
+    saveSettings();
+  });
+  return sync;
+}
+function bindCheckbox(inputId, key) {
+  const input = document.getElementById(inputId);
+  const sync = () => { input.checked = SETTINGS[key]; };
+  sync();
+  input.addEventListener('change', () => {
+    SETTINGS[key] = input.checked;
+    applySettings();
+    saveSettings();
+  });
+  return sync;
+}
+function bindSelect(inputId, key, resize) {
+  const input = document.getElementById(inputId);
+  const sync = () => { input.value = SETTINGS[key]; };
+  sync();
+  input.addEventListener('change', () => {
+    SETTINGS[key] = input.value;
+    applySettings({ resize });
+    saveSettings();
+  });
+  return sync;
+}
+function bindColor(inputId, key) {
+  const input = document.getElementById(inputId);
+  const sync = () => { input.value = SETTINGS[key]; };
+  sync();
+  input.addEventListener('input', () => {
+    SETTINGS[key] = input.value;
+    applySettings();
+    saveSettings();
+  });
+  return sync;
+}
+
+const settingSyncFns = [];
+function initSettingsUI() {
+  const pct = (v) => Math.round(v * 100) + '%';
+  const deg = (v) => Math.round(v) + '°';
+  const num1 = (v) => v.toFixed(1);
+  const num2 = (v) => v.toFixed(2);
+  const intVal = (v) => String(Math.round(v));
+
+  settingSyncFns.push(bindRange('setFov', 'valFov', 'fovDeg', deg));
+  settingSyncFns.push(bindRange('setAimFov', 'valAimFov', 'aimFovDeg', deg));
+  settingSyncFns.push(bindRange('setMouseSens', 'valMouseSens', 'mouseSensitivity', (v) => num2(v) + 'x'));
+  settingSyncFns.push(bindRange('setAimSens', 'valAimSens', 'aimSensitivityMult', (v) => num2(v) + 'x'));
+  settingSyncFns.push(bindCheckbox('setInvertY', 'invertY'));
+  settingSyncFns.push(bindRange('setMoveSpeed', 'valMoveSpeed', 'moveSpeed', num1));
+  settingSyncFns.push(bindRange('setSprintMult', 'valSprintMult', 'sprintMult', (v) => num2(v) + 'x'));
+  settingSyncFns.push(bindRange('setJumpVel', 'valJumpVel', 'jumpVelocity', num1));
+
+  settingSyncFns.push(bindSelect('setResolutionTier', 'resolutionTier', true));
+  settingSyncFns.push(bindSelect('setRayTracing', 'rayTracingQuality'));
+  settingSyncFns.push(bindRange('setFogDist', 'valFogDist', 'fogDistance', intVal));
+  settingSyncFns.push(bindRange('setBrightness', 'valBrightness', 'brightness', pct));
+  settingSyncFns.push(bindCheckbox('setShowFPS', 'showFPS'));
+  settingSyncFns.push(bindSelect('setCrosshairStyle', 'crosshairStyle'));
+  settingSyncFns.push(bindColor('setCrosshairColor', 'crosshairColor'));
+  settingSyncFns.push(bindRange('setCrosshairSize', 'valCrosshairSize', 'crosshairSize', intVal));
+
+  settingSyncFns.push(bindRange('setMasterVolume', 'valMasterVolume', 'masterVolume', (v) => Math.round(v) + '%'));
+
+  settingSyncFns.push(bindSelect('setDifficulty', 'difficulty'));
+  settingSyncFns.push(bindRange('setWeaponDamage', 'valWeaponDamage', 'weaponDamageMult', (v) => num2(v) + 'x'));
+  settingSyncFns.push(bindRange('setReserveAmmo', 'valReserveAmmo', 'reserveAmmo', intVal));
+  settingSyncFns.push(bindRange('setMaxHealth', 'valMaxHealth', 'maxHealth', intVal));
+  settingSyncFns.push(bindRange('setTotalWaves', 'valTotalWaves', 'totalWaves', intVal));
+
+  // Key rebinding buttons
+  refreshKeybindButtons();
+  document.querySelectorAll('.keybind-btn').forEach((btn) => {
+    btn.addEventListener('click', () => startListenForKey(btn.dataset.action, btn));
+  });
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => { p.hidden = true; });
+      btn.classList.add('active');
+      document.querySelector('.tab-panel[data-panel="' + btn.dataset.tab + '"]').hidden = false;
+    });
+  });
+
+  document.getElementById('btnResetDefaults').addEventListener('click', () => {
+    Object.assign(SETTINGS, DEFAULT_SETTINGS);
+    Object.assign(KEYBINDS, DEFAULT_KEYBINDS);
+    settingSyncFns.forEach((sync) => sync());
+    refreshKeybindButtons();
+    applySettings({ resize: true });
+    saveSettings();
+    saveKeybinds();
+  });
+
+  document.getElementById('btnOptionsStart').addEventListener('click', () => openSettings('start'));
+  document.getElementById('btnOptionsPause').addEventListener('click', () => openSettings('pause'));
+  document.getElementById('btnSettingsClose').addEventListener('click', closeSettings);
+}
+
+let settingsOrigin = 'start';
+function openSettings(origin) {
+  settingsOrigin = origin;
+  document.getElementById(origin === 'start' ? 'startMenu' : 'pauseMenu').classList.add('hidden');
+  document.getElementById('settingsMenu').classList.remove('hidden');
+}
+function closeSettings() {
+  document.getElementById('settingsMenu').classList.add('hidden');
+  document.getElementById(settingsOrigin === 'start' ? 'startMenu' : 'pauseMenu').classList.remove('hidden');
+}
+
+// ============================================================================
+// CLOUD ACCOUNTS / PROGRESS / STORAGE (Supabase)
+// Local progress (best score/wave) always works via localStorage, even for
+// guests. Signing in layers a cloud copy on top: on login it's pulled down
+// and merged in; after every run (and on manual Save Now) it's pushed back
+// up. All Supabase calls are wrapped so a network failure just shows a
+// status message instead of breaking gameplay.
+// ============================================================================
+const SUPABASE_URL = 'https://gptvjiroogpnveropoou.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwdHZqaXJvb2dwbnZlcm9wb291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MzU1NzQsImV4cCI6MjEwMDAxMTU3NH0.nv9SlENtyS8lYgqf8B2bnB555cUQf1jOPo9On32n2aw';
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const PROGRESS_STORAGE_KEY = 'doomlike_progress_v1';
+const localProgress = {
+  bestScore: 0, bestWave: 0,
+  credits: 150,
+  unlockedWeapons: ['pistol'],
+  weaponLevels: { pistol: 1 },
+  equippedWeapon: 'pistol',
+  unlockedArmor: ['none'],
+  equippedArmor: 'none',
+};
+function loadLocalProgress() {
+  try {
+    const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+    if (raw) Object.assign(localProgress, JSON.parse(raw));
+  } catch (e) { /* storage unavailable */ }
+}
+function saveLocalProgress() {
+  try { localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(localProgress)); } catch (e) { /* storage unavailable */ }
+}
+
+// Called at the end of every run (game over or victory). Returns credits earned.
+function registerRunResult(finalScore, waveReached) {
+  let improved = false;
+  if (finalScore > localProgress.bestScore) { localProgress.bestScore = finalScore; improved = true; }
+  if (waveReached > localProgress.bestWave) { localProgress.bestWave = waveReached; improved = true; }
+  const creditsEarned = Math.max(1, Math.floor(finalScore / 10));
+  localProgress.credits += creditsEarned;
+  saveLocalProgress();
+  updateAccountStatsDisplay();
+  if (currentUser) cloudSaveProgress();
+  return creditsEarned;
+}
+
+let currentUser = null;
+
+function setAcctStatus(elId, msg, kind) {
+  const el2 = document.getElementById(elId);
+  el2.textContent = msg || '';
+  el2.classList.remove('error', 'ok');
+  if (kind) el2.classList.add(kind);
+}
+
+async function cloudSaveProgress() {
+  if (!currentUser || !sb) return;
+  const payload = {
+    user_id: currentUser.id,
+    save_data: {
+      settings: SETTINGS,
+      keybinds: KEYBINDS,
+      progression: {
+        credits: localProgress.credits,
+        unlockedWeapons: localProgress.unlockedWeapons,
+        weaponLevels: localProgress.weaponLevels,
+        equippedWeapon: localProgress.equippedWeapon,
+        unlockedArmor: localProgress.unlockedArmor,
+        equippedArmor: localProgress.equippedArmor,
+      },
+    },
+    high_score: localProgress.bestScore,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    const { error } = await sb.from('game_saves').upsert(payload, { onConflict: 'user_id' });
+    if (error) setAcctStatus('acctStatusLoggedIn', 'Cloud save failed: ' + error.message, 'error');
+    else setAcctStatus('acctStatusLoggedIn', 'Saved to cloud.', 'ok');
+  } catch (e) {
+    setAcctStatus('acctStatusLoggedIn', 'Cloud save failed (network error).', 'error');
+  }
+}
+
+async function loadCloudDataForUser() {
+  if (!currentUser || !sb) return;
+  try {
+    const [{ data: profile }, { data: save }] = await Promise.all([
+      sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle(),
+      sb.from('game_saves').select('*').eq('user_id', currentUser.id).maybeSingle(),
+    ]);
+
+    document.getElementById('acctUsername').textContent = (profile && profile.username) || currentUser.email;
+    document.getElementById('acctEmailDisplay').textContent = currentUser.email;
+    const avatarCircle = document.getElementById('avatarCircle');
+    if (profile && profile.avatar_url) {
+      avatarCircle.style.backgroundImage = `url("${profile.avatar_url}")`;
+      avatarCircle.querySelector('svg').style.display = 'none';
+    }
+
+    if (save) {
+      if (save.save_data && save.save_data.settings) {
+        Object.assign(SETTINGS, save.save_data.settings);
+        settingSyncFns.forEach((sync) => sync());
+      }
+      if (save.save_data && save.save_data.keybinds) {
+        Object.assign(KEYBINDS, save.save_data.keybinds);
+        refreshKeybindButtons();
+      }
+      if (save.save_data && save.save_data.progression) {
+        Object.assign(localProgress, save.save_data.progression);
+      }
+      refreshEquippedWeaponStats();
+      applySettings({ resize: true });
+      saveSettings();
+      saveKeybinds();
+      if (typeof save.high_score === 'number' && save.high_score > localProgress.bestScore) {
+        localProgress.bestScore = save.high_score;
+      }
+      saveLocalProgress();
+      renderLobby();
+    } else {
+      // First time this user has ever saved — push current local state up.
+      cloudSaveProgress();
+    }
+    updateAccountStatsDisplay();
+  } catch (e) {
+    setAcctStatus('acctStatusLoggedIn', 'Could not load cloud progress (network error).', 'error');
+  }
+}
+
+function updateAccountStatsDisplay() {
+  const scoreEl = document.getElementById('acctBestScore');
+  const waveEl = document.getElementById('acctBestWave');
+  if (scoreEl) scoreEl.textContent = localProgress.bestScore;
+  if (waveEl) waveEl.textContent = localProgress.bestWave;
+}
+
+// ============================================================================
+// LEADERBOARD — public top-scores list. Readable by anyone (including
+// signed-out visitors); writing your own row requires being signed in. One
+// row per user, holding their personal best — not a full run history.
+// ============================================================================
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function submitToLeaderboard(finalScore, waveReached) {
+  if (!currentUser || !sb) return;
+  try {
+    const { data: existing } = await sb.from('leaderboard').select('score').eq('user_id', currentUser.id).maybeSingle();
+    if (existing && existing.score >= finalScore) return; // only overwrite with an improvement
+    const username = (document.getElementById('acctUsername').textContent || currentUser.email || 'Player').trim();
+    await sb.from('leaderboard').upsert({
+      user_id: currentUser.id,
+      username,
+      score: finalScore,
+      wave: waveReached,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (e) {
+    // Non-critical — a failed leaderboard submit shouldn't interrupt the game-over flow.
+  }
+}
+
+async function fetchLeaderboard() {
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb.from('leaderboard').select('user_id,username,score,wave').order('score', { ascending: false }).limit(10);
+    if (error || !data) return [];
+    return data;
+  } catch (e) {
+    return [];
+  }
+}
+
+async function refreshLeaderboardUI() {
+  const listEl = document.getElementById('leaderboardList');
+  listEl.innerHTML = '<div class="leaderboard-status">Loading…</div>';
+  const rows = await fetchLeaderboard();
+  if (rows.length === 0) {
+    listEl.innerHTML = '<div class="leaderboard-status">' + (sb ? 'No scores yet — be the first!' : 'Leaderboard unavailable.') + '</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  rows.forEach((row, i) => {
+    const rowEl = document.createElement('div');
+    const isYou = currentUser && row.user_id === currentUser.id;
+    rowEl.className = 'leaderboard-row' + (isYou ? ' you' : '');
+    rowEl.innerHTML = '<span class="lb-rank">#' + (i + 1) + '</span>' +
+      '<span class="lb-name">' + escapeHtml(row.username) + (isYou ? ' (you)' : '') + '</span>' +
+      '<span class="lb-score">' + row.score + '</span>' +
+      '<span class="lb-wave">WAVE ' + row.wave + '</span>';
+    listEl.appendChild(rowEl);
+  });
+}
+
+let leaderboardOrigin = 'start';
+function openLeaderboard(origin) {
+  leaderboardOrigin = origin;
+  document.getElementById(origin === 'start' ? 'startMenu' : 'pauseMenu').classList.add('hidden');
+  document.getElementById('leaderboardMenu').classList.remove('hidden');
+  refreshLeaderboardUI();
+}
+function closeLeaderboard() {
+  document.getElementById('leaderboardMenu').classList.add('hidden');
+  document.getElementById(leaderboardOrigin === 'start' ? 'startMenu' : 'pauseMenu').classList.remove('hidden');
+}
+function initLeaderboardUI() {
+  document.getElementById('btnLeaderboardStart').addEventListener('click', () => openLeaderboard('start'));
+  document.getElementById('btnLeaderboardPause').addEventListener('click', () => openLeaderboard('pause'));
+  document.getElementById('btnLeaderboardClose').addEventListener('click', closeLeaderboard);
+  document.getElementById('btnLeaderboardRefresh').addEventListener('click', refreshLeaderboardUI);
+}
+
+function updateAccountUI() {
+  const loggedIn = !!currentUser;
+  document.getElementById('accountLoggedOut').classList.toggle('hidden', loggedIn);
+  document.getElementById('accountLoggedIn').classList.toggle('hidden', !loggedIn);
+  if (loggedIn) updateAccountStatsDisplay();
+}
+
+async function handleAvatarUpload(file) {
+  if (!currentUser || !sb) return;
+  if (file.size > 2 * 1024 * 1024) { setAcctStatus('acctStatusLoggedIn', 'Image must be under 2MB.', 'error'); return; }
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const path = currentUser.id + '/avatar.' + ext;
+  setAcctStatus('acctStatusLoggedIn', 'Uploading…', null);
+  try {
+    const { error: uploadError } = await sb.storage.from('avatars').upload(path, file, { upsert: true });
+    if (uploadError) { setAcctStatus('acctStatusLoggedIn', 'Upload failed: ' + uploadError.message, 'error'); return; }
+    const { data: pub } = sb.storage.from('avatars').getPublicUrl(path);
+    const avatarUrl = pub.publicUrl + '?t=' + Date.now(); // cache-bust so the new image shows immediately
+    const { error: updateError } = await sb.from('profiles').update({ avatar_url: avatarUrl }).eq('id', currentUser.id);
+    if (updateError) { setAcctStatus('acctStatusLoggedIn', 'Saved image but failed to link profile: ' + updateError.message, 'error'); return; }
+    const avatarCircle = document.getElementById('avatarCircle');
+    avatarCircle.style.backgroundImage = `url("${avatarUrl}")`;
+    avatarCircle.querySelector('svg').style.display = 'none';
+    setAcctStatus('acctStatusLoggedIn', 'Avatar updated.', 'ok');
+  } catch (e) {
+    setAcctStatus('acctStatusLoggedIn', 'Upload failed (network error).', 'error');
+  }
+}
+
+function initAccountUI() {
+  if (!sb) {
+    setAcctStatus('acctStatus', 'Cloud features unavailable (Supabase failed to load).', 'error');
+  }
+
+  document.getElementById('btnSignIn').addEventListener('click', async () => {
+    if (!sb) return;
+    const email = document.getElementById('acctEmail').value.trim();
+    const password = document.getElementById('acctPassword').value;
+    setAcctStatus('acctStatus', 'Signing in…', null);
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) setAcctStatus('acctStatus', error.message, 'error');
+  });
+
+  document.getElementById('btnSignUp').addEventListener('click', async () => {
+    if (!sb) return;
+    const email = document.getElementById('acctEmail').value.trim();
+    const password = document.getElementById('acctPassword').value;
+    if (password.length < 6) { setAcctStatus('acctStatus', 'Password must be at least 6 characters.', 'error'); return; }
+    setAcctStatus('acctStatus', 'Creating account…', null);
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) setAcctStatus('acctStatus', error.message, 'error');
+    else if (data.session) setAcctStatus('acctStatus', 'Account created!', 'ok');
+    else setAcctStatus('acctStatus', 'Check your email to confirm your account.', 'ok');
+  });
+
+  document.getElementById('btnSignOut').addEventListener('click', async () => {
+    if (!sb) return;
+    await sb.auth.signOut();
+  });
+
+  document.getElementById('btnSaveNow').addEventListener('click', () => {
+    setAcctStatus('acctStatusLoggedIn', 'Saving…', null);
+    cloudSaveProgress();
+  });
+
+  document.getElementById('btnContinueGuest').addEventListener('click', closeAccount);
+
+  document.getElementById('btnUploadAvatar').addEventListener('click', () => {
+    document.getElementById('acctAvatarFile').click();
+  });
+  document.getElementById('acctAvatarFile').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) handleAvatarUpload(e.target.files[0]);
+  });
+
+  document.getElementById('btnAccountStart').addEventListener('click', () => openAccount('start'));
+  document.getElementById('btnAccountPause').addEventListener('click', () => openAccount('pause'));
+  document.getElementById('btnAccountClose').addEventListener('click', closeAccount);
+
+  if (sb) {
+    sb.auth.onAuthStateChange((event, session) => {
+      currentUser = session ? session.user : null;
+      updateAccountUI();
+      if (currentUser) loadCloudDataForUser();
+    });
+  }
+}
+
+let accountOrigin = 'start';
+function openAccount(origin) {
+  accountOrigin = origin;
+  document.getElementById(origin === 'start' ? 'startMenu' : 'pauseMenu').classList.add('hidden');
+  document.getElementById('accountMenu').classList.remove('hidden');
+}
+function closeAccount() {
+  document.getElementById('accountMenu').classList.add('hidden');
+  document.getElementById(accountOrigin === 'start' ? 'startMenu' : 'pauseMenu').classList.remove('hidden');
+}
+
+// ============================================================================
+// WEAPONS & ARMOR — the Lobby's loadout system. Each weapon has a base stat
+// block plus up to 5 upgrade levels (bought with credits earned from runs);
+// armor is a set of unlockable tiers that absorb a fraction of incoming
+// damage. refreshEquippedWeaponStats() is the single place that turns
+// "which weapon + level is equipped" into the live CONFIG fields combat
+// code actually reads (CONFIG.BULLET_DAMAGE etc.), so nothing else needs to
+// know about weapon defs at all.
+// ============================================================================
+const WEAPON_DEFS = [
+  {
+    id: 'pistol', name: 'PISTOL', cost: 0, maxLevel: 5, pellets: 1,
+    baseDamage: 26, baseFireCooldown: 0.16, baseMagSize: 12, baseReloadTime: 1.25, baseSpread: 0.018,
+  },
+  {
+    id: 'smg', name: 'SMG', cost: 150, maxLevel: 5, pellets: 1,
+    baseDamage: 12, baseFireCooldown: 0.07, baseMagSize: 30, baseReloadTime: 1.6, baseSpread: 0.05,
+  },
+  {
+    id: 'shotgun', name: 'SHOTGUN', cost: 250, maxLevel: 5, pellets: 7,
+    baseDamage: 9, baseFireCooldown: 0.65, baseMagSize: 6, baseReloadTime: 2.0, baseSpread: 0.13,
+  },
+  {
+    id: 'rifle', name: 'RIFLE', cost: 400, maxLevel: 5, pellets: 1,
+    baseDamage: 42, baseFireCooldown: 0.35, baseMagSize: 10, baseReloadTime: 1.8, baseSpread: 0.006,
+  },
+  {
+    id: 'minigun', name: 'MINIGUN', cost: 600, maxLevel: 5, pellets: 1,
+    baseDamage: 8, baseFireCooldown: 0.045, baseMagSize: 60, baseReloadTime: 3.2, baseSpread: 0.09,
+  },
+  {
+    id: 'railgun', name: 'RAILGUN', cost: 800, maxLevel: 5, pellets: 1, piercing: true,
+    baseDamage: 70, baseFireCooldown: 1.1, baseMagSize: 4, baseReloadTime: 2.4, baseSpread: 0.002,
+  },
+];
+
+const ARMOR_DEFS = [
+  { id: 'none', name: 'NO ARMOR', cost: 0, capacity: 0, absorbRatio: 0 },
+  { id: 'light', name: 'LIGHT ARMOR', cost: 120, capacity: 50, absorbRatio: 0.33 },
+  { id: 'heavy', name: 'HEAVY ARMOR', cost: 300, capacity: 100, absorbRatio: 0.5 },
+];
+
+function getWeaponDef(id) { return WEAPON_DEFS.find((w) => w.id === id) || WEAPON_DEFS[0]; }
+function getArmorDef(id) { return ARMOR_DEFS.find((a) => a.id === id) || ARMOR_DEFS[0]; }
+function getWeaponLevel(id) { return localProgress.weaponLevels[id] || 1; }
+
+// Each level adds +12% damage, -6% fire cooldown (faster), +2 mag size, and
+// -5% reload time versus the weapon's base, all cumulative per level.
+function weaponStatsAtLevel(def, level) {
+  const lvl = Math.max(0, level - 1);
+  return {
+    damage: def.baseDamage * (1 + lvl * 0.12),
+    fireCooldown: Math.max(0.04, def.baseFireCooldown * (1 - lvl * 0.06)),
+    magSize: Math.round(def.baseMagSize + lvl * 2),
+    reloadTime: Math.max(0.3, def.baseReloadTime * (1 - lvl * 0.05)),
+  };
+}
+function upgradeCost(def, currentLevel) {
+  const base = def.cost === 0 ? 60 : Math.round(def.cost * 0.3);
+  return base * currentLevel;
+}
+
+function refreshEquippedWeaponStats() {
+  const def = getWeaponDef(localProgress.equippedWeapon);
+  const level = getWeaponLevel(def.id);
+  const stats = weaponStatsAtLevel(def, level);
+  CONFIG.BULLET_DAMAGE = stats.damage * SETTINGS.weaponDamageMult;
+  CONFIG.FIRE_COOLDOWN = stats.fireCooldown;
+  CONFIG.MAG_SIZE = stats.magSize;
+  CONFIG.RELOAD_TIME = stats.reloadTime;
+  CONFIG.BULLET_SPREAD = def.baseSpread;
+  CONFIG.BULLET_PELLETS = def.pellets;
+  CONFIG.BULLET_PIERCING = def.piercing || false;
+  if (player.ammo > CONFIG.MAG_SIZE) player.ammo = CONFIG.MAG_SIZE;
+}
+
+function saveProgressionLocalAndCloud() {
+  saveLocalProgress();
+  if (currentUser) cloudSaveProgress();
+}
+
+function unlockWeapon(id) {
+  const def = getWeaponDef(id);
+  if (localProgress.unlockedWeapons.includes(id) || localProgress.credits < def.cost) return;
+  localProgress.credits -= def.cost;
+  localProgress.unlockedWeapons.push(id);
+  localProgress.weaponLevels[id] = 1;
+  saveProgressionLocalAndCloud();
+  renderLobby();
+}
+function equipWeapon(id) {
+  if (!localProgress.unlockedWeapons.includes(id)) return;
+  localProgress.equippedWeapon = id;
+  refreshEquippedWeaponStats();
+  saveProgressionLocalAndCloud();
+  renderLobby();
+}
+function upgradeWeapon(id) {
+  const def = getWeaponDef(id);
+  const level = getWeaponLevel(id);
+  if (level >= def.maxLevel) return;
+  const cost = upgradeCost(def, level);
+  if (localProgress.credits < cost) return;
+  localProgress.credits -= cost;
+  localProgress.weaponLevels[id] = level + 1;
+  if (localProgress.equippedWeapon === id) refreshEquippedWeaponStats();
+  saveProgressionLocalAndCloud();
+  renderLobby();
+}
+
+function unlockArmor(id) {
+  const def = getArmorDef(id);
+  if (localProgress.unlockedArmor.includes(id) || localProgress.credits < def.cost) return;
+  localProgress.credits -= def.cost;
+  localProgress.unlockedArmor.push(id);
+  saveProgressionLocalAndCloud();
+  renderLobby();
+}
+function equipArmor(id) {
+  if (!localProgress.unlockedArmor.includes(id)) return;
+  localProgress.equippedArmor = id;
+  saveProgressionLocalAndCloud();
+  renderLobby();
+}
+
+// ============================================================================
+// LOBBY UI — the persistent hub every run starts from. Cards are generated
+// from WEAPON_DEFS/ARMOR_DEFS rather than hardcoded in HTML so unlock/equip/
+// upgrade state always reflects localProgress exactly.
+// ============================================================================
+function renderLobby() {
+  document.getElementById('lobbyCredits').textContent = localProgress.credits;
+  renderWeaponCards();
+  renderArmorCards();
+}
+
+function renderWeaponCards() {
+  const container = document.getElementById('weaponCardList');
+  container.innerHTML = '';
+  WEAPON_DEFS.forEach((def) => {
+    const unlocked = localProgress.unlockedWeapons.includes(def.id);
+    const level = getWeaponLevel(def.id);
+    const equipped = localProgress.equippedWeapon === def.id;
+    const stats = weaponStatsAtLevel(def, level);
+
+    const card = document.createElement('div');
+    card.className = 'loadout-card' + (equipped ? ' equipped' : '');
+
+    const info = document.createElement('div');
+    info.className = 'loadout-card-info';
+    const levelTag = unlocked ? `<span class="lvl-tag">LVL ${level}${level < def.maxLevel ? '/' + def.maxLevel : ' (MAX)'}</span>` : '';
+    info.innerHTML = `<div class="loadout-card-name">${def.name}${levelTag}</div>` +
+      `<div class="loadout-card-stats">DMG ${stats.damage.toFixed(0)}${def.pellets > 1 ? ' x' + def.pellets + ' pellets' : ''} &middot; RATE ${(1 / stats.fireCooldown).toFixed(1)}/s &middot; MAG ${stats.magSize} &middot; RELOAD ${stats.reloadTime.toFixed(1)}s</div>`;
+    card.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'loadout-card-actions';
+
+    if (!unlocked) {
+      const btn = document.createElement('button');
+      btn.className = 'loadout-btn';
+      btn.textContent = 'UNLOCK (' + def.cost + ')';
+      btn.disabled = localProgress.credits < def.cost;
+      btn.addEventListener('click', () => unlockWeapon(def.id));
+      actions.appendChild(btn);
+    } else {
+      const equipBtn = document.createElement('button');
+      equipBtn.className = 'loadout-btn' + (equipped ? ' equipped-btn' : '');
+      equipBtn.textContent = equipped ? 'EQUIPPED' : 'EQUIP';
+      equipBtn.disabled = equipped;
+      if (!equipped) equipBtn.addEventListener('click', () => equipWeapon(def.id));
+      actions.appendChild(equipBtn);
+
+      if (level < def.maxLevel) {
+        const cost = upgradeCost(def, level);
+        const upBtn = document.createElement('button');
+        upBtn.className = 'loadout-btn';
+        upBtn.textContent = 'UPGRADE (' + cost + ')';
+        upBtn.disabled = localProgress.credits < cost;
+        upBtn.addEventListener('click', () => upgradeWeapon(def.id));
+        actions.appendChild(upBtn);
+      }
+    }
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+function renderArmorCards() {
+  const container = document.getElementById('armorCardList');
+  container.innerHTML = '';
+  ARMOR_DEFS.forEach((def) => {
+    const unlocked = localProgress.unlockedArmor.includes(def.id);
+    const equipped = localProgress.equippedArmor === def.id;
+
+    const card = document.createElement('div');
+    card.className = 'loadout-card' + (equipped ? ' equipped' : '');
+
+    const info = document.createElement('div');
+    info.className = 'loadout-card-info';
+    info.innerHTML = `<div class="loadout-card-name">${def.name}</div>` +
+      `<div class="loadout-card-stats">${def.capacity > 0 ? 'CAPACITY ' + def.capacity + ' &middot; ABSORBS ' + Math.round(def.absorbRatio * 100) + '% of damage' : 'No damage absorption'}</div>`;
+    card.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'loadout-card-actions';
+
+    if (!unlocked) {
+      const btn = document.createElement('button');
+      btn.className = 'loadout-btn';
+      btn.textContent = 'UNLOCK (' + def.cost + ')';
+      btn.disabled = localProgress.credits < def.cost;
+      btn.addEventListener('click', () => unlockArmor(def.id));
+      actions.appendChild(btn);
+    } else {
+      const equipBtn = document.createElement('button');
+      equipBtn.className = 'loadout-btn' + (equipped ? ' equipped-btn' : '');
+      equipBtn.textContent = equipped ? 'EQUIPPED' : 'EQUIP';
+      equipBtn.disabled = equipped;
+      if (!equipped) equipBtn.addEventListener('click', () => equipArmor(def.id));
+      actions.appendChild(equipBtn);
+    }
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+function initLobbyUI() {
+  document.querySelectorAll('#lobbyMenu .tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#lobbyMenu .tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('#lobbyMenu .tab-panel').forEach((p) => { p.hidden = true; });
+      btn.classList.add('active');
+      document.querySelector('#lobbyMenu .tab-panel[data-lobbypanel="' + btn.dataset.lobbytab + '"]').hidden = false;
+    });
+  });
+  document.getElementById('btnLobbyBack').addEventListener('click', closeLobby);
+  document.getElementById('btnDeploy').addEventListener('click', () => {
+    document.getElementById('lobbyMenu').classList.add('hidden');
+    startGame();
+  });
+}
+
+function openLobby() {
+  document.getElementById('startMenu').classList.add('hidden');
+  renderLobby();
+  document.getElementById('lobbyMenu').classList.remove('hidden');
+}
+function closeLobby() {
+  document.getElementById('lobbyMenu').classList.add('hidden');
+  document.getElementById('startMenu').classList.remove('hidden');
+}
+
+// ============================================================================
+// BOOTSTRAP
+// ============================================================================
+(async function boot() {
+  const ok = await initWebGPU();
+  if (!ok) {
+    document.getElementById('webgpuError').classList.remove('hidden');
+    document.getElementById('startMenu').classList.add('hidden');
+    return;
+  }
+
+  loadSettings();
+  loadLocalProgress();
+  initSettingsUI();
+  initAccountUI();
+  initLobbyUI();
+  initLeaderboardUI();
+  applySettings();
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+  requestAnimationFrame(gameLoop);
+})();
+
+</script>
+</body>
+</html>

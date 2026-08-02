@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARENA — macOS FPS with a 5 km generated world — Chopsticks HQ</title>
+<meta name="description" content="ARENA — free FPS for macOS. A new 5 x 5 km world generated every run: rolling daylight terrain, raw OpenGL, HDR lighting, software ray tracing, six weapons, carryable furniture to build cover, wave combat. 2.2 MB download, no accounts, no telemetry.">
+<link rel="canonical" href="https://chopstickshq.com/arena-fps/">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<meta property="og:title" content="ARENA — macOS FPS with a 5 km generated world">
+<meta property="og:description" content="Free FPS for macOS. Every run generates a new 5 x 5 km world of rolling daylight terrain. Raw OpenGL 4.1, HDR lighting, software ray tracing, six weapons, wave combat. 2.2 MB.">
+<meta property="og:image" content="https://chopstickshq.com/arena-fps/og.png">
+<meta property="og:url" content="https://chopstickshq.com/arena-fps/">
+<style>
+  @font-face {
+    font-family: 'Varela Round';
+    src: url('/VarelaRound.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Geist Mono';
+    src: url('/GeistMono.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c;
+    --card: #121216;
+    --border: #26262e;
+    --text: #f2f2f5;
+    --muted: #8b8b9a;
+    --red: #e04a35;
+    --gold: #d9a441;
+    --sans: 'Varela Round', system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+  }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .crumb { font-family: var(--mono); font-size: .8rem; }
+  .crumb a { color: var(--muted); text-decoration: none; }
+  .crumb a:hover { color: var(--text); }
+
+  header.hero {
+    display: flex; gap: 1.4rem; align-items: center;
+    margin: 2rem 0 1rem;
+    flex-wrap: wrap;
+  }
+  .hero img {
+    width: 96px; height: 96px; border-radius: 20px;
+    border: 1px solid var(--border);
+    image-rendering: pixelated;
+  }
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(2.2rem, 7vw, 3.4rem);
+    letter-spacing: .12em;
+    color: var(--red);
+  }
+  .hero .tagline { color: var(--muted); max-width: 46ch; }
+
+  .cta { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1.4rem 0 .5rem; }
+  .btn {
+    display: inline-block; padding: .7rem 1.25rem;
+    border-radius: 10px; text-decoration: none;
+    font-family: var(--mono); font-size: .9rem;
+    border: 1px solid var(--border); color: var(--text);
+    transition: .15s transform, .15s border-color;
+  }
+  .btn:hover { transform: translateY(-1px); border-color: var(--red); }
+  .btn-primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .req { font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+
+  .note {
+    margin: 1.6rem 0; padding: .9rem 1.1rem;
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 10px; font-size: .9rem; color: var(--muted);
+  }
+  .note strong { color: var(--text); }
+  .note code { font-family: var(--mono); font-size: .8rem; color: var(--gold); }
+
+  h2 {
+    font-family: var(--mono); font-size: 1.05rem; letter-spacing: .08em;
+    margin: 2.4rem 0 .9rem; color: var(--red);
+  }
+  .grid {
+    display: grid; gap: .85rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem 1.1rem;
+  }
+  .card h3 { font-size: .95rem; margin-bottom: .3rem; }
+  .card p { font-size: .85rem; color: var(--muted); }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--mono); font-size: .82rem;
+  }
+  th, td {
+    text-align: left; padding: .5rem .7rem;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-weight: 400; }
+  td:first-child { color: var(--gold); white-space: nowrap; }
+
+  .shots { display: grid; gap: .85rem; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+  .shots figure {
+    margin: 0; border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; background: var(--card);
+  }
+  .shots img { display: block; width: 100%; height: auto; }
+  .shots figcaption {
+    font-family: var(--mono); font-size: .72rem; color: var(--muted);
+    padding: .5rem .7rem;
+  }
+
+  footer {
+    margin-top: 3.5rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono); font-size: .78rem; color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="crumb"><a href="/">chopstickshq.com</a> / arena</div>
+
+  <header class="hero">
+    <img src="/arena-fps/icon.png" alt="ARENA app icon — pixel skull on a dark card" width="96" height="96">
+    <div>
+      <h1>ARENA</h1>
+      <p class="tagline">FPS for macOS. Every run generates a new
+      5&nbsp;×&nbsp;5&nbsp;km world of rolling daylight terrain. Raw OpenGL,
+      HDR lighting, software ray tracing, six guns, escalating waves — in a
+      2.2&nbsp;MB download.</p>
+    </div>
+  </header>
+
+  <div class="cta">
+    <a class="btn btn-primary" href="/arena-fps/ARENA-macOS.zip" download>Download for macOS</a>
+  </div>
+  <p class="req">macOS 11+ · Apple Silicon · 2.2 MB · no accounts, no telemetry, no network</p>
+
+  <div class="note">
+    <strong>First launch:</strong> the app is self-signed, so macOS will warn
+    on first open. Right-click <code>ARENA.app</code> → <strong>Open</strong> →
+    <strong>Open</strong> once; after that it launches normally.
+    The terminal install below handles this for you.
+  </div>
+
+  <h2>// SCREENSHOTS</h2>
+  <div class="shots">
+    <figure>
+      <img src="/arena-fps/screenshot-1.jpg" width="1440" height="837" loading="lazy"
+           alt="ARENA gameplay — generated buildings and pillars across open daylight terrain">
+      <figcaption>Generated buildings, bunkers and pillars. Every run, a new world.</figcaption>
+    </figure>
+    <figure>
+      <img src="/arena-fps/screenshot-2.jpg" width="1440" height="837" loading="lazy"
+           alt="ARENA gameplay — a brick building with a doorway, grunt approaching across the field">
+      <figcaption>Walled buildings you can enter, with stairs to the roof.</figcaption>
+    </figure>
+  </div>
+
+  <h2>// TERMINAL INSTALL</h2>
+  <p style="color:var(--muted);font-size:.9rem;margin-bottom:.6rem">
+    One line, no Xcode or dev tools — downloads the prebuilt app to
+    <code style="font-family:var(--mono);font-size:.8rem">~/Applications</code>,
+    clears quarantine and launches:
+  </p>
+  <div class="card" style="font-family:var(--mono);font-size:.78rem;overflow-x:auto;white-space:nowrap;user-select:all">
+    curl -fsSL https://chopstickshq.com/arena-fps/install.sh | bash
+  </div>
+  <p class="req" style="margin-top:.5rem">
+    Prefer to read it first? <a href="/arena-fps/install.sh" style="color:var(--gold)">install.sh</a> — 30 lines, curl + ditto + xattr, nothing else.
+  </p>
+
+  <h2>// WHAT IT IS</h2>
+  <div class="grid">
+    <div class="card"><h3>A new 5 km world every run</h3>
+      <p>25 km² of terrain generated from a seed — rolling hills, ruins,
+      pillars, crate stacks and braziers, streamed in 64 m chunks as you walk,
+      with the ground meshed finer under your feet than out at the horizon.
+      Die and you wake up somewhere else entirely. The pause screen shows your
+      seed if you find one worth keeping.</p></div>
+    <div class="card"><h3>Every hillside is walkable</h3>
+      <p>The whole wave spectrum is normalised so the ground can never exceed
+      a walkable grade — measured worst case about 15°, mean 4°. No invisible
+      walls, no ledges that stop you dead. Cliffs only at the 5 km boundary.</p></div>
+    <div class="card"><h3>Daylight, properly lit</h3>
+      <p>Lighting runs in linear HDR and is filmic-tonemapped on the way out,
+      with sky-and-bounce ambient instead of one flat number — so shadowed
+      ground keeps its colour and bright surfaces roll off instead of blowing
+      out. Hills cast shadows into valleys, baked as the ground is meshed.
+      Distance haze tints toward the sun.</p></div>
+    <div class="card"><h3>Wave combat</h3>
+      <p>Grunts rush you, imps lob fireballs with a glowing wind-up. Each wave
+      closes in from every direction on wherever you're standing — there's
+      nowhere to run to. Quit anytime, your run auto-saves, right down to the
+      spot you were standing in. Die and it's gone.</p></div>
+    <div class="card"><h3>Six weapons + shop</h3>
+      <p>Kills pay credits. Press Esc (or B) for the shop: SMG, shotgun,
+      machine gun, chaingun, flamethrower, armor, heals. Credits and gear reset
+      on death — spend or lose it.</p></div>
+    <div class="card"><h3>Software ray tracing</h3>
+      <p>Real rays traced per pixel in the fragment shader against the world's
+      box soup: sun shadows on High, plus platform reflections and point-light
+      shadows on Ultra. No shadow maps, no screen-space hacks.</p></div>
+    <div class="card"><h3>Procedural everything</h3>
+      <p>Terrain, brick, tile, wood and metal are generated in-shader (zero
+      texture files). Every sound is synthesized — each gun gets its own
+      report built from muzzle click, gas crack and pressure thump, with a
+      slap-back echo off the terrain. It all plays positionally, so you hear
+      where things are. The icon is rendered by a stdlib-only Python
+      script.</p></div>
+    <div class="card"><h3>Customise + presets</h3>
+      <p>Crosshair colors, gun finishes, Low→Ultra graphics presets with an
+      FPS counter to compare them. Everything persists between runs.</p></div>
+    <div class="card"><h3>Build a base</h3>
+      <p>Crates, tables, barricades and lockers are scattered across the world
+      and every one of them can be carried. Press E to lift a piece, walk it
+      where you want it, E again to set it down — it rests on whatever is
+      under it, so walls stack. Placement snaps to right angles, and what you
+      build stays put when you wander out of range and come back.</p></div>
+    <div class="card"><h3>Hear where it is</h3>
+      <p>Every world sound is positioned and falls off with distance — a
+      grunt behind you, a barrel two hills over, an imp screeching as it
+      picks you up. A brute's charge opens with a roar, which is your cue to
+      move: the lunge is committed, so stepping aside makes it sail past.</p></div>
+    <div class="card"><h3>Flamethrower</h3>
+      <p>A 40&nbsp;m cone of burning fuel, 28 ticks a second, cooling from
+      white-hot at the nozzle to smoke at the far end. It respects walls and
+      cover — the fire is traced, not faked.</p></div>
+    <div class="card"><h3>Explosive barrels</h3>
+      <p>They chain. Fight near them at your own risk.</p></div>
+  </div>
+
+  <h2>// CONTROLS</h2>
+  <table>
+    <tr><th>Input</th><th>Action</th></tr>
+    <tr><td>WASD + mouse</td><td>move / look</td></tr>
+    <tr><td>Left click</td><td>fire (shotgun per-click, the rest full-auto)</td></tr>
+    <tr><td>1–6</td><td>pistol / SMG / shotgun / machine gun / chaingun / flamethrower</td></tr>
+    <tr><td>E</td><td>carry / place furniture — build cover</td></tr>
+    <tr><td>Space</td><td>jump</td></tr>
+    <tr><td>R</td><td>reload</td></tr>
+    <tr><td>Esc</td><td>pause menu — Resume / Shop / Customise / Settings</td></tr>
+    <tr><td>B</td><td>straight into the shop</td></tr>
+  </table>
+
+  <h2>// GRAPHICS PRESETS</h2>
+  <table>
+    <tr><th>Preset</th><th>What you get</th></tr>
+    <tr><td>LOW</td><td>flat shading, 2 lights — runs on anything</td></tr>
+    <tr><td>MEDIUM</td><td>default — procedural textures, 4 lights, 4x MSAA</td></tr>
+    <tr><td>HIGH</td><td>full textures, 8 lights, 8x MSAA, ray-traced sun shadows</td></tr>
+    <tr><td>ULTRA</td><td>+ ray-traced platform reflections and point-light shadows</td></tr>
+  </table>
+  <p class="req" style="margin-top:.5rem">
+    Medium holds the vsync cap on Apple Silicon. High and Ultra trace real rays
+    per pixel and cost real frames — the FPS counter is there to help you pick.
+  </p>
+
+  <h2>// TECH</h2>
+  <div class="card" style="font-size:.85rem;color:var(--muted)">
+    C++17 · OpenGL 4.1 Core (macOS max) · GLFW + GLM · miniaudio ·
+    no engine, ~3.9k lines. The world is a waveform: the seed is stretched into
+    a 1&nbsp;KB key block, read as pairs that become the heading and frequency
+    of 32 waves, and the amplitude of their sum at a point is the elevation
+    there. It is meshed on the fly with level-of-detail by distance and skirts
+    so the seams can't crack; you walk it by clamping to the surface, so there
+    is no ramp collision to get stuck on. Materials — grass, dirt, rock,
+    concrete, brick, metal, wood — are generated in the fragment shader. The
+    ray tracing is real rays against the structure boxes, traced per pixel in
+    GLSL: a slab test per box is all it takes.
+  </div>
+
+  <footer>
+    <a href="/">← chopstickshq.com</a> · free forever · no accounts · no telemetry
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doomlike-FPS™ v0.9-Beta-Pre-Release — Chopsticks HQ</title>
+<meta name="description" content="Doomlike-FPS™ v0.9-Beta-Pre-Release — lightweight browser raycast FPS. Survive monster waves. Free web game from Chopsticks HQ.">
+<link rel="canonical" href="https://chopstickshq.com/doomlike-fps/">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  @font-face {
+    font-family: 'Varela Round';
+    src: url('/VarelaRound.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Geist Mono';
+    src: url('/GeistMono.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c;
+    --card: #121216;
+    --border: #26262e;
+    --cyan: #c8c8d0;
+    --green: #e8e8ed;
+    --orange: #d0d0d8;
+    --red: #e8e8ed;
+    --text: #f2f2f5;
+    --muted: #8b8b9a;
+    --wood: #e8e8ed;
+    --soft: #e8e8ed;
+    --sans: 'Inter', 'Varela Round', system-ui, sans-serif;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
+  }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+  }
+  .wrap { position: relative; z-index: 1; width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 20px 0 48px; }
+  nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 10px 0 24px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 28px;
+  }
+  .brand { font-family: var(--display); font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
+  .brand:hover { opacity: .9; }
+  .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav-links a {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; text-decoration: none;
+  }
+  .nav-links a:hover { border-color: rgba(255,255,255,0.2); color: var(--text); background: rgba(255,255,255,0.05); }
+  .nav-links a.is-active {
+    border-color: transparent; color: var(--bg); background: var(--soft);
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--display); font-size: clamp(28px, 5vw, 40px); letter-spacing: -0.03em; margin-bottom: 10px; font-weight: 600;
+  }
+  h1 span { color: var(--muted); font-weight: 500; }
+  .lead { color: var(--muted); max-width: 52ch; margin-bottom: 20px; font-size: 15px; }
+  .tabs {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .tab {
+    font-family: var(--mono); font-size: 12px; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .tab.is-active {
+    border-color: transparent; background: var(--soft); color: var(--bg);
+  }
+  .tab:hover:not(.is-active) { border-color: rgba(255,255,255,0.2); color: var(--text); }
+  .panel { display: none; }
+  .panel.is-active { display: block; }
+  .card {
+    background: rgba(18,18,22,0.92); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 8px; font-family: var(--display); color: var(--text); }
+  .card p, .card li { color: var(--muted); font-size: 14px; }
+  .card ul { margin: 8px 0 0 18px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 12px 18px;
+    border-radius: 999px; text-decoration: none; border: none; cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--soft); color: var(--bg);
+  }
+  .btn-primary:hover { opacity: .92; }
+  .btn-ghost {
+    background: transparent; color: var(--text); border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.05); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 4px; }
+  .play-frame {
+    width: 100%;
+    height: min(72vh, 720px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+  }
+  .play-frame iframe {
+    width: 100%; height: 100%; border: 0; display: block;
+  }
+  .note {
+    font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 10px;
+  }
+  .key-box {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: #9effc0;
+    background: #0b0d10;
+    border: 1px solid #2a2f36;
+    border-radius: 10px;
+    padding: 12px 14px;
+    word-break: break-all;
+    margin: 10px 0 12px;
+  }
+  .key-empty { color: var(--muted); }
+  .pill-ok {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #3bff6e;
+    border: 1px solid rgba(59,255,110,0.35);
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .pill-wait {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .steps { counter-reset: step; list-style: none; margin: 10px 0 0; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 10px 0 10px 36px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .steps li:last-child { border-bottom: 0; }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 10px;
+    width: 24px; height: 24px; border-radius: 999px;
+    background: rgba(255,255,255,0.08); color: var(--text);
+    font-family: var(--mono); font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  footer {
+    margin-top: 36px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  footer a { color: var(--text); text-decoration: none; }
+  footer a:hover { opacity: .85; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="/">← Chopsticks HQ</a>
+      <div class="nav-links">
+        <a href="/#projects">Projects</a>
+        <a href="/rnitro/">rNitro</a>
+        <a href="/fathom/">Fathom</a>
+        <a class="is-active" href="/doomlike-fps/">Doomlike-FPS™</a>
+        <a href="/fathom-pro/">Fathom Pro</a>
+      </div>
+    </nav>
+
+    <p class="eyebrow">Browser game · raycast FPS · v0.9-Beta-Pre-Release</p>
+    <h1><span>Doomlike-FPS™</span></h1>
+    <p class="lead">
+      <strong style="color:var(--orange)">v0.9-Beta-Pre-Release</strong> —
+      a lightweight raycast first-person shooter in the browser. Survive monster waves,
+      lock your mouse, and clear the maze. Free to play — no install. Expect rough edges.
+    </p>
+
+    <div class="tabs" role="tablist" aria-label="Doomlike-FPS sections">
+      <button type="button" class="tab is-active" role="tab" aria-selected="true" data-tab="play" id="tab-play">Play</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="api" id="tab-api">API Unlock</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="about" id="tab-about">About</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="controls" id="tab-controls">Controls</button>
+    </div>
+
+    <div id="panel-play" class="panel is-active" role="tabpanel" aria-labelledby="tab-play">
+      <div class="actions">
+        <a class="btn btn-primary" href="play.html" target="_blank" rel="noopener">Open fullscreen play →</a>
+        <a class="btn btn-ghost" href="#embed">Play embedded</a>
+        <a class="btn btn-ghost" href="DOOMLIKE-FPS-v0.9-Beta-Pre-Release.html" download>Download v0.9-Beta-Pre-Release</a>
+      </div>
+      <p class="note">Pointer lock works best in the fullscreen page. Click the canvas, then use WASD + mouse.</p>
+      <div class="play-frame" id="embed" style="margin-top:14px;">
+        <iframe src="play.html" title="Doomlike-FPS™ game" allow="fullscreen; pointer-lock; gamepad" loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <div id="panel-api" class="panel" role="tabpanel" aria-labelledby="tab-api" hidden>
+      <div class="card">
+        <h2>Fathom Pro unlock (not in-game)</h2>
+        <p>
+          Fathom Pro is unlocked by a <strong style="color:var(--text)">hidden code on chopstickshq.com</strong> —
+          a scavenger hunt easter egg, not a Doomlike reward. Keys are no longer awarded for clearing waves.
+        </p>
+      </div>
+      <div class="card">
+        <h2>How to unlock now</h2>
+        <ol class="steps">
+          <li>Install Fathom Pro from <a href="/fathom-pro/" style="color:var(--cyan)">chopstickshq.com/fathom-pro</a>.</li>
+          <li>Explore quiet / offline corners of the HQ (view-source is fair).</li>
+          <li>Paste the code you find into Fathom Pro → Activate.</li>
+          <li>Open <strong style="color:var(--text)">Customize → API Config</strong> and add your own provider keys.</li>
+        </ol>
+        <p class="note">Clue: HQ homepage — first L after the A in “Small”.</p>
+        <div class="actions" style="margin-top:12px;">
+          <a class="btn btn-primary" href="/fathom-pro/?tab=unlock">Fathom Pro · Unlock →</a>
+          <a class="btn btn-ghost" href="play.html">Play Doomlike anyway →</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-about" class="panel" role="tabpanel" aria-labelledby="tab-about" hidden>
+      <div class="card">
+        <h2>What is it?</h2>
+        <p>
+          <strong style="color:var(--text)">Doomlike-FPS™</strong> (DOOMLIKE)
+          <strong style="color:var(--orange)">v0.9-Beta-Pre-Release</strong>
+          is a self-contained HTML raycast FPS —
+          styled after classic corridor shooters, not a full 3D engine. One file game, runs in modern browsers.
+        </p>
+        <ul>
+          <li>Channel label: <strong style="color:var(--text)">v0.9-Beta-Pre-Release</strong></li>
+          <li>Wave survival against monsters</li>
+          <li>Health, armor, ammo HUD</li>
+          <li>Settings for FOV, sensitivity, render scale, fog</li>
+          <li>Optional cloud accounts via Supabase (if configured in the game)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Part of Chopsticks HQ</h2>
+        <p>
+          Shipped alongside tools like <a href="/rnitro/" style="color:var(--cyan)">rNitro</a> and
+          <a href="/fathom/" style="color:var(--cyan)">Fathom</a>. Games live under the same lab roof.
+        </p>
+      </div>
+    </div>
+
+    <div id="panel-controls" class="panel" role="tabpanel" aria-labelledby="tab-controls" hidden>
+      <div class="card">
+        <h2>Default controls</h2>
+        <ul>
+          <li><strong style="color:var(--text)">Click</strong> — lock mouse / start</li>
+          <li><strong style="color:var(--text)">WASD</strong> — move</li>
+          <li><strong style="color:var(--text)">Mouse</strong> — look</li>
+          <li><strong style="color:var(--text)">Click / fire</strong> — shoot (see in-game Controls tab)</li>
+          <li><strong style="color:var(--text)">Esc</strong> — unlock / pause menu</li>
+        </ul>
+        <p style="margin-top:10px;">Fine-tune FOV, aim, sensitivity, and more in the game’s Settings.</p>
+      </div>
+      <div class="actions">
+        <a class="btn btn-primary" href="play.html" target="_blank" rel="noopener">Play now →</a>
+      </div>
+    </div>
+
+    <footer>
+      <div>
+        © ChopsticksHQ 2026 · Doomlike-FPS™
+        <div style="margin-top:8px; max-width:56ch; line-height:1.5;">
+          All ChopsticksHQ software is provided “AS IS” with no warranties. Use at your own risk.
+          <a href="/disclaimer/" style="color:inherit; text-decoration:underline;">Full disclaimer</a>.
+          Doomlike-FPS™ is a trademark of chopsticks. Not affiliated with id Software, ZeniMax, or any other third-party brand.
+        </div>
+      </div>
+      <div>
+        <a href="/">Home</a> ·
+        <a href="/#projects">Projects</a> ·
+        <a href="/disclaimer/">Disclaimer</a> ·
+        <a href="play.html">Play</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    var tabs = document.querySelectorAll('.tab');
+    var panels = {
+      play: document.getElementById('panel-play'),
+      api: document.getElementById('panel-api'),
+      about: document.getElementById('panel-about'),
+      controls: document.getElementById('panel-controls')
+    };
+    function activateTab(id) {
+      tabs.forEach(function (t) {
+        var on = t.getAttribute('data-tab') === id;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      Object.keys(panels).forEach(function (k) {
+        var on = k === id;
+        panels[k].classList.toggle('is-active', on);
+        panels[k].hidden = !on;
+      });
+      if (id === 'api') refreshApiKey();
+      try {
+        var u = new URL(location.href);
+        u.searchParams.set('tab', id);
+        history.replaceState(null, '', u.pathname + u.search + u.hash);
+      } catch (e) {}
+    }
+    tabs.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        activateTab(btn.getAttribute('data-tab'));
+      });
+    });
+
+    function refreshApiKey() {
+      var box = document.getElementById('api-key-box');
+      var pill = document.getElementById('api-status-pill');
+      var note = document.getElementById('api-key-note');
+      var key = '';
+      try { key = localStorage.getItem('fathomProLastKey') || ''; } catch (e) {}
+      if (key && /^oi-pl-/i.test(key)) {
+        box.textContent = key;
+        box.classList.remove('key-empty');
+        pill.textContent = 'Campaign complete · key ready';
+        pill.className = 'pill-ok';
+        if (note) note.textContent = 'Paste this into Fathom Pro to unlock, then open Customize → API Config for OpenRouter / Gemini / OpenAI / Anthropic.';
+      } else {
+        box.textContent = 'Unlock is hidden on the HQ site — not earned in Doomlike.';
+        box.classList.add('key-empty');
+        pill.textContent = 'No completion yet in this browser';
+        pill.className = 'pill-wait';
+      }
+    }
+    document.getElementById('btn-refresh-api-key').addEventListener('click', refreshApiKey);
+    document.getElementById('btn-clear-api-key').addEventListener('click', function () {
+      var btn = this;
+      try {
+        localStorage.removeItem('fathomProLastKey');
+        localStorage.removeItem('chopstickshq.vault.keys.v1');
+      } catch (e) {}
+      refreshApiKey();
+      btn.textContent = 'Cleared';
+      setTimeout(function () { btn.textContent = 'Clear key'; }, 1400);
+    });
+    document.getElementById('btn-copy-api-key').addEventListener('click', function () {
+      var box = document.getElementById('api-key-box');
+      var key = (box && !box.classList.contains('key-empty')) ? box.textContent.trim() : '';
+      if (!key || key.indexOf('oi-pl-') !== 0) {
+        refreshApiKey();
+        key = (document.getElementById('api-key-box').textContent || '').trim();
+      }
+      if (!key || key.indexOf('oi-pl-') !== 0) {
+        this.textContent = 'No key yet';
+        var btn = this;
+        setTimeout(function () { btn.textContent = 'Copy key'; }, 1200);
+        return;
+      }
+      var btn = this;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(key).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy key'; }, 1400);
+        }).catch(function () {
+          btn.textContent = 'Select & copy';
+        });
+      } else {
+        btn.textContent = 'Select & copy';
+      }
+    });
+    // When returning from play in another tab, refresh key on focus
+    window.addEventListener('focus', function () {
+      if (document.getElementById('panel-api').classList.contains('is-active')) refreshApiKey();
+    });
+    try {
+      var want = new URLSearchParams(location.search).get('tab');
+      if (want && panels[want]) activateTab(want);
+    } catch (e) {}
+  </script>
+</body>
+</html>

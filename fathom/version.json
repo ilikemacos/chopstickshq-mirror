@@ -1,0 +1,11 @@
+{
+  "latest": "v0.3.8-Beta",
+  "beta": "v0.3.8-Beta",
+  "product": "Fathom Air",
+  "releases": {
+    "beta": {
+      "zip": "Fathom-v0.3.8-Beta.zip",
+      "sha256": "2e7b1e149a5918f49e84b6a40acee1784afa4aec64b6fa600ea5a5fb7653a886"
+    }
+  }
+}

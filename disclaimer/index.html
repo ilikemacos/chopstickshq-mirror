@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Software Disclaimer · ChopsticksHQ</title>
+<meta name="description" content="Site-wide disclaimer for all ChopsticksHQ software: rNitro, Fathom Air, Fathom Pro, Doomlike-FPS, and related tools. Provided AS IS.">
+<link rel="canonical" href="https://chopstickshq.com/disclaimer/">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius: .75rem;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, .nav-logo { font-family: var(--display); letter-spacing: -0.03em; font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+  code { font-family: var(--mono); font-size: 0.9em; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.05), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
+  }
+  .app { position: relative; z-index: 1; }
+  .wrap { width: min(42rem, calc(100% - 2rem)); margin-inline: auto; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; min-height: 4rem;
+    background: rgba(10,10,12,0.72);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .nav-logo { font-size: 0.95rem; }
+  .nav-logo span { color: var(--muted); font-weight: 400; }
+  .btn {
+    display: inline-flex; align-items: center; height: 2.15rem; padding: 0 0.95rem;
+    border-radius: 999px; font-size: 0.8125rem; font-weight: 600;
+    border: 1px solid var(--border); color: var(--text); background: transparent;
+  }
+  .btn:hover { background: rgba(255,255,255,0.05); }
+
+  main { padding: 7rem 0 3rem; }
+  .kicker {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem;
+  }
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.35rem); font-weight: 700;
+    letter-spacing: -0.04em; margin-bottom: 0.75rem;
+  }
+  .lead { color: var(--muted); margin-bottom: 2rem; font-size: 1.02rem; }
+
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: rgba(18,18,22,0.92); padding: 1.25rem 1.35rem; margin-bottom: 1rem;
+  }
+  .card h2 {
+    font-size: 1rem; margin-bottom: 0.55rem; letter-spacing: -0.02em;
+  }
+  .card p, .card li { color: var(--muted); font-size: 0.92rem; }
+  .card p + p { margin-top: 0.65rem; }
+  .card ul { padding-left: 1.15rem; margin-top: 0.5rem; }
+  .card li { margin: 0.3rem 0; }
+  .card strong { color: var(--text); font-weight: 600; }
+  .card a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+  .covers {
+    display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.75rem 0 0;
+  }
+  .covers a {
+    font-family: var(--mono); font-size: 0.72rem; padding: 0.35rem 0.7rem;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
+    text-decoration: none;
+  }
+  .covers a:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  footer {
+    padding: 2rem 0 3rem; border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; justify-content: space-between;
+    font-size: 0.85rem; color: var(--muted);
+  }
+  footer a:hover { color: var(--text); }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <nav>
+      <a class="nav-logo" href="/">Chopsticks HQ <span>· Disclaimer</span></a>
+      <a class="btn" href="/">Back to HQ</a>
+    </nav>
+
+    <main class="wrap">
+      <div class="kicker">Legal</div>
+      <h1>Software disclaimer</h1>
+      <p class="lead">
+        Applies to <strong style="color:var(--text)">all software</strong> published by ChopsticksHQ
+        (also styled Chopsticks HQ), including downloads, installers, source, documentation, and this website.
+      </p>
+
+      <div class="card">
+        <h2>Covered software</h2>
+        <p>This disclaimer covers, without limitation:</p>
+        <div class="covers">
+          <a href="/rnitro/">rNitro</a>
+          <a href="/fathom/">Fathom Air</a>
+          <a href="/fathom-pro/">Fathom Pro</a>
+          <a href="/doomlike-fps/">Doomlike-FPS™</a>
+          <a href="/minecraft/">Minecraft portfolio tools</a>
+          <a href="/shaders/">Shader packs</a>
+          <a href="/guides/">Guides &amp; site tools</a>
+        </div>
+        <p style="margin-top:0.85rem">Plus any other apps, scripts, ZIPs, packages, vault tools, or experimental builds hosted on chopstickshq.com or official GitHub repositories under this project.</p>
+      </div>
+
+      <div class="card">
+        <h2>Provided “AS IS”</h2>
+        <p>
+          All software is provided free of charge on an <strong>“AS IS”</strong> and <strong>“AS AVAILABLE”</strong> basis,
+          without warranties or conditions of any kind—express, implied, or statutory—including merchantability,
+          fitness for a particular purpose, non-infringement, accuracy, reliability, security, or uninterrupted operation.
+        </p>
+        <p>You use every product <strong>entirely at your own risk</strong>.</p>
+      </div>
+
+      <div class="card">
+        <h2>No liability</h2>
+        <p>To the fullest extent permitted by law, ChopsticksHQ and its contributors are not liable for any damages arising from download, install, use, inability to use, or reliance on any software, including but not limited to:</p>
+        <ul>
+          <li>Data loss, corruption, or privacy issues</li>
+          <li>System instability, crashes, freezes, or boot problems</li>
+          <li>Battery drain, heat, performance impact, or hardware wear</li>
+          <li>Incorrect readings (CPU, battery, weather, sensors, etc.)</li>
+          <li>Network, third-party API, AI, or cloud-provider issues</li>
+          <li>Lost profits, goodwill, or consequential damages</li>
+        </ul>
+        <p>Where local law does not allow some exclusions, liability is limited to the maximum extent permitted.</p>
+      </div>
+
+      <div class="card">
+        <h2>Beta &amp; experimental software</h2>
+        <p>
+          Many builds are labeled Beta, Experimental, Preview, or Lab. They may be incomplete, change without notice,
+          or fail completely. Features such as AI chat, weather, charge limits, stress tools, games, and installers may
+          behave unexpectedly. You assume full responsibility for using pre-release software.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Your responsibilities</h2>
+        <ul>
+          <li>Back up important data before installing or updating.</li>
+          <li>Review scripts and installers before running them (especially <code>curl | bash</code> / compile-from-source flows).</li>
+          <li>Keep your OS, Xcode CLT, and security settings current.</li>
+          <li>Do not use this software where failure could cause injury, legal harm, or critical system damage.</li>
+          <li>For Fathom Pro and similar tools: you are responsible for any third-party API keys, costs, and provider terms.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Third-party marks</h2>
+        <p>
+          Apple, macOS, Mac, and related marks are trademarks of Apple Inc. Other product names (e.g. OpenAI, Anthropic,
+          Google, Minecraft, id Software) belong to their respective owners. ChopsticksHQ software is
+          <strong>not affiliated with, endorsed by, or sponsored by</strong> those companies unless explicitly stated.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Not professional advice</h2>
+        <p>
+          Sensor readouts, battery explanations, AI responses, weather data, and guides are for personal, informational use only.
+          They are not medical, legal, financial, or professional engineering advice.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Acceptance</h2>
+        <p>
+          By downloading, installing, compiling, accessing, or using any ChopsticksHQ software or this site, you acknowledge
+          that you have read this disclaimer and agree to these terms. If you do not agree, do not download or use the software.
+        </p>
+        <p>
+          Product-specific terms (for example <a href="/rnitro/terms.html">rNitro Terms</a>) may add extra rules for that product.
+          Where they conflict, the stricter protection for the developer applies to the extent allowed by law.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Contact</h2>
+        <p>
+          Project links and issue trackers are on each product page and
+          <a href="https://github.com/ilikemacos">GitHub · ilikemacos</a>.
+        </p>
+        <p style="margin-top:0.5rem;font-size:0.8rem;font-family:var(--mono)">Last updated · 2026-07-30</p>
+      </div>
+    </main>
+
+    <footer class="wrap">
+      <div>© ChopsticksHQ 2026</div>
+      <div class="foot-links">
+        <a href="/">HQ</a>
+        <a href="/rnitro/">rNitro</a>
+        <a href="/fathom/">Fathom Air</a>
+        <a href="/fathom-pro/">Fathom Pro</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

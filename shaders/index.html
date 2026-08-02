@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chopsticks Vibrant Shaders — Temporarily offline</title>
+<meta name="description" content="Chopsticks Vibrant Shaders is temporarily offline while the pack is fixed. Check back soon on Chopsticks HQ.">
+<meta name="robots" content="noindex,follow">
+<link rel="canonical" href="https://chopstickshq.com/shaders/">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  @font-face {
+    font-family: 'Varela Round';
+    src: url('/VarelaRound.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Geist Mono';
+    src: url('/GeistMono.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0A0A0F;
+    --card: #13131E;
+    --border: #2A2A40;
+    --cyan: #00D9FF;
+    --green: #00FF80;
+    --orange: #FF8C1A;
+    --text: #E8E8F0;
+    --muted: #6B6B8A;
+    --wood: #e8a86a;
+    --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,217,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,217,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 6px 16px;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+  .nav-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .nav-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--cyan);
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+  .nav-link:hover { border-color: var(--cyan); background: rgba(0,217,255,0.08); }
+  .nav-link-home {
+    color: var(--wood);
+    border-color: rgba(232, 168, 106, 0.45);
+  }
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 16px 48px;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--orange);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero-title {
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 500;
+    letter-spacing: -1.5px;
+    margin-bottom: 12px;
+    max-width: 16ch;
+  }
+  .hero-title span {
+    background: linear-gradient(135deg, var(--cyan) 0%, var(--green) 60%, var(--cyan) 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    color: var(--muted);
+    max-width: 420px;
+    line-height: 1.55;
+    margin-bottom: 24px;
+    font-size: 13px;
+  }
+  .hero-sub strong { color: var(--text); }
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--orange);
+    border: 1px solid rgba(255,140,26,0.4);
+    background: rgba(255,140,26,0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 18px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    max-width: 440px;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .card p {
+    color: var(--muted);
+    line-height: 1.55;
+    font-size: 13px;
+  }
+  .card p + p { margin-top: 10px; }
+  .btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), #0099BB);
+    color: #000;
+    box-shadow: 0 0 30px rgba(0,217,255,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">Chopsticks HQ</a>
+  <div class="nav-right">
+    <a class="nav-link nav-link-home" href="https://chopstickshq.com/">← Back to homepage</a>
+    <a class="nav-link" href="/rnitro/">rNitro</a>
+    <a class="nav-link" href="/fathom/">Fathom</a>
+    <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <!-- Quiet corner · unlock lives on the homepage now (look at Small lab). -->
+  <p class="hero-eyebrow">Temporarily offline</p>
+  <div class="badge">Disabled · short pause</div>
+  <h1 class="hero-title"><span>Chopsticks Vibrant Shaders</span></h1>
+  <p class="hero-sub">
+    This pack is <strong>temporarily disabled</strong> — the current build doesn’t render correctly yet.
+    Downloads and the project listing are hidden until a working version is ready.
+  </p>
+  <div class="card">
+    <p>
+      We’re fixing the Iris shader pipeline so the world actually draws.
+      When it ships again, it’ll reappear under Projects and on Modrinth.
+    </p>
+    <p>
+      For now, use <strong style="color:var(--text)">rNitro</strong>, <strong style="color:var(--text)">Fathom</strong>, and <strong style="color:var(--text)">Fathom Pro</strong> on Chopsticks HQ.
+    </p>
+  </div>
+  <div class="btn-group">
+    <a class="btn btn-primary" href="/">Back to HQ</a>
+    <a class="btn btn-secondary" href="/rnitro/">Open rNitro</a>
+    <a class="btn btn-secondary" href="/fathom/">Open Fathom</a>
+    <a class="btn btn-secondary" href="/fathom-pro/">Fathom Pro</a>
+  </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guides — Chopsticks HQ</title>
+<meta name="description" content="Guides from Chopsticks HQ: free Mac menu bar monitor, rNitro battery on Apple Silicon, Minecraft gens Skript checklist.">
+<link rel="canonical" href="https://chopstickshq.com/guides/">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c; --card: #121216; --border: #26262e;
+    --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --sans: 'Inter', system-ui, sans-serif;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+  }
+  .app { position: relative; z-index: 1; }
+  .wrap { width: min(40rem, calc(100% - 2rem)); margin: 0 auto; padding: 6.5rem 0 4rem; }
+  h1 { font-family: var(--display); font-size: 2rem; letter-spacing: -.03em; margin-bottom: .5rem; }
+  .lead { color: var(--muted); margin-bottom: 1.75rem; font-size: .95rem; }
+  .nav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,10,12,0.72); backdrop-filter: blur(18px);
+  }
+  nav {
+    width: min(40rem, calc(100% - 2rem)); margin: 0 auto; min-height: 3.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand { font-family: var(--display); font-weight: 600; font-size: .95rem; color: var(--text); text-decoration: none; }
+  .nav-links { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .nav-links a { color: var(--muted); font-size: .8rem; text-decoration: none; }
+  .nav-links a:hover { color: var(--text); }
+  .list { display: grid; gap: .75rem; }
+  .card {
+    display: block; padding: 1.1rem 1.2rem; border-radius: .75rem;
+    border: 1px solid var(--border); background: rgba(18,18,22,0.92);
+    text-decoration: none; color: inherit; transition: .15s border-color, .15s transform;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-1px); }
+  .card strong { font-family: var(--display); font-size: 1rem; display: block; margin-bottom: .25rem; }
+  .card span { color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="nav-bar">
+      <nav>
+        <a class="brand" href="/">Chopsticks HQ</a>
+        <div class="nav-links">
+          <a href="/rnitro/">rNitro</a>
+          <a href="/fathom/">Fathom</a>
+          <a href="/minecraft/">Minecraft</a>
+        </div>
+      </nav>
+    </div>
+    <div class="wrap">
+      <h1>Guides</h1>
+      <p class="lead">Short write-ups for rNitro, Fathom, and Minecraft tooling.</p>
+      <div class="list">
+        <a class="card" href="free-mac-menu-bar-monitor.html">
+          <strong>Free open-source Mac menu bar monitor</strong>
+          <span>Why rNitro exists and how to install it.</span>
+        </a>
+        <a class="card" href="rnitro-battery-apple-silicon.html">
+          <strong>How rNitro reads battery % on Apple Silicon</strong>
+          <span>IOPS, SmartBattery, and what “%” really means.</span>
+        </a>
+        <a class="card" href="minecraft-gens-skript-checklist.html">
+          <strong>Skript gens server checklist</strong>
+          <span>Practical checklist for gens-style Minecraft servers.</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

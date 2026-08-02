@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Launch — rNitro &amp; Chopsticks HQ</title>
+<meta name="description" content="rNitro is live: free open-source macOS menu bar system monitor. Download, GitHub, guides, and Minecraft portfolio links.">
+<link rel="canonical" href="https://chopstickshq.com/launch/">
+<meta property="og:title" content="rNitro is live — Chopsticks HQ">
+<meta property="og:description" content="Free open-source macOS menu bar system monitor. No account, no telemetry.">
+<meta property="og:url" content="https://chopstickshq.com/launch/">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c; --card: #121216; --border: #26262e;
+    --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --sans: 'Inter', system-ui, sans-serif;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+  }
+  .app { position: relative; z-index: 1; }
+  .wrap { width: min(40rem, calc(100% - 2rem)); margin: 0 auto; padding: 6.5rem 0 4rem; }
+  h1 { font-family: var(--display); font-size: 2rem; letter-spacing: -.03em; margin-bottom: .75rem; }
+  h2 { font-family: var(--display); font-size: 1.1rem; margin: 2rem 0 .65rem; letter-spacing: -.02em; }
+  p, li { color: var(--muted); }
+  strong { color: var(--text); font-weight: 600; }
+  a { color: var(--text); }
+  .nav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,10,12,0.72); backdrop-filter: blur(18px);
+  }
+  nav {
+    width: min(40rem, calc(100% - 2rem)); margin: 0 auto; min-height: 3.5rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  nav a { color: var(--muted); font-size: .8rem; text-decoration: none; }
+  nav a:hover { color: var(--text); }
+  nav .brand { font-family: var(--display); font-weight: 600; color: var(--text); margin-right: auto; }
+  .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.25rem 0 0; }
+  .btn {
+    display: inline-flex; align-items: center; height: 2.5rem; padding: 0 1.15rem;
+    border-radius: 999px; font-size: .875rem; font-weight: 500; text-decoration: none;
+  }
+  .btn-primary { background: var(--soft); color: var(--bg); }
+  .btn-outline { border: 1px solid var(--border); color: var(--text); }
+  .card {
+    background: rgba(18,18,22,0.92); border: 1px solid var(--border);
+    border-radius: .75rem; padding: 1.1rem 1.2rem; margin: 1rem 0;
+  }
+  .card ul { padding-left: 1.1rem; }
+  .card li { margin: .4rem 0; }
+  pre {
+    background: #0a0a0c; border: 1px solid var(--border); border-radius: .65rem;
+    padding: .9rem 1rem; overflow: auto; font-size: .78rem; color: var(--text);
+    white-space: pre-wrap; font-family: var(--mono); line-height: 1.5;
+  }
+  .foot { margin-top: 2rem; font-size: .9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="nav-bar">
+      <nav>
+        <a class="brand" href="/">Chopsticks HQ</a>
+        <a href="/rnitro/">rNitro</a>
+        <a href="/fathom/">Fathom</a>
+        <a href="/fathom-pro/">Fathom Pro</a>
+        <a href="/minecraft/">Minecraft</a>
+        <a href="/guides/">Guides</a>
+      </nav>
+    </div>
+    <div class="wrap">
+      <h1>rNitro is live</h1>
+      <p>
+        Free, open-source <strong>macOS menu bar system monitor</strong> —
+        CPU, temperature, battery %, GPU, RAM, network. No account. No product telemetry.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://chopstickshq.com/rnitro/">Download rNitro</a>
+        <a class="btn btn-outline" href="https://github.com/ilikemacos/rNitro">GitHub</a>
+        <a class="btn btn-outline" href="/fathom/">Fathom</a>
+        <a class="btn btn-outline" href="/fathom-pro/">Fathom Pro</a>
+      </div>
+
+      <h2>Canonical links</h2>
+      <div class="card">
+        <ul>
+          <li><a href="https://chopstickshq.com/rnitro/">chopstickshq.com/rnitro</a> — product</li>
+          <li><a href="https://github.com/ilikemacos/rNitro">github.com/ilikemacos/rNitro</a> — source &amp; releases</li>
+          <li><a href="https://chopstickshq.com/fathom/">chopstickshq.com/fathom</a> — battery drain</li>
+          <li><a href="https://chopstickshq.com/">chopstickshq.com</a> — HQ hub</li>
+          <li><a href="https://chopstickshq.com/minecraft/">chopstickshq.com/minecraft</a> — portfolio</li>
+          <li><a href="https://chopstickshq.com/guides/">chopstickshq.com/guides</a> — guides</li>
+        </ul>
+      </div>
+
+      <h2>NameMC / Discord bio (copy)</h2>
+      <pre>Minecraft server developer · Skript / WorldEdit / WorldGuard
+Portfolio: https://chopstickshq.com/minecraft/
+Also: rNitro (free Mac menubar monitor) → https://chopstickshq.com/rnitro/</pre>
+
+      <h2>Show HN title + body (copy)</h2>
+      <pre>Show HN: rNitro – free open-source macOS menu bar system monitor
+
+rNitro is a free, open-source menu bar system monitor for macOS (14+).
+
+It shows live CPU, temperature, battery %, GPU, RAM, and network — local sensors only,
+no account, no product telemetry.
+
+Install: App ZIP from the site or GitHub Releases. Builds are ad-hoc signed for now
+(right-click → Open on first launch if Gatekeeper blocks).
+
+Site: https://chopstickshq.com/rnitro/
+GitHub: https://github.com/ilikemacos/rNitro</pre>
+
+      <p class="foot">
+        Full templates:
+        <a href="https://github.com/ilikemacos/rNitro/blob/main/docs/LAUNCH-POSTS.md">LAUNCH-POSTS.md</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

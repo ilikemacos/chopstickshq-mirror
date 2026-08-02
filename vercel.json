@@ -1,0 +1,624 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://chopstickshq.com/minecraft/",
+      "has": [
+        {
+          "type": "host",
+          "value": "minecraft.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/minecraft/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "minecraft.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/vault",
+      "destination": "/vault/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "chopstickshq.netlify.app"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/rnitro",
+      "destination": "/rnitro/",
+      "permanent": true
+    },
+    {
+      "source": "/macbar",
+      "destination": "/rnitro/",
+      "permanent": true
+    },
+    {
+      "source": "/macbar/:path*",
+      "destination": "/rnitro/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/rnitro/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "macbar.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/rnitro/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "rnitro.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "destination": "https://chopstickshq.com/fathom/",
+      "has": [
+        {
+          "type": "host",
+          "value": "fathom.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/fathom/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "fathom.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/fathom/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "air.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "destination": "https://chopstickshq.com/fathom-pro/",
+      "has": [
+        {
+          "type": "host",
+          "value": "fathompro.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/fathom-pro/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "fathompro.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://chopstickshq.com/fathom-pro/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "fathom-pro.chopstickshq.com"
+        }
+      ],
+      "permanent": true
+    },
+    {
+      "source": "/fathom",
+      "destination": "/fathom/",
+      "permanent": true
+    },
+    {
+      "source": "/fathom-pro",
+      "destination": "/fathom-pro/",
+      "permanent": true
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/disclaimer/",
+      "permanent": true
+    },
+    {
+      "source": "/shaders",
+      "destination": "/shaders/",
+      "permanent": true
+    },
+    {
+      "source": "/doomlike-fps",
+      "destination": "/doomlike-fps/",
+      "permanent": true
+    },
+    {
+      "source": "/minecraft",
+      "destination": "/minecraft/",
+      "permanent": true
+    },
+    {
+      "source": "/guides",
+      "destination": "/guides/",
+      "permanent": true
+    },
+    {
+      "source": "/port",
+      "destination": "/minecraft/",
+      "permanent": true
+    },
+    {
+      "source": "/port/:path*",
+      "destination": "/minecraft/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/shaders/:path*.zip",
+      "destination": "/shaders/",
+      "permanent": false
+    },
+    {
+      "source": "/rnitro/faq",
+      "destination": "/rnitro/faq.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/terms",
+      "destination": "/rnitro/terms.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/cli",
+      "destination": "/rnitro/cli.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/linux",
+      "destination": "/rnitro/linux.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/windows",
+      "destination": "/rnitro/windows.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/privacy",
+      "destination": "/rnitro/privacy.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/archives",
+      "destination": "/rnitro/archives.html",
+      "permanent": true
+    },
+    {
+      "source": "/macbar/",
+      "destination": "/rnitro/",
+      "permanent": true
+    },
+    {
+      "source": "/launch",
+      "destination": "/launch/",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/cli",
+      "destination": "/rnitro/cli.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/linux",
+      "destination": "/rnitro/linux.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/windows",
+      "destination": "/rnitro/windows.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/privacy",
+      "destination": "/rnitro/privacy.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/terms",
+      "destination": "/rnitro/terms.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/faq",
+      "destination": "/rnitro/faq.html",
+      "permanent": true
+    },
+    {
+      "source": "/rnitro/rnitro/archives",
+      "destination": "/rnitro/archives.html",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/vault",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/vault/:path*",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "interest-cohort=(), clipboard-write=(self)"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.zip",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.dmg",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/x-apple-diskimage"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.pkg",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.sh",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/x-shellscript; charset=utf-8"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.exe",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.microsoft.portable-executable"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/:path*.ps1",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/version.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/rnitro/reviews.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/shaders/:path*.zip",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom/:path*.zip",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom/:path*.sh",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/x-shellscript; charset=utf-8"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom/version.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom-pro/:path*.zip",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom-pro/:path*.sh",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/x-shellscript; charset=utf-8"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/fathom-pro/version.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=60, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "cleanUrls": false
+}

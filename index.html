@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chopsticks HQ — Tools &amp; Projects</title>
+<meta name="description" content="Chopsticks HQ — free tools and games. rNitro free macOS menu bar system monitor, Fathom battery app, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta name="keywords" content="Chopsticks HQ, rNitro, free macOS menu bar monitor, Apple Silicon system monitor, MacBook battery, Fathom battery, Fathom Pro, Doomlike-FPS, open source mac tools, no telemetry">
+<link rel="canonical" href="https://www.chopstickshq.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Chopsticks HQ — Tools &amp; Projects">
+<meta property="og:description" content="Free tools from Chopsticks HQ — rNitro, Fathom, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta property="og:url" content="https://www.chopstickshq.com/">
+<meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Chopsticks HQ">
+<meta name="twitter:description" content="Free tools from Chopsticks HQ — rNitro, Fathom, Fathom Pro, and Doomlike-FPS™.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'Varela Round';
+    src: url('/VarelaRound.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Geist Mono';
+    src: url('/GeistMono.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    /* 101mogged-inspired tokens (aligned with rNitro / Fathom) */
+    --bg:       #0a0a0c;
+    --bg2:      #0e0e12;
+    --card:     #121216;
+    --card2:    #18181e;
+    --border:   #26262e;
+    --soft:     #e8e8ed;
+    --text:     #f2f2f5;
+    --muted:    #8b8b9a;
+    --mono:     'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
+    --sans:     'Inter', 'Varela Round', system-ui, -apple-system, sans-serif;
+    --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius:   .75rem;
+    --glow:     0 0 60px -15px rgba(230,230,230,.18);
+    --shadow:   0 4px 24px -4px rgba(0,0,0,.45);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, .brand-name {
+    font-family: var(--display);
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+  a { color: inherit; text-decoration: none; }
+  code, .mono { font-family: var(--mono); }
+
+  /* Soft radial glow + grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
+  }
+  .app { position: relative; z-index: 1; }
+
+  .wrap {
+    width: min(72rem, calc(100% - 2rem));
+    margin-inline: auto;
+  }
+
+  /* Fixed glass nav */
+  .nav-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,10,12,0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  nav {
+    min-height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+  }
+  .brand-mark {
+    width: 2rem; height: 2rem;
+    border-radius: .55rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    display: grid;
+    place-items: center;
+  }
+  .brand-mark svg { width: 1.1rem; height: 1.1rem; }
+  .brand-name {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .brand small {
+    display: block;
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: .72rem;
+    color: var(--muted);
+    letter-spacing: 0;
+    margin-top: 1px;
+  }
+  .nav-links {
+    display: none;
+    align-items: center;
+    gap: .25rem;
+  }
+  @media (min-width: 720px) { .nav-links { display: flex; } }
+  .nav-link {
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding: .45rem .95rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    transition: .15s color, .15s background, .15s border-color;
+  }
+  .nav-link:hover {
+    color: var(--text);
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+  }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    height: 2.5rem;
+    padding: 0 1.15rem;
+    border-radius: 999px;
+    font-size: .875rem;
+    font-weight: 500;
+    font-family: var(--sans);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: .15s background, .15s border-color, .12s transform, .15s opacity;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-sm { height: 2.25rem; padding: 0 .95rem; font-size: .8125rem; }
+  .btn-primary {
+    background: var(--soft);
+    color: var(--bg);
+  }
+  .btn-primary:hover { opacity: .92; }
+  .btn-outline {
+    border-color: rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--text);
+  }
+  .btn-outline:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.22);
+  }
+
+  /* Hero */
+  .hero {
+    padding: 7.5rem 0 3.5rem;
+    text-align: center;
+  }
+  @media (min-width: 768px) {
+    .hero { padding: 9rem 0 5rem; }
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    margin-bottom: 1.35rem;
+    padding: .4rem .85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.9);
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pill-dot {
+    width: .4rem; height: .4rem;
+    border-radius: 999px;
+    background: #c8c8d0;
+    box-shadow: 0 0 0 4px rgba(200,200,208,0.15);
+  }
+  .hero h1 {
+    font-size: clamp(2.6rem, 6.5vw, 4rem);
+    font-weight: 700;
+    letter-spacing: -.045em;
+    line-height: 1.02;
+    margin-bottom: 1.15rem;
+  }
+  .hero h1 .dim {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  /* Hidden unlock: first L after A in "Small" — looks normal until hover */
+  .hero h1 .easter-l {
+    cursor: default;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    border: 0;
+    background: none;
+    padding: 0;
+    margin: 0;
+    display: inline;
+    line-height: inherit;
+  }
+  .hero h1 .easter-l:hover,
+  .hero h1 .easter-l:focus {
+    color: #9effc0;
+    outline: none;
+  }
+  .easter-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    transform: translateX(-50%) translateY(120%);
+    z-index: 80;
+    max-width: min(28rem, calc(100% - 2rem));
+    padding: 1rem 1.15rem;
+    border-radius: .85rem;
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.97);
+    box-shadow: var(--shadow);
+    font-size: .85rem;
+    color: var(--muted);
+    transition: transform .25s ease, opacity .25s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .easter-toast.is-show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .easter-toast code {
+    display: block;
+    margin: .55rem 0 .65rem;
+    padding: .65rem .75rem;
+    border-radius: .55rem;
+    background: #0b0b10;
+    border: 1px solid var(--border);
+    color: #9effc0;
+    font-family: var(--mono);
+    font-size: .8rem;
+    word-break: break-all;
+  }
+  .easter-toast .easter-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .hero-lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 36rem;
+    margin: 0 auto 1.25rem;
+  }
+  .hero-lead strong { color: var(--text); font-weight: 600; }
+  .hero-meta {
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--muted);
+    letter-spacing: .04em;
+    margin-bottom: 1.75rem;
+  }
+  .hero-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+
+  /* Sections */
+  section { padding: 2.5rem 0 3.5rem; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .65rem;
+  }
+  .section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .section-head h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    margin-bottom: .35rem;
+  }
+  .section-head p {
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
+  /* Tabs */
+  .project-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+  }
+  .project-tab {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .04em;
+    padding: .45rem .95rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: .15s;
+  }
+  .project-tab:hover {
+    color: var(--text);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .project-tab.is-active {
+    color: var(--bg);
+    background: var(--soft);
+    border-color: transparent;
+  }
+
+  /* Project cards */
+  .projects {
+    display: grid;
+    gap: 1rem;
+  }
+  .project {
+    display: grid;
+    grid-template-columns: 1fr;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(18,18,22,0.92);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: .15s border-color, .15s transform, .15s box-shadow;
+  }
+  @media (min-width: 860px) {
+    .project { grid-template-columns: 1.2fr .9fr; }
+  }
+  .project:hover {
+    border-color: rgba(255,255,255,0.16);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow), var(--glow);
+  }
+  .project-body {
+    padding: 1.5rem 1.5rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+  }
+  .project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: .65rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    padding: .3rem .55rem;
+    border-radius: 999px;
+  }
+  .tag.live {
+    color: var(--text);
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+  }
+  .project h3 {
+    font-size: 1.65rem;
+    letter-spacing: -.03em;
+  }
+  .project h3 em {
+    font-style: normal;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .project p {
+    color: var(--muted);
+    font-size: .925rem;
+    line-height: 1.6;
+    max-width: 42ch;
+  }
+  .project p strong { color: var(--text); font-weight: 500; }
+  .project-meta {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    padding-top: .35rem;
+  }
+  .project-visual {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 40%, rgba(255,255,255,.04), transparent 70%),
+      linear-gradient(180deg, rgba(24,24,30,.6), rgba(10,10,12,.9));
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  @media (min-width: 860px) {
+    .project-visual {
+      border-top: none;
+      border-left: 1px solid rgba(255,255,255,0.06);
+    }
+  }
+
+  .fake-menubar {
+    width: min(100%, 17.5rem);
+    background: rgba(14,14,18,0.95);
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .fake-menubar .bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .55rem .75rem;
+    background: rgba(0,0,0,0.28);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-family: var(--mono);
+    font-size: .65rem;
+    color: var(--muted);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .fake-menubar .bar .pulse { color: var(--soft); }
+  .fake-menubar .panel { padding: .85rem; display: grid; gap: .45rem; }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8rem;
+    padding: .5rem .65rem;
+    border-radius: .5rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: var(--muted);
+  }
+  .row span:last-child {
+    font-family: var(--mono);
+    font-size: .75rem;
+    color: var(--text);
+  }
+  .row.hot span:last-child { color: var(--soft); }
+
+  .project[data-cat] { display: grid; }
+  .projects.is-filter-tools .project[data-cat="games"],
+  .projects.is-filter-games .project[data-cat="tools"] {
+    display: none;
+  }
+
+  /* Suite strip */
+  .suite-grid {
+    display: grid;
+    gap: .85rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) {
+    .suite-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 960px) {
+    .suite-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (min-width: 1200px) {
+    .suite-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+  .suite-card {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    padding: 1.15rem 1.2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.92);
+    box-shadow: var(--shadow);
+    transition: .15s border-color, .15s transform, .15s box-shadow;
+    min-height: 8.5rem;
+  }
+  .suite-card:hover {
+    border-color: rgba(255,255,255,0.18);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow), var(--glow);
+  }
+  .suite-tag {
+    font-family: var(--mono);
+    font-size: .62rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .suite-card strong {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .suite-desc {
+    font-size: .82rem;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  /* About */
+  .about {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .about { grid-template-columns: repeat(3, 1fr); }
+  }
+  .about-card {
+    padding: 1.25rem 1.3rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.92);
+    box-shadow: var(--shadow);
+    transition: .15s border-color, .15s transform;
+  }
+  .about-card:hover {
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-1px);
+  }
+  .about-card .n {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: .55rem;
+  }
+  .about-card h4 {
+    font-size: 1rem;
+    margin-bottom: .4rem;
+  }
+  .about-card p {
+    color: var(--muted);
+    font-size: .875rem;
+    line-height: 1.55;
+  }
+  .about-card a {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 2rem 0 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    justify-content: space-between;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+  footer a:hover { color: var(--text); }
+  .foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem 1rem;
+  }
+  .disclaimer {
+    width: min(68rem, calc(100% - 2rem));
+    margin: 0 auto 1.25rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(18,18,22,0.75);
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+  .disclaimer strong { color: var(--text); font-weight: 600; }
+  .disclaimer a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 720px) {
+    .hero { padding-top: 6.5rem; }
+  }
+
+  /* Vault (password-gated) */
+  .vault-box {
+    max-width: 28rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.4rem;
+    box-shadow: var(--shadow);
+  }
+  .vault-box label {
+    display: block;
+    font-size: .75rem;
+    color: var(--muted);
+    margin-bottom: .4rem;
+    font-family: var(--mono);
+  }
+  .vault-box input {
+    width: 100%;
+    padding: .7rem .85rem;
+    border-radius: .6rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: .9rem;
+    outline: none;
+  }
+  .vault-box input:focus { border-color: rgba(232,232,237,.35); }
+  .vault-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .75rem;
+  }
+  .vault-err {
+    min-height: 1.2em;
+    margin-top: .65rem;
+    font-size: .85rem;
+    color: #ff7a7a;
+  }
+  #vault-open { display: none; }
+  #vault.is-unlocked #vault-gate { display: none; }
+  #vault.is-unlocked #vault-open { display: block; }
+  .vault-links {
+    list-style: none;
+    display: grid;
+    gap: .65rem;
+    margin-top: 1rem;
+  }
+  .vault-links a {
+    display: block;
+    padding: .9rem 1rem;
+    border-radius: .65rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .vault-links a:hover { border-color: rgba(232,232,237,.28); }
+  .vault-links strong { display: block; margin-bottom: .2rem; font-size: .95rem; }
+  .vault-links span { color: var(--muted); font-size: .82rem; }
+  .vault-keybox {
+    font-family: var(--mono);
+    font-size: .85rem;
+    letter-spacing: .02em;
+    color: #9effc0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: .65rem;
+    padding: .85rem 1rem;
+    word-break: break-all;
+    margin: .75rem 0;
+    min-height: 2.6rem;
+  }
+  .vault-history {
+    margin-top: .85rem;
+    font-family: var(--mono);
+    font-size: .75rem;
+    color: var(--muted);
+    max-height: 8rem;
+    overflow: auto;
+  }
+  .vault-history div,
+  .vault-hist-row {
+    padding: .35rem 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    word-break: break-all;
+  }
+  .vault-hist-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    justify-content: space-between;
+  }
+  .vault-hist-row code {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    flex: 1;
+    min-width: 0;
+  }
+  .vault-hist-del {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: .4rem;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .vault-hist-del:hover {
+    color: #ff8a8a;
+    border-color: rgba(255,138,138,.4);
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="nav-bar">
+      <div class="wrap">
+        <nav>
+          <a class="brand" href="/">
+            <div class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 3l3 18" stroke="#e8e8ed" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M17 3l-3 18" stroke="#8b8b9a" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M6 9h12" stroke="#ffffff33" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="brand-name">Chopsticks HQ</div>
+              <small>Independent software lab</small>
+            </div>
+          </a>
+          <div class="nav-links">
+            <a class="nav-link" href="#projects">Projects</a>
+            <a class="nav-link" href="#vault">Vault</a>
+            <a class="nav-link" href="#about">About</a>
+            <a class="nav-link" href="/guides/">Guides</a>
+          </div>
+          <div class="nav-right">
+            <a class="btn btn-outline btn-sm" href="/fathom/">Fathom</a>
+            <a class="btn btn-outline btn-sm" href="/fathom-pro/">Fathom Pro</a>
+            <a class="btn btn-primary btn-sm" href="/rnitro/">rNitro</a>
+          </div>
+        </nav>
+      </div>
+    </div>
+
+    <header class="hero">
+      <div class="wrap">
+        <div class="pill"><span class="pill-dot"></span> chopstickshq.com · free · local-first</div>
+        <h1>Sma<span class="easter-l" id="easter-l" title="" role="button" tabindex="0" aria-label="Hidden letter">l</span>l lab.<br><span class="dim">Sharp tools.</span></h1>
+        <p class="hero-lead">
+          Free tools and games we ship ourselves —
+          <strong>rNitro</strong> (menu bar monitor),
+          <strong>Fathom Air</strong> (battery drain),
+          <strong>Fathom Pro</strong> (battery + weather + AI),
+          <strong>Doomlike-FPS™</strong>,
+          <strong>Minecraft Portfolio</strong>.
+          No accounts. No telemetry. No subscription.
+        </p>
+        <p class="hero-meta">open source · GitHub releases · tools + games</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/rnitro/">Download rNitro</a>
+          <a class="btn btn-outline" href="/fathom/">Get Fathom Air</a>
+          <a class="btn btn-outline" href="/fathom-pro/">Fathom Pro</a>
+          <a class="btn btn-outline" href="#projects">All projects</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Chopsticks suite strip -->
+    <section id="suite" aria-label="Chopsticks suite">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Suite</div>
+            <h2>Five products. One lab.</h2>
+            <p>Local only · no telemetry · free to use.</p>
+          </div>
+        </div>
+        <div class="suite-grid">
+          <a class="suite-card" href="/rnitro/">
+            <span class="suite-tag">macOS tool</span>
+            <strong>rNitro</strong>
+            <span class="suite-desc">Menu bar system monitor — CPU, temp, battery, GPU, RAM.</span>
+          </a>
+          <a class="suite-card" href="/fathom/">
+            <span class="suite-tag">macOS tool</span>
+            <strong>Fathom Air</strong>
+            <span class="suite-desc">Free battery drain attribution — why your % dropped.</span>
+          </a>
+          <a class="suite-card" href="/fathom-pro/">
+            <span class="suite-tag">macOS tool</span>
+            <strong>Fathom Pro</strong>
+            <span class="suite-desc">Fathom + weather + multi-provider AI chat. Unlock via HQ scavenger hunt.</span>
+          </a>
+          <a class="suite-card" href="/doomlike-fps/">
+            <span class="suite-tag">Browser game</span>
+            <strong>Doomlike-FPS™</strong>
+            <span class="suite-desc">Lightweight raycast FPS in the browser.</span>
+          </a>
+          <a class="suite-card" href="/minecraft/">
+            <span class="suite-tag">Portfolio</span>
+            <strong>Minecraft</strong>
+            <span class="suite-desc">Server development portfolio &amp; live status.</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="projects">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Catalog</div>
+            <h2>Projects</h2>
+            <p>Live products under the Chopsticks HQ roof.</p>
+          </div>
+        </div>
+
+        <div class="project-tabs" role="tablist" aria-label="Project categories">
+          <button type="button" class="project-tab is-active" data-filter="all" role="tab" aria-selected="true">All</button>
+          <button type="button" class="project-tab" data-filter="tools" role="tab" aria-selected="false">Tools</button>
+          <button type="button" class="project-tab" data-filter="games" role="tab" aria-selected="false">Games</button>
+        </div>
+
+        <div class="projects" id="projects-list">
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Live</span>
+                <span class="tag">macOS</span>
+                <span class="tag">Linux</span>
+                <span class="tag">Windows</span>
+              </div>
+              <h3><em>r</em>Nitro</h3>
+              <p>
+                Free menu bar system monitor — CPU, temperature, battery, GPU, RAM.
+                Stable, Beta, and Experimental channels. No account required.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/rnitro/">Open rNitro</a>
+                <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos/rNitro" rel="noopener">GitHub</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>rNitro</span>
+                  <span class="pulse">● live</span>
+                </div>
+                <div class="panel">
+                  <div class="row"><span>CPU</span><span>18%</span></div>
+                  <div class="row hot"><span>Temp</span><span>62°C</span></div>
+                  <div class="row"><span>Battery</span><span>87%</span></div>
+                  <div class="row"><span>RAM</span><span>11.2 GB</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Live</span>
+                <span class="tag">macOS</span>
+                <span class="tag">Menu bar</span>
+                <span class="tag">Local only</span>
+              </div>
+              <h3>Fathom Air</h3>
+              <p>
+                Free local-only macOS battery app — menu bar % + time remaining, original-style popover
+                (optional denser Newer layout), customizable dashboard, package watts, and “why drain?”.
+                No accounts, no telemetry. Want weather + AI? That’s <strong>Fathom Pro</strong>.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/fathom/">Open Fathom Air</a>
+                <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos/Fathom" rel="noopener">GitHub</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>Fathom Air</span>
+                  <span class="pulse">87% 2h 15m</span>
+                </div>
+                <div class="panel">
+                  <div class="row hot"><span>Package</span><span>8.2 W</span></div>
+                  <div class="row"><span>Source</span><span>Battery</span></div>
+                  <div class="row"><span>Top energy</span><span>Safari</span></div>
+                  <div class="row"><span>Why drain?</span><span>Last hour</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Live</span>
+                <span class="tag">macOS</span>
+                <span class="tag">Weather</span>
+                <span class="tag">AI chat</span>
+              </div>
+              <h3>Fathom Pro</h3>
+              <p>
+                Everything in Fathom — accurate battery %, package watts, process energy, charge controls —
+                plus <strong>local weather</strong> and <strong>multi-provider AI chat</strong>
+                (OpenRouter, Gemini, OpenAI, Anthropic) with keys you own.
+                Unlock via a <strong>hidden code</strong> planted somewhere on this site (scavenger hunt).
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/fathom-pro/">Open Fathom Pro</a>
+                <a class="btn btn-outline btn-sm" href="/fathom-pro/?tab=unlock">How to unlock</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>Fathom+</span>
+                  <span class="pulse">64% · AI</span>
+                </div>
+                <div class="panel">
+                  <div class="row hot"><span>Battery</span><span>SMC gauge</span></div>
+                  <div class="row"><span>Weather</span><span>Local</span></div>
+                  <div class="row"><span>Chat</span><span>OpenRouter</span></div>
+                  <div class="row"><span>Unlock</span><span>Doomlike 5</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="games">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag">v0.9 Beta</span>
+                <span class="tag">Browser</span>
+                <span class="tag">FPS</span>
+              </div>
+              <h3>Doomlike-FPS™</h3>
+              <p>
+                Lightweight browser raycast FPS —
+                <strong>v0.9-Beta-Pre-Release</strong>.
+                Survive monster waves. Click to lock mouse, WASD to move. No install.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/doomlike-fps/">Open project</a>
+                <a class="btn btn-outline btn-sm" href="/doomlike-fps/play.html">Play now</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>DOOMLIKE</span>
+                  <span class="pulse">● v0.9</span>
+                </div>
+                <div class="panel">
+                  <div class="row hot"><span>Channel</span><span>Beta Pre</span></div>
+                  <div class="row"><span>HP</span><span>100</span></div>
+                  <div class="row"><span>Ammo</span><span>32</span></div>
+                  <div class="row"><span>Wave</span><span>1</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="games">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag">v1.0</span>
+                <span class="tag">macOS</span>
+                <span class="tag">FPS</span>
+              </div>
+              <h3>ARENA</h3>
+              <p>
+                Native macOS FPS — a new <strong>5&nbsp;×&nbsp;5&nbsp;km world
+                generated every run</strong>, raw OpenGL with HDR lighting and
+                software ray tracing, six guns, a buy menu and escalating
+                waves. 2.2&nbsp;MB, no engine, no telemetry.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/arena-fps/">Open project</a>
+                <a class="btn btn-outline btn-sm" href="/arena-fps/ARENA-macOS.zip">Download</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>ARENA</span>
+                  <span class="pulse">● RT ON</span>
+                </div>
+                <div class="panel">
+                  <div class="row hot"><span>Wave</span><span>4</span></div>
+                  <div class="row"><span>HP / Armor</span><span>76 / 50</span></div>
+                  <div class="row"><span>Weapon</span><span>SHOTGUN</span></div>
+                  <div class="row"><span>Credits</span><span>450</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Portfolio</span>
+                <span class="tag">Minecraft</span>
+                <span class="tag">Skript</span>
+              </div>
+              <h3>Minecraft Portfolio</h3>
+              <p>
+                <strong>imik2261_</strong> — server developer / builder portfolio.
+                Skript, WorldEdit, WorldGuard. Servers owned and staffed across gens networks.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/minecraft/">Open portfolio</a>
+                <a class="btn btn-outline btn-sm" href="https://namemc.com/profile/imik2261_" rel="noopener" target="_blank">NameMC</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>MC</span>
+                  <span class="pulse">● port</span>
+                </div>
+                <div class="panel">
+                  <div class="row hot"><span>Player</span><span>imik2261_</span></div>
+                  <div class="row"><span>Role</span><span>Dev/Build</span></div>
+                  <div class="row"><span>Stack</span><span>Skript</span></div>
+                  <div class="row"><span>Path</span><span>/minecraft/</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="vault">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Private</div>
+            <h2>Vault</h2>
+            <p>Password-locked area on the homepage.</p>
+          </div>
+        </div>
+
+        <div id="vault-gate" class="vault-box">
+          <form id="vault-form" autocomplete="off">
+            <label for="vault-pw">Password</label>
+            <input id="vault-pw" type="password" name="password" spellcheck="false" autocomplete="current-password" placeholder="Enter password" />
+            <div class="vault-actions">
+              <button type="submit" class="btn btn-primary btn-sm">Unlock</button>
+              <button type="button" class="btn btn-outline btn-sm" id="vault-show">Show</button>
+            </div>
+            <div class="vault-err" id="vault-err" aria-live="polite"></div>
+          </form>
+        </div>
+
+        <div id="vault-open" class="vault-box" style="max-width:36rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px">
+            <div class="kicker" style="margin:0">Unlocked · Fathom Pro keys</div>
+            <button type="button" class="btn btn-outline btn-sm" id="vault-lock">Lock</button>
+          </div>
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">
+            Generate random unlock keys (<code class="mono" style="color:var(--text)">oi-pl-…</code>) for Fathom Pro.
+            Each click makes a new random key. Paste into the app to activate, then use <strong style="color:var(--text)">AI → API Config</strong> for your provider keys.
+          </p>
+          <div class="vault-keybox" id="vault-key-out">Click Generate for a new key</div>
+          <div class="vault-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="vault-gen">Generate key</button>
+            <button type="button" class="btn btn-outline btn-sm" id="vault-copy">Copy</button>
+            <button type="button" class="btn btn-outline btn-sm" id="vault-clear" title="Remove all generated keys from this browser">Clear keys</button>
+          </div>
+          <div class="vault-history" id="vault-history" aria-label="Recent keys"></div>
+          <p style="color:var(--muted);font-size:.75rem;margin-top:.85rem;font-family:var(--mono)">
+            Random each time · not an OpenAI/OpenRouter cloud key · Clear wipes this browser only
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="kicker">Studio</div>
+            <h2>About the HQ</h2>
+            <p>What this domain is for.</p>
+          </div>
+        </div>
+        <div class="about">
+          <div class="about-card">
+            <div class="n">01</div>
+            <h4>Master domain</h4>
+            <p>
+              <strong style="color:var(--text)">www.chopstickshq.com</strong> is the hub.
+              Product sites live under
+              <a href="/rnitro/">/rnitro</a>,
+              <a href="/fathom/">/fathom</a>,
+              <a href="/fathom-pro/">/fathom-pro</a>, and more.
+            </p>
+          </div>
+          <div class="about-card">
+            <div class="n">02</div>
+            <h4>Own the stack</h4>
+            <p>
+              Projects stay lightweight: native apps, clear installers,
+              and a website you can actually read.
+            </p>
+          </div>
+          <div class="about-card">
+            <div class="n">03</div>
+            <h4>Privacy-first</h4>
+            <p>
+              No accounts, no tracking pixels for product installs.
+              rNitro, Fathom, and Fathom Pro do not phone home.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="disclaimer">
+      <strong>Disclaimer:</strong> All ChopsticksHQ software (rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™, and related tools)
+      is provided <strong>“AS IS”</strong> with no warranties. Use at your own risk.
+      <a href="/disclaimer/">Full software disclaimer</a>
+    </p>
+    <footer class="wrap">
+      <div>© ChopsticksHQ 2026</div>
+      <div class="foot-links">
+        <a href="/rnitro/">rNitro</a>
+        <a href="/fathom/">Fathom Air</a>
+        <a href="/fathom-pro/">Fathom Pro</a>
+        <a href="/doomlike-fps/">Doomlike-FPS™</a>
+        <a href="/minecraft/">Minecraft</a>
+        <a href="/guides/">Guides</a>
+        <a href="/disclaimer/">Disclaimer</a>
+        <a href="#vault">Vault</a>
+        <a href="https://github.com/ilikemacos/rNitro" rel="noopener">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <div class="easter-toast" id="easter-toast" role="status" aria-live="polite">
+    <div style="color:var(--text);font-weight:600;margin-bottom:2px">Fathom Pro unlock</div>
+    <div>You found the first L after the A in “Small”. New random key each click:</div>
+    <code id="easter-code">Click L again if empty…</code>
+    <div class="easter-actions">
+      <button type="button" class="btn btn-primary btn-sm" id="easter-copy">Copy code</button>
+      <button type="button" class="btn btn-outline btn-sm" id="easter-dismiss">Dismiss</button>
+    </div>
+  </div>
+
+  <script>
+    var _y=document.getElementById('y'); if(_y) _y.textContent=new Date().getFullYear();
+
+    // Shared unlock key mint (random every time) — must match FathomProLicense |web
+    window.FathomProMintKey = (function () {
+      var SECRET = 'chopstickshq.fathompro.unlock.v1';
+      function fnv1a32(str) {
+        var h = 0x811c9dc5;
+        for (var i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 0x01000193) >>> 0;
+        }
+        return h >>> 0;
+      }
+      function randomHex(len) {
+        var out = '';
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+          var bytes = new Uint8Array(Math.ceil(len / 2) + 8);
+          crypto.getRandomValues(bytes);
+          for (var i = 0; i < bytes.length && out.length < len; i++) {
+            out += bytes[i].toString(16).padStart(2, '0');
+          }
+          return out.slice(0, len);
+        }
+        // entropy mix if crypto missing
+        while (out.length < len) {
+          out += Math.floor(Math.random() * 0x100000000).toString(16).padStart(8, '0');
+          out += Date.now().toString(16);
+        }
+        return out.slice(0, len);
+      }
+      return function mintKey(notEqualTo) {
+        var key = '';
+        for (var t = 0; t < 16; t++) {
+          var n1 = randomHex(12);
+          var n2 = randomHex(12);
+          var body = n1 + n2;
+          var sig = fnv1a32(SECRET + '|' + body + '|web').toString(16).padStart(8, '0');
+          key = 'oi-pl-' + n1 + '-' + n2 + '-' + sig;
+          if (key !== notEqualTo) break;
+        }
+        return key;
+      };
+    })();
+
+    (function () {
+      var lastCode = '';
+      var el = document.getElementById('easter-l');
+      var toast = document.getElementById('easter-toast');
+      var codeEl = document.getElementById('easter-code');
+      var copyBtn = document.getElementById('easter-copy');
+      var dismissBtn = document.getElementById('easter-dismiss');
+      function showEaster() {
+        if (!toast || !codeEl) return;
+        lastCode = window.FathomProMintKey(lastCode);
+        codeEl.textContent = lastCode;
+        toast.classList.add('is-show');
+        try { localStorage.setItem('fathomProLastKey', lastCode); } catch (e) {}
+      }
+      function hideEaster() {
+        if (toast) toast.classList.remove('is-show');
+      }
+      if (el) {
+        el.addEventListener('click', function (e) {
+          e.preventDefault();
+          showEaster();
+        });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            showEaster();
+          }
+        });
+      }
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          var CODE = lastCode || (codeEl && codeEl.textContent) || '';
+          if (!/^oi-pl-/i.test(CODE)) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(CODE).then(function () {
+              copyBtn.textContent = 'Copied';
+              setTimeout(function () { copyBtn.textContent = 'Copy code'; }, 1400);
+            });
+          }
+        });
+      }
+      if (dismissBtn) dismissBtn.addEventListener('click', hideEaster);
+    })();
+
+    (function () {
+      var PASS = 'sk-or0415';
+      var KEY = 'chopstickshq.vault.unlocked.v1';
+      var section = document.getElementById('vault');
+      var form = document.getElementById('vault-form');
+      var input = document.getElementById('vault-pw');
+      var err = document.getElementById('vault-err');
+      var showBtn = document.getElementById('vault-show');
+      var lockBtn = document.getElementById('vault-lock');
+      if (!section || !form || !input) return;
+
+      function setUnlocked(on) {
+        if (on) {
+          section.classList.add('is-unlocked');
+          try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
+        } else {
+          section.classList.remove('is-unlocked');
+          try { sessionStorage.removeItem(KEY); } catch (e) {}
+        }
+      }
+
+      try {
+        if (sessionStorage.getItem(KEY) === '1') setUnlocked(true);
+      } catch (e) {}
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        err.textContent = '';
+        var pw = (input.value || '').trim();
+        if (pw === PASS) {
+          setUnlocked(true);
+          input.value = '';
+          // Fresh random key every unlock
+          if (typeof window.__vaultMintFresh === 'function') window.__vaultMintFresh();
+        } else {
+          err.textContent = 'Wrong password.';
+        }
+      });
+
+      if (showBtn) {
+        showBtn.addEventListener('click', function () {
+          var show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          showBtn.textContent = show ? 'Hide' : 'Show';
+        });
+      }
+      if (lockBtn) {
+        lockBtn.addEventListener('click', function () {
+          setUnlocked(false);
+          input.focus();
+        });
+      }
+
+      // Fathom Pro unlock — uses window.FathomProMintKey (random every click)
+      var HIST_KEY = 'chopstickshq.vault.keys.v1';
+      var out = document.getElementById('vault-key-out');
+      var genBtn = document.getElementById('vault-gen');
+      var copyBtn = document.getElementById('vault-copy');
+      var clearBtn = document.getElementById('vault-clear');
+      var histEl = document.getElementById('vault-history');
+
+      function loadHist() {
+        try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch (e) { return []; }
+      }
+      function saveHist(arr) {
+        try { localStorage.setItem(HIST_KEY, JSON.stringify(arr.slice(0, 20))); } catch (e) {}
+      }
+      function clearAllKeys() {
+        try { localStorage.removeItem(HIST_KEY); } catch (e) {}
+        try { localStorage.removeItem('fathomProLastKey'); } catch (e) {}
+        try { localStorage.removeItem('fathomPlusLastKey'); } catch (e) {}
+        if (out) out.textContent = 'Keys cleared · click Generate for a new key';
+        renderHist();
+      }
+      function renderHist() {
+        if (!histEl) return;
+        var arr = loadHist();
+        if (!arr.length) {
+          histEl.innerHTML = '';
+          return;
+        }
+        histEl.innerHTML = arr.map(function (k, i) {
+          return '<div class="vault-hist-row" data-i="' + i + '"><code>' + k + '</code> <button type="button" class="vault-hist-del" data-i="' + i + '" title="Remove this key">×</button></div>';
+        }).join('');
+      }
+      function mintUnique() {
+        var prev = (out && out.textContent) || '';
+        var hist = loadHist().filter(function (k) {
+          return String(k).toLowerCase().indexOf('c0ffee') < 0;
+        });
+        var key = '';
+        for (var i = 0; i < 16; i++) {
+          key = window.FathomProMintKey(prev);
+          if (hist.indexOf(key) < 0 && key !== prev && key.toLowerCase().indexOf('c0ffee') < 0) break;
+          prev = key;
+        }
+        return key;
+      }
+      function mintFresh() {
+        if (!out || typeof window.FathomProMintKey !== 'function') return;
+        var key = mintUnique();
+        out.textContent = key;
+        out.style.opacity = '0.4';
+        requestAnimationFrame(function () { out.style.opacity = '1'; });
+        try { localStorage.setItem('fathomProLastKey', key); } catch (e) {}
+        var arr = loadHist().filter(function (k) {
+          return k !== key && String(k).toLowerCase().indexOf('c0ffee') < 0;
+        });
+        arr.unshift(key);
+        saveHist(arr);
+        renderHist();
+      }
+      window.__vaultMintFresh = mintFresh;
+      // Drop old fixed keys from history
+      saveHist(loadHist().filter(function (k) {
+        return String(k).toLowerCase().indexOf('c0ffee') < 0;
+      }));
+      try {
+        var lk = localStorage.getItem('fathomProLastKey') || '';
+        if (lk.toLowerCase().indexOf('c0ffee') >= 0) localStorage.removeItem('fathomProLastKey');
+      } catch (e) {}
+      if (histEl) {
+        histEl.addEventListener('click', function (e) {
+          var t = e.target;
+          if (!t || !t.classList || !t.classList.contains('vault-hist-del')) return;
+          var idx = parseInt(t.getAttribute('data-i'), 10);
+          if (isNaN(idx)) return;
+          var arr = loadHist();
+          var removed = arr.splice(idx, 1)[0];
+          saveHist(arr);
+          try {
+            if (localStorage.getItem('fathomProLastKey') === removed) {
+              localStorage.removeItem('fathomProLastKey');
+            }
+          } catch (err) {}
+          if (out && out.textContent === removed) {
+            out.textContent = arr[0] || 'Click Generate for a new key';
+          }
+          renderHist();
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          if (!loadHist().length && !(out && /^oi-pl-/i.test((out.textContent || '').trim()))) {
+            clearAllKeys();
+            clearBtn.textContent = 'Cleared';
+            setTimeout(function () { clearBtn.textContent = 'Clear keys'; }, 1200);
+            return;
+          }
+          if (!window.confirm('Clear all generated Fathom Pro keys from this browser?')) return;
+          clearAllKeys();
+          clearBtn.textContent = 'Cleared';
+          setTimeout(function () { clearBtn.textContent = 'Clear keys'; }, 1400);
+        });
+      }
+      if (genBtn && out) {
+        genBtn.addEventListener('click', function () {
+          mintFresh();
+        });
+      }
+      // Already unlocked from session → show a brand-new random key
+      if (section.classList.contains('is-unlocked')) mintFresh();
+      if (copyBtn && out) {
+        copyBtn.addEventListener('click', function () {
+          var key = (out.textContent || '').trim();
+          if (!/^oi-pl-/i.test(key) || key.toLowerCase().indexOf('c0ffee') >= 0) {
+            mintFresh();
+            key = (out.textContent || '').trim();
+          }
+          if (!/^oi-pl-/i.test(key)) {
+            copyBtn.textContent = 'Generate first';
+            setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1200);
+            return;
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(key).then(function () {
+              copyBtn.textContent = 'Copied';
+              setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1400);
+            });
+          }
+        });
+      }
+      renderHist();
+    })();
+
+    (function () {
+      var list = document.getElementById('projects-list');
+      var tabs = document.querySelectorAll('.project-tab');
+      if (!list || !tabs.length) return;
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var f = tab.getAttribute('data-filter') || 'all';
+          tabs.forEach(function (t) {
+            var on = t === tab;
+            t.classList.toggle('is-active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+          list.classList.remove('is-filter-tools', 'is-filter-games');
+          if (f === 'tools') list.classList.add('is-filter-tools');
+          if (f === 'games') list.classList.add('is-filter-games');
+        });
+      });
+      try {
+        var q = new URLSearchParams(location.search).get('cat');
+        if (!q && location.hash.indexOf('games') >= 0) q = 'games';
+        if (q === 'tools' || q === 'games') {
+          var btn = document.querySelector('.project-tab[data-filter="' + q + '"]');
+          if (btn) btn.click();
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

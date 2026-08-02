@@ -1,0 +1,23 @@
+{
+  "latest": "v0.1.0-Pro-Beta",
+  "plus": "v0.1.0-Pro-Beta",
+  "releases": {
+    "plus": {
+      "label": "v0.1.0 Pro Beta",
+      "short": "0.1.0",
+      "sh": "install-fathom-pro.sh",
+      "zip": "FathomPro-v0.1.0-Pro-Beta.zip"
+    }
+  },
+  "hashes": {
+    "plus_sh": "5163c69263e51c678dadc73bb34b2181fa0ae8996f18071f6fc5600f518b4f65",
+    "plus_zip": "f8b8779e1709557dd8182143913c342b93d04186a5dc33a57ae56e8c94e334fb"
+  },
+  "notes": "Fathom Pro: all Fathom features + local weather + AI chat. Unlock via hidden code scavenger hunt on chopstickshq.com.",
+  "unlock": {
+    "prefix": "oi-pl",
+    "method": "site-scavenger",
+    "hint": "Look closer around the HQ — quiet and offline corners.",
+    "requirement": "Find the hidden unlock code on chopstickshq.com"
+  }
+}
