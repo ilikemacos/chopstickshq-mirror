@@ -2059,7 +2059,9 @@
        copy helpers rather than editing them, so this survives sync-versions.py
        regenerating those blocks. Only aggregate integers leave the page. */
     (function () {
-      var API = '/api/dl-count';
+      var API = location.hostname.endsWith('github.io')
+        ? 'https://chopstickshq-mirror.pages.dev/api/dl-count'
+        : '/api/dl-count';
       var el = document.getElementById('dl-stat');
       var num = document.getElementById('dl-num');
       var brk = document.getElementById('dl-breakdown');

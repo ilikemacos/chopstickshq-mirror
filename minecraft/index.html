@@ -1024,7 +1024,9 @@
   (function () {
     var HOST = "catboigens.minefort.com";
     // Same-origin on chopstickshq.com (and minecraft.chopstickshq.com → /minecraft/)
-    var API = "/api/mc-status?host=" + encodeURIComponent(HOST);
+    var API = (location.hostname.endsWith("github.io")
+        ? "https://chopstickshq-mirror.pages.dev/api/mc-status"
+        : "/api/mc-status") + "?host=" + encodeURIComponent(HOST);
     var el = function (id) { return document.getElementById(id); };
 
     function esc(s) {
