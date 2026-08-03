@@ -2059,9 +2059,22 @@
        copy helpers rather than editing them, so this survives sync-versions.py
        regenerating those blocks. Only aggregate integers leave the page. */
     (function () {
-      var API = location.hostname.endsWith('github.io')
-        ? 'https://chopstickshq-mirror.pages.dev/api/dl-count'
-        : '/api/dl-count';
+      var HOSTS = ['', 'https://chopstickshq-mirror.pages.dev', 'https://chopstickshq.com'];
+      var API = '/api/dl-count';
+
+      function firstLive(path, opts) {
+        var i = 0;
+        function attempt() {
+          if (i >= HOSTS.length) return Promise.resolve(null);
+          var base = HOSTS[i++];
+          if (base === '' && location.hostname.endsWith('github.io')) return attempt();
+          return fetch(base + path, opts)
+            .then(function (r) { return r.json(); })
+            .then(function (d) { return (d && d.mode === 'live') ? d : attempt(); })
+            .catch(function () { return attempt(); });
+        }
+        return attempt();
+      }
       var el = document.getElementById('dl-stat');
       var num = document.getElementById('dl-num');
       var brk = document.getElementById('dl-breakdown');
@@ -2088,23 +2101,19 @@
       }
 
       function load() {
-        fetch(API, { cache: 'no-store' })
-          .then(function (r) { return r.json(); })
+        firstLive(API, { cache: 'no-store' })
           .then(function (d) { render(d, false); })
-          .catch(function () { /* counter is never allowed to break the page */ });
+          .catch(function () {});
       }
 
       function bump(kind) {
         try {
-          fetch(API, {
+          firstLive(API, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ kind: kind }),
-            keepalive: true          // survives the navigation a download starts
-          })
-            .then(function (r) { return r.json(); })
-            .then(function (d) { render(d, true); })
-            .catch(function () {});
+            keepalive: true
+          }).then(function (d) { render(d, true); }).catch(function () {});
         } catch (e) {}
       }
 

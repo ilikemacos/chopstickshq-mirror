@@ -297,10 +297,22 @@
 </div>
 <script>
 (function () {
-  var API = (location.hostname.endsWith('github.io')
-      ? 'https://chopstickshq-mirror.pages.dev/api/dl-count'
-      : '/api/dl-count') + '?product=arena';
-  var POST = API.split('?')[0];
+  var HOSTS = ['', 'https://chopstickshq-mirror.pages.dev', 'https://chopstickshq.com'];
+  var API = '/api/dl-count?product=arena';
+
+  function firstLive(path, opts) {
+    var i = 0;
+    function attempt() {
+      if (i >= HOSTS.length) return Promise.resolve(null);
+      var base = HOSTS[i++];
+      if (base === '' && location.hostname.endsWith('github.io')) return attempt();
+      return fetch(base + path, opts)
+        .then(function (r) { return r.json(); })
+        .then(function (d) { return (d && d.mode === 'live') ? d : attempt(); })
+        .catch(function () { return attempt(); });
+    }
+    return attempt();
+  }
   var el = document.getElementById('arena-stat');
   var num = document.getElementById('arena-num');
   var brk = document.getElementById('arena-breakdown');
@@ -320,16 +332,16 @@
 
   function bump(kind) {
     try {
-      fetch(POST + '?product=arena', {
+      firstLive(API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ kind: kind, product: 'arena' }),
         keepalive: true
-      }).then(function (r) { return r.json(); }).then(render).catch(function () {});
+      }).then(render).catch(function () {});
     } catch (e) {}
   }
 
-  fetch(API).then(function (r) { return r.json(); }).then(render).catch(function () {});
+  firstLive(API, { cache: 'no-store' }).then(render).catch(function () {});
 
   var dl = document.getElementById('arena-dl');
   if (dl) dl.addEventListener('click', function () { bump('zip'); });
