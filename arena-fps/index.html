@@ -152,9 +152,10 @@
   </header>
 
   <div class="cta">
-    <a class="btn btn-primary" href="/arena-fps/ARENA-macOS.zip" download>Download for macOS</a>
+    <a class="btn btn-primary" id="arena-dl" href="/arena-fps/ARENA-macOS.zip" download>Download for macOS</a>
   </div>
   <p class="req">macOS 11+ · Apple Silicon · 2.2 MB · no accounts, no telemetry, no network</p>
+  <p class="req" id="arena-stat" hidden><strong id="arena-num" style="color:var(--gold)"></strong> downloads<span id="arena-breakdown"></span></p>
 
   <div class="note">
     <strong>First launch:</strong> the app is self-signed, so macOS will warn
@@ -183,7 +184,7 @@
     <code style="font-family:var(--mono);font-size:.8rem">~/Applications</code>,
     clears quarantine and launches:
   </p>
-  <div class="card" style="font-family:var(--mono);font-size:.78rem;overflow-x:auto;white-space:nowrap;user-select:all">
+  <div class="card" id="arena-cmd" style="font-family:var(--mono);font-size:.78rem;overflow-x:auto;white-space:nowrap;user-select:all">
     curl -fsSL https://chopstickshq.com/arena-fps/install.sh | bash
   </div>
   <p class="req" style="margin-top:.5rem">
@@ -294,5 +295,48 @@
     <a href="/">← chopstickshq.com</a> · free forever · no accounts · no telemetry
   </footer>
 </div>
+<script>
+(function () {
+  var API = (location.hostname.endsWith('github.io')
+      ? 'https://chopstickshq-mirror.pages.dev/api/dl-count'
+      : '/api/dl-count') + '?product=arena';
+  var POST = API.split('?')[0];
+  var el = document.getElementById('arena-stat');
+  var num = document.getElementById('arena-num');
+  var brk = document.getElementById('arena-breakdown');
+  if (!el || !num) return;
+
+  function render(d) {
+    if (!d || d.mode !== 'live' || typeof d.total !== 'number' || d.total < 1) return;
+    el.hidden = false;
+    num.textContent = d.total.toLocaleString();
+    var k = d.kinds || {};
+    var parts = [];
+    if (k.zip) parts.push(k.zip.toLocaleString() + ' zip');
+    if (k.sh) parts.push(k.sh.toLocaleString() + ' installer');
+    if (k.copy) parts.push(k.copy.toLocaleString() + ' copied');
+    brk.textContent = parts.length ? ' · ' + parts.join(' · ') : '';
+  }
+
+  function bump(kind) {
+    try {
+      fetch(POST + '?product=arena', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: kind, product: 'arena' }),
+        keepalive: true
+      }).then(function (r) { return r.json(); }).then(render).catch(function () {});
+    } catch (e) {}
+  }
+
+  fetch(API).then(function (r) { return r.json(); }).then(render).catch(function () {});
+
+  var dl = document.getElementById('arena-dl');
+  if (dl) dl.addEventListener('click', function () { bump('zip'); });
+
+  var cmd = document.getElementById('arena-cmd');
+  if (cmd) cmd.addEventListener('copy', function () { bump('copy'); });
+})();
+</script>
 </body>
 </html>

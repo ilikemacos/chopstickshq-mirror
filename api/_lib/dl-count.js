@@ -25,19 +25,29 @@ const FILE_KINDS = ["zip", "pkg", "dmg", "sh"];   // real file downloads
 const ALL_KINDS = [...FILE_KINDS, "copy"];        // + terminal-command copies
 const TIMEOUT_MS = 5000;
 
-const URL_BASE = process.env.SUPABASE_URL;
-const ANON = process.env.SUPABASE_ANON_KEY;
+const PRODUCTS = {
+  rnitro: { prefix: "", kinds: ALL_KINDS },
+  arena: { prefix: "arena_", kinds: ["zip", "sh", "copy"] },
+};
+
+const productOf = (name) =>
+  PRODUCTS[String(name || "rnitro").toLowerCase()] || PRODUCTS.rnitro;
+
+const rowKey = (product, kind) => product.prefix + kind;
+
+const env = (name) =>
+  (typeof process !== "undefined" && process.env && process.env[name]) || "";
 
 async function sb(path, init = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${URL_BASE}/rest/v1/${path}`, {
+    const res = await fetch(`${env("SUPABASE_URL")}/rest/v1/${path}`, {
       ...init,
       signal: ctrl.signal,
       headers: {
-        apikey: ANON,
-        authorization: `Bearer ${ANON}`,
+        apikey: env("SUPABASE_ANON_KEY"),
+        authorization: `Bearer ${env("SUPABASE_ANON_KEY")}`,
         "content-type": "application/json",
         ...(init.headers || {}),
       },
@@ -55,12 +65,15 @@ async function sb(path, init = {}) {
   }
 }
 
-function shape(rows) {
+function shape(rows, product) {
   const kinds = {};
-  for (const k of ALL_KINDS) kinds[k] = 0;
+  for (const k of product.kinds) kinds[k] = 0;
   if (Array.isArray(rows)) {
     for (const r of rows) {
-      if (r && ALL_KINDS.includes(r.kind)) kinds[r.kind] = Number(r.count) || 0;
+      if (!r) continue;
+      for (const k of product.kinds) {
+        if (r.kind === rowKey(product, k)) kinds[k] = Number(r.count) || 0;
+      }
     }
   }
   return {
@@ -68,8 +81,8 @@ function shape(rows) {
     // Copying the terminal one-liner IS an install — it curls the app down and
     // installs it — so it counts toward the headline number alongside the
     // direct file downloads.
-    total: ALL_KINDS.reduce((n, k) => n + kinds[k], 0),
-    copies: kinds.copy,
+    total: product.kinds.reduce((n, k) => n + (kinds[k] || 0), 0),
+    copies: kinds.copy || 0,
   };
 }
 
@@ -89,21 +102,29 @@ const json = (body, status = 200) => ({
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return json({ ok: true });
-  if (!URL_BASE || !ANON) return json({ ...empty(), mode: "unconfigured" });
+  if (!env("SUPABASE_URL") || !env("SUPABASE_ANON_KEY"))
+    return json({ ...empty(), mode: "unconfigured" });
+
+  const q = event.queryStringParameters || {};
 
   try {
+    let product = productOf(q.product);
+
     if (event.httpMethod === "POST") {
       let kind = "zip";
+      let body = {};
       try {
-        kind = String(JSON.parse(event.body || "{}").kind || "zip").toLowerCase();
+        body = JSON.parse(event.body || "{}");
       } catch {
-        /* keep default */
+        body = {};
       }
-      if (!ALL_KINDS.includes(kind)) kind = "zip";
+      if (body.product) product = productOf(body.product);
+      kind = String(body.kind || "zip").toLowerCase();
+      if (!product.kinds.includes(kind)) kind = "zip";
 
       const bump = await sb("rpc/bump_download", {
         method: "POST",
-        body: JSON.stringify({ p_kind: kind }),
+        body: JSON.stringify({ p_kind: rowKey(product, kind) }),
       });
       if (!bump.ok) {
         return json({ ...empty(), mode: "setup-needed", detail: bump.body }, 200);
@@ -114,7 +135,7 @@ exports.handler = async (event) => {
     if (!read.ok) {
       return json({ ...empty(), mode: "setup-needed", detail: read.body }, 200);
     }
-    return json({ ...shape(read.body), mode: "live" });
+    return json({ ...shape(read.body, product), mode: "live" });
   } catch (err) {
     // a counter must never break the page
     return json({ ...empty(), mode: "error", error: String(err.message || err) }, 200);
