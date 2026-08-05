@@ -16,7 +16,24 @@
 | **`air.chopstickshq.com`** | **→ /fathom/** (alias) — add CNAME → Netlify |
 | **`fathompro.chopstickshq.com`** | **→ /fathom-pro/** — add CNAME → Netlify |
 | **`fathom-pro.chopstickshq.com`** | **→ /fathom-pro/** — add CNAME → Netlify |
-| `getrnitro.netlify.app` | Legacy product CDN |
+| `getrnitro.netlify.app` | Legacy product CDN (redirect → `/rnitro/`) |
+| **`chopstickshq-mirror.pages.dev`** | **Cloudflare Pages backup** (repo `ilikemacos/chopstickshq-mirror`) |
+| **`ilikemacos.github.io/chopstickshq-mirror/`** | **GitHub Pages backup** |
+| **`ilikemacos.github.io/chopstickshq-backup/`** | **GitHub Pages second backup** |
+
+## Backup hosts (Cloudflare + GitHub)
+
+Primary production: **Netlify** → `chopstickshq.com`.
+
+| Host | Provider | Source repo |
+|------|----------|-------------|
+| https://chopstickshq-mirror.pages.dev | Cloudflare Pages | [ilikemacos/chopstickshq-mirror](https://github.com/ilikemacos/chopstickshq-mirror) |
+| https://ilikemacos.github.io/chopstickshq-mirror/ | GitHub Pages | same |
+| https://ilikemacos.github.io/chopstickshq-backup/ | GitHub Pages | [ilikemacos/chopstickshq-backup](https://github.com/ilikemacos/chopstickshq-backup) |
+
+Sync: push the static site tree to both GitHub repos (`main`). Cloudflare Pages rebuilds from the mirror repo when connected. GitHub Pages builds from `main` `/`.
+
+Note: GitHub project Pages use a subpath (`/chopstickshq-mirror/`), so root-absolute links (`/js/…`) prefer **Cloudflare** or **Netlify** as full-fidelity backups.
 
 ## DNS records (Cloudflare / registrar)
 
