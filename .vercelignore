@@ -1,0 +1,10 @@
+# Netlify-specific config and functions (ported to api/ for Vercel)
+netlify/
+netlify.toml
+.netlify/
+_redirects
+rnitro/_redirects
+
+# build scripts and sources that must never be publicly served
+*.py
+build-rnitro-mirror.py

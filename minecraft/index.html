@@ -3,15 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>imik2261_ | Minecraft Server Developer</title>
-<meta name="description" content="Professional Minecraft server development with custom systems, clean mechanics, and scalable performance. 9+ servers. Skript, WorldEdit, WorldGuard.">
+<title>imik2261_ | Minecraft Server Developer · Chopsticks HQ</title>
+<meta name="description" content="imik2261_ — Minecraft server developer (Skript gens, economy, WorldEdit/WorldGuard, ops). Owner of CatboiGens. Also ships rNitro, Fathom Air &amp; Pro at Chopsticks HQ.">
 <link rel="canonical" href="https://chopstickshq.com/minecraft/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="imik2261_ | Minecraft Server Developer">
-<meta property="og:description" content="Professional Minecraft server development with custom systems, clean mechanics, and scalable performance.">
+<meta property="og:description" content="Server developer &amp; ops — CatboiGens, Skript gens, networks. Software: rNitro &amp; Fathom under Chopsticks HQ.">
 <meta property="og:url" content="https://chopstickshq.com/minecraft/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="imik2261_ | Minecraft Server Developer">
+<meta name="twitter:description" content="Minecraft server development portfolio — gens, Skript, ops. CatboiGens owner. Chopsticks HQ tools.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -314,6 +315,90 @@
     color: hsl(var(--foreground));
     margin-top: .1rem;
   }
+
+  .about-facts {
+    padding: 1.25rem 1.3rem;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--card-border));
+    background: hsl(var(--card)/.9);
+    box-shadow: var(--shadow-card);
+  }
+  .about-facts h3 {
+    font-size: .95rem;
+    margin-bottom: 1rem;
+  }
+  .fact-row {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: .5rem .85rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid hsl(var(--border)/.7);
+    font-size: .875rem;
+  }
+  .fact-row:last-of-type { border-bottom: none; }
+  .fact-row dt {
+    color: hsl(var(--muted-foreground));
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding-top: .15rem;
+  }
+  .fact-row dd { color: hsl(var(--foreground)); line-height: 1.45; }
+  .fact-row a {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .chip-row {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    margin-top: 1rem;
+  }
+  .chip-row a, .chip-row span {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    padding: .3rem .65rem;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+  }
+  .chip-row a:hover { color: hsl(var(--foreground)); border-color: hsl(0 0% 100% / .2); }
+  .about-list {
+    list-style: none;
+    margin: 1rem 0 0;
+    display: grid; gap: .45rem;
+  }
+  .about-list li {
+    position: relative;
+    padding-left: 1rem;
+    color: hsl(var(--muted-foreground));
+    font-size: .95rem;
+    line-height: 1.55;
+  }
+  .about-list li::before {
+    content: "·";
+    position: absolute; left: 0;
+    color: hsl(var(--foreground));
+    font-weight: 700;
+  }
+  .about-list strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .soft-stack {
+    display: grid; gap: 1rem;
+  }
+  @media (min-width: 800px) {
+    .soft-stack { grid-template-columns: 1fr 1fr; }
+  }
+  .soft-stack .card-glass { padding: 1.35rem 1.4rem; }
+  .soft-stack h3 { font-size: 1.05rem; margin-bottom: .5rem; }
+  .soft-stack h3 span { color: hsl(var(--muted-foreground)); font-weight: 500; font-size: .85rem; }
+  .soft-stack p {
+    color: hsl(var(--muted-foreground));
+    font-size: .9rem;
+    line-height: 1.6;
+    margin-bottom: .85rem;
+  }
+  .soft-stack .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .soft-stack .tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .9rem; }
 
   /* featured project */
   .featured {
@@ -690,19 +775,23 @@
     <header class="hero">
       <div class="container hero-grid">
         <div>
-          <div class="pill"><span class="pill-dot"></span> Available for projects</div>
+          <div class="pill"><span class="pill-dot"></span> Available for projects · Chopsticks HQ</div>
           <h1>Minecraft Server Developer <span class="dim">&amp; Game Designer</span></h1>
           <p class="hero-lead">
+            I’m <strong style="color:hsl(var(--foreground));font-weight:600">imik2261_</strong> —
             I design and develop polished Minecraft servers with custom systems, clean mechanics,
             and scalable performance — Skript, WorldEdit, WorldGuard, and full gens ops.
+            I also ship free Mac tools under <a href="/" style="text-decoration:underline;text-underline-offset:2px">Chopsticks HQ</a>.
           </p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#servers">View Projects</a>
+            <a class="btn btn-outline" href="#about">About me</a>
             <a class="btn btn-outline" href="#contact">Get Support</a>
           </div>
           <div class="metrics">
             <div><strong>9+</strong><span>Servers</span></div>
             <div><strong>Owner</strong><span>Networks</span></div>
+            <div><strong>Skript</strong><span>Gens / systems</span></div>
             <div><strong>Admin</strong><span>Live ops</span></div>
           </div>
         </div>
@@ -723,27 +812,104 @@
 
     <section class="sec" id="about">
       <div class="container">
-        <div class="kicker">About</div>
-        <h2>Minecraft server development</h2>
-        <p class="sec-lead">Clean, high-quality experiences that are fun to play and technically solid.</p>
+        <div class="kicker">About me</div>
+        <h2>Who I am</h2>
+        <p class="sec-lead">Server developer, builder, and operator — plus independent software under Chopsticks HQ.</p>
         <div class="two-col">
           <div class="prose">
             <p>
-              Over the past few years, I've worked as a developer and operator on gens and network
-              servers across Minefort and related platforms. I'm <strong>imik2261_</strong> — focused on
-              <strong>Skript</strong>, builds, and reliable day-to-day ops.
+              I’m <strong>imik2261_</strong>, a Minecraft server developer and game designer.
+              Over the past few years I’ve worked as a developer and operator on gens and network
+              servers across <strong>Minefort</strong> and related platforms — from greenfield setup to
+              day-to-day staff and player ops.
             </p>
             <p>
-              I focus on creating clean, high-quality experiences that are both fun to play and
-              technically solid, from custom items and progression to region protection and staff
-              systems. I also ship software — including <strong>rNitro</strong> for macOS.
+              I care about servers that feel intentional: custom items and gens that players understand,
+              progression that doesn’t fall apart after a weekend, and regions/staff tools that actually
+              hold up when the lobby fills. My main craft stack is <strong>Skript</strong>,
+              <strong>WorldEdit</strong>, and <strong>WorldGuard</strong>, with full plugin configuration
+              so features work together instead of fighting each other.
             </p>
+            <p>
+              Outside Minecraft I run <strong>Chopsticks HQ</strong> — free, local-first software.
+              That includes <strong>rNitro</strong> (macOS menu bar system monitor),
+              <strong>Fathom Air</strong> (battery drain), and <strong>Fathom Pro</strong>
+              (battery + weather + AI with your own keys). Same philosophy as my servers:
+              clear installs, no accounts, no product telemetry.
+            </p>
+            <p>
+              <strong>How I like to work:</strong> ship readable systems, label Beta when it’s Beta,
+              and keep ops boring (in a good way). Available for commissions, collaborations,
+              gens systems, builds, and staff/ops help.
+            </p>
+            <ul class="about-list">
+              <li><strong>Skript development</strong> — gens, ranks, items, menus, maintainable scripts</li>
+              <li><strong>Economy &amp; progression</strong> — balance that players can learn and stick with</li>
+              <li><strong>Builds &amp; protection</strong> — spawns, islands, WorldGuard regions</li>
+              <li><strong>Ownership &amp; ops</strong> — staff, rules, live support, multi-server direction</li>
+              <li><strong>Software</strong> — Swift/macOS tools at Chopsticks HQ</li>
+            </ul>
+            <div class="chip-row">
+              <span>Skript</span>
+              <span>WorldEdit</span>
+              <span>WorldGuard</span>
+              <span>Minefort</span>
+              <span>Gens</span>
+              <span>Paper / Spigot stacks</span>
+              <a href="/rnitro/">rNitro</a>
+              <a href="/fathom/">Fathom Air</a>
+              <a href="/fathom-pro/">Fathom Pro</a>
+              <a href="/about/">HQ About</a>
+            </div>
           </div>
-          <div class="checks">
-            <div class="check"><i>✓</i> Fully custom systems and mechanics</div>
-            <div class="check"><i>✓</i> Clean progression design</div>
-            <div class="check"><i>✓</i> Economy &amp; rank systems</div>
-            <div class="check"><i>✓</i> Ownership, admin, and builder experience</div>
+          <div>
+            <div class="about-facts">
+              <h3>Quick facts</h3>
+              <dl>
+                <div class="fact-row">
+                  <dt>Minecraft</dt>
+                  <dd>imik2261_</dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Roles</dt>
+                  <dd>Developer · Owner · Admin · Builder · Ops</dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Highlight</dt>
+                  <dd>CatboiGens — designed, developed, maintained end-to-end</dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Address</dt>
+                  <dd><code style="font-family:var(--font-mono);font-size:.8em">catboigens.minefort.com</code></dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Software</dt>
+                  <dd>rNitro · Fathom Air · Fathom Pro · Chopsticks HQ</dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Status</dt>
+                  <dd>Available for projects</dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Email</dt>
+                  <dd><a href="mailto:mzx+mc@lam.ws">mzx+mc@lam.ws</a></dd>
+                </div>
+                <div class="fact-row">
+                  <dt>Links</dt>
+                  <dd>
+                    <a href="https://namemc.com/profile/imik2261_" target="_blank" rel="noopener">NameMC</a>
+                    · <a href="/">Chopsticks HQ</a>
+                    · <a href="/guides/minecraft-gens-skript-checklist.html">Gens checklist</a>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div class="checks" style="margin-top:1rem">
+              <div class="check"><i>✓</i> Fully custom systems and mechanics</div>
+              <div class="check"><i>✓</i> Clean progression &amp; economy design</div>
+              <div class="check"><i>✓</i> Ownership, admin, builder, and mod experience</div>
+              <div class="check"><i>✓</i> Production ops + open software shipping</div>
+            </div>
           </div>
         </div>
       </div>
@@ -970,27 +1136,53 @@
       <div class="container">
         <div class="kicker">Software</div>
         <h2>Beyond Minecraft</h2>
-        <p class="sec-lead">Tools I ship outside of servers.</p>
-        <div class="card-glass soft">
-          <div class="top">
-            <h3>rNitro <span>· macOS</span></h3>
-            <span class="badge owner">Software</span>
+        <p class="sec-lead">Free local-first tools I ship under Chopsticks HQ — same craft mindset as server work: clear systems, no accounts.</p>
+        <div class="soft-stack">
+          <div class="card-glass soft">
+            <div class="top">
+              <h3>rNitro <span>· macOS</span></h3>
+              <span class="badge owner">Software</span>
+            </div>
+            <p>
+              Free open-source menu bar system monitor — CPU, temperature, battery, GPU, RAM, and network.
+              No account, no telemetry. Apple Silicon &amp; Intel · macOS 14+.
+            </p>
+            <div class="tags">
+              <span class="badge">Swift / SwiftUI</span>
+              <span class="badge">Menu bar</span>
+              <span class="badge">Open source</span>
+            </div>
+            <div class="actions">
+              <a class="btn btn-primary btn-sm" href="/rnitro/">Download rNitro</a>
+              <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos/rNitro" target="_blank" rel="noopener">GitHub</a>
+            </div>
           </div>
-          <p>
-            Free open-source menu bar system monitor for Mac — CPU, temperature, battery, GPU, RAM, and network.
-            No account, no telemetry. Apple Silicon &amp; Intel · macOS 14+.
-          </p>
-          <div class="tags">
-            <span class="badge">Swift / SwiftUI</span>
-            <span class="badge">Menu bar</span>
-            <span class="badge">Open source</span>
-            <span class="badge">Chopsticks HQ</span>
-          </div>
-          <div class="actions">
-            <a class="btn btn-primary" href="https://chopstickshq.com/rnitro/">Download rNitro</a>
-            <a class="btn btn-outline" href="https://github.com/ilikemacos/rNitro" target="_blank" rel="noopener">GitHub</a>
+          <div class="card-glass soft">
+            <div class="top">
+              <h3>Fathom Air <span>· macOS</span></h3>
+              <span class="badge owner">Software</span>
+            </div>
+            <p>
+              Free local-only battery app — menu bar %, time remaining, package watts, top energy apps, and “why drain?”
+              No telemetry. Upgrade path to Pro for weather + AI.
+            </p>
+            <div class="tags">
+              <span class="badge">Battery</span>
+              <span class="badge">Local only</span>
+              <span class="badge">Menu bar</span>
+            </div>
+            <div class="actions">
+              <a class="btn btn-primary btn-sm" href="/fathom/">Get Fathom Air</a>
+              <a class="btn btn-outline btn-sm" href="/fathom-pro/">Fathom Pro</a>
+            </div>
           </div>
         </div>
+        <p style="margin-top:1.25rem;color:hsl(var(--muted-foreground));font-size:.9rem;line-height:1.6">
+          <strong style="color:hsl(var(--foreground))">Fathom Pro</strong> adds local weather and multi-provider AI chat (your keys in Keychain),
+          with unlock keys from the HQ vault. Lab hub:
+          <a href="/" style="text-decoration:underline;text-underline-offset:2px">chopstickshq.com</a>
+          · <a href="/about/" style="text-decoration:underline;text-underline-offset:2px">About the HQ</a>.
+        </p>
       </div>
     </section>
 
@@ -998,10 +1190,18 @@
       <div class="container">
         <div class="card-glass cta">
           <h2>Have a project in mind?</h2>
-          <p>Let's discuss how I can help — commissions, collaborations, gens systems, builds, or ops.</p>
+          <p>
+            Commissions, collaborations, gens systems, builds, or ops —
+            or just feedback on CatboiGens / Chopsticks tools.
+            Email me at
+            <a href="mailto:mzx+mc@lam.ws" style="color:hsl(var(--foreground));text-decoration:underline;text-underline-offset:2px">mzx+mc@lam.ws</a>.
+          </p>
           <div class="row">
-            <a class="btn btn-primary" href="https://namemc.com/profile/imik2261_" target="_blank" rel="noopener">Reach out on NameMC</a>
-            <a class="btn btn-outline" href="https://chopstickshq.com/">Chopsticks HQ</a>
+            <a class="btn btn-primary" href="mailto:mzx+mc@lam.ws">Email me</a>
+            <a class="btn btn-outline" href="https://namemc.com/profile/imik2261_" target="_blank" rel="noopener">NameMC · imik2261_</a>
+            <a class="btn btn-outline" href="/">Chopsticks HQ</a>
+            <a class="btn btn-outline" href="/about/">About HQ</a>
+            <a class="btn btn-outline" href="#about">About me</a>
           </div>
         </div>
       </div>
@@ -1009,12 +1209,16 @@
 
     <footer class="foot">
       <div class="container foot-inner">
-        <div>© imik2261_ · Minecraft Server Developer</div>
+        <div>© imik2261_ · Minecraft Server Developer · Chopsticks HQ</div>
         <div class="foot-links">
-          <a href="https://chopstickshq.com/">Chopsticks HQ</a>
-          <a href="https://chopstickshq.com/rnitro/">rNitro</a>
-          <a href="https://chopstickshq.com/guides/">Guides</a>
-          <a href="https://chopstickshq.com/guides/minecraft-gens-skript-checklist.html">Gens checklist</a>
+          <a href="/">Chopsticks HQ</a>
+          <a href="/about/">About</a>
+          <a href="/rnitro/">rNitro</a>
+          <a href="/fathom/">Fathom Air</a>
+          <a href="/fathom-pro/">Fathom Pro</a>
+          <a href="/guides/">Guides</a>
+          <a href="/guides/minecraft-gens-skript-checklist.html">Gens checklist</a>
+          <a href="mailto:mzx+mc@lam.ws">Email</a>
           <a href="https://namemc.com/profile/imik2261_" target="_blank" rel="noopener">NameMC</a>
         </div>
       </div>

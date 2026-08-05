@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>About · Chopsticks HQ</title>
+<meta name="description" content="About Chopsticks HQ — free local-first macOS tools and games. rNitro, Fathom Air, Fathom Pro, Doomlike-FPS, Minecraft portfolio. No accounts, no telemetry.">
+<link rel="canonical" href="https://chopstickshq.com/about/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Chopsticks HQ">
+<meta property="og:title" content="About Chopsticks HQ">
+<meta property="og:description" content="Small lab. Sharp tools. Free local-first software under chopstickshq.com.">
+<meta property="og:url" content="https://chopstickshq.com/about/">
+<meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="About · Chopsticks HQ">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,0.72); --nav-border: rgba(255,255,255,0.08);
+    --glow-spot: rgba(255,255,255,.06); --grid-line: rgba(255,255,255,0.02);
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius: .75rem;
+    --shadow: 0 4px 24px -4px rgba(0,0,0,.45);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,0.85); --nav-border: rgba(0,0,0,0.08);
+    --glow-spot: rgba(0,0,0,.04); --grid-line: rgba(0,0,0,0.04);
+    --shadow: 0 4px 20px -6px rgba(0,0,0,.12);
+  }
+  .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 2.1rem; padding: 0 0.75rem; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+    cursor: pointer; font-size: 0.75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .nav-logo { font-family: var(--display); letter-spacing: -0.03em; font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+  code, .mono { font-family: var(--mono); }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.05), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
+  }
+  .app { position: relative; z-index: 1; }
+  .wrap { width: min(48rem, calc(100% - 2rem)); margin-inline: auto; }
+  .wrap-wide { width: min(68rem, calc(100% - 2rem)); margin-inline: auto; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 20px; min-height: 4rem;
+    background: var(--nav-bg);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--nav-border);
+  }
+  .nav-logo { font-size: 0.95rem; white-space: nowrap; }
+  .nav-logo span { color: var(--muted); font-weight: 400; }
+  .nav-mid { display: none; gap: 0.35rem; align-items: center; }
+  @media (min-width: 720px) { .nav-mid { display: flex; } }
+  .nav-link {
+    font-size: 0.8125rem; font-weight: 500; color: var(--muted);
+    padding: 0.45rem 0.9rem; border-radius: 999px; border: 1px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 2.35rem; padding: 0 1.05rem; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600; border: 1px solid transparent;
+    cursor: pointer; font-family: inherit; transition: .15s;
+  }
+  .btn-sm { height: 2.1rem; padding: 0 0.9rem; font-size: 0.8rem; }
+  .btn-primary { background: var(--soft); color: #0a0a0c; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+  main { padding: 6.5rem 0 3rem; }
+  .kicker {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.65rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 4.5vw, 2.75rem); font-weight: 700;
+    letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 0.85rem;
+  }
+  h1 .dim { color: var(--muted); font-weight: 500; }
+  .lead {
+    color: var(--muted); font-size: 1.08rem; line-height: 1.65;
+    max-width: 40rem; margin-bottom: 2rem;
+  }
+  .lead strong { color: var(--text); }
+
+  .sec { margin-bottom: 2.25rem; }
+  .sec h2 {
+    font-size: 1.25rem; letter-spacing: -0.02em; margin-bottom: 0.65rem;
+  }
+  .sec p, .sec li {
+    color: var(--muted); font-size: 0.95rem; line-height: 1.65;
+  }
+  .sec p + p { margin-top: 0.75rem; }
+  .sec strong { color: var(--text); font-weight: 600; }
+  .sec a {
+    color: var(--text); text-decoration: underline; text-underline-offset: 2px;
+  }
+
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: rgba(18,18,22,0.92); padding: 1.25rem 1.35rem;
+    box-shadow: var(--shadow); margin-bottom: 1rem;
+  }
+  .card h3 { font-size: 1rem; margin-bottom: 0.45rem; }
+  .card p { color: var(--muted); font-size: 0.9rem; line-height: 1.55; }
+  .card p + p { margin-top: 0.55rem; }
+
+  .grid {
+    display: grid; gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .pill-row {
+    display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0 0;
+  }
+  .pill-row a, .pill-row span {
+    font-family: var(--mono); font-size: 0.72rem;
+    padding: 0.35rem 0.7rem; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .pill-row a:hover { color: var(--text); border-color: rgba(255,255,255,0.2); text-decoration: none; }
+
+  ul.clean { list-style: none; margin-top: 0.75rem; }
+  ul.clean li {
+    position: relative; padding: 0.4rem 0 0.4rem 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  ul.clean li:last-child { border-bottom: none; }
+  ul.clean li::before {
+    content: '→'; position: absolute; left: 0; color: var(--text);
+    font-family: var(--mono); font-size: 0.75rem; top: 0.55rem;
+  }
+
+  .actions {
+    display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1.5rem;
+  }
+
+  footer {
+    padding: 2rem 0 3rem; border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; justify-content: space-between;
+    font-size: 0.85rem; color: var(--muted);
+  }
+  footer a:hover { color: var(--text); }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <nav>
+      <a class="nav-logo" href="/">Chopsticks HQ <span>· About</span></a>
+      <div class="nav-mid">
+        <a class="nav-link" href="/">HQ</a>
+        <a class="nav-link" href="/#projects">Projects</a>
+        <a class="nav-link" href="/rnitro/">rNitro</a>
+        <a class="nav-link" href="/fathom/">Fathom Air</a>
+        <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
+        <a class="nav-link" href="/disclaimer/">Disclaimer</a>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme"><span data-theme-label>Light</span></button>
+        <a class="btn btn-primary btn-sm" href="/rnitro/">Get rNitro</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="wrap">
+        <div class="kicker">Studio · chopstickshq.com</div>
+        <h1>About Chopsticks HQ<br><span class="dim">Small lab. Sharp tools.</span></h1>
+        <p class="lead">
+          <strong>Chopsticks HQ</strong> is an independent software lab for free, local-first tools and
+          lightweight games. We ship under one domain so installs, docs, and releases stay easy to find —
+          without accounts, subscriptions, or product telemetry.
+        </p>
+      </div>
+
+      <div class="wrap sec">
+        <div class="card">
+          <h3>Why the HQ exists</h3>
+          <p>
+            Most “system tools” either lock features behind a paywall or bury installs in store pages
+            and accounts. We wanted a quieter path: open downloads, readable installers, and apps that
+            treat the Mac as the source of truth — not a login server.
+          </p>
+          <p>
+            <strong>chopstickshq.com</strong> is the master domain. Each product gets a stable path
+            (for example <a href="/rnitro/">/rnitro/</a> and <a href="/fathom/">/fathom/</a>) and
+            optional product subdomains when DNS is set. GitHub holds source and release mirrors under
+            <a href="https://github.com/ilikemacos" rel="noopener">ilikemacos</a>.
+          </p>
+        </div>
+      </div>
+
+      <div class="wrap-wide sec">
+        <div class="kicker">Principles</div>
+        <h2 style="margin-bottom:1rem">How we work</h2>
+        <div class="grid grid-3">
+          <div class="card">
+            <h3>Local-first</h3>
+            <p>
+              Sensors, battery math, and menus run on your machine. Optional network features
+              (weather, AI chat, update checks) are explicit and limited.
+            </p>
+          </div>
+          <div class="card">
+            <h3>No product accounts</h3>
+            <p>
+              You do not create a Chopsticks login to use rNitro or Fathom.
+              Keys for third-party AI stay in Keychain on your Mac.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Readable shipping</h3>
+            <p>
+              App ZIPs, PKG/DMG when useful, and shell installers you can open before running.
+              Channels (Stable / Beta / Experimental) are labeled on the product pages.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Free core</h3>
+            <p>
+              Menu bar monitoring and free-tier battery tools stay free.
+              “Pro” unlocks are optional experiments — not a SaaS meter for basic stats.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Honest marketing</h3>
+            <p>
+              We do not claim affiliation with Apple, iStat Menus, Stats, or game studios.
+              Third-party marks belong to their owners.
+            </p>
+          </div>
+          <div class="card">
+            <h3>AS IS software</h3>
+            <p>
+              Everything is provided without warranty. Back up important data before installing.
+              See the full <a href="/disclaimer/">software disclaimer</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="wrap sec">
+        <div class="kicker">Catalog</div>
+        <h2>What ships under the HQ</h2>
+        <p style="margin-bottom:1rem">
+          The homepage suite strip and project catalog stay current. Snapshot of the main lines:
+        </p>
+        <ul class="clean">
+          <li>
+            <strong><a href="/rnitro/">rNitro</a></strong> —
+            Free open-source menu bar system monitor for macOS (and related CLI / Linux / Windows builds).
+            CPU, temperature, battery, GPU, RAM, network. Optional AI with your provider keys.
+          </li>
+          <li>
+            <strong><a href="/fathom/">Fathom Air</a></strong> —
+            Free local-only macOS battery app: menu bar %, time remaining, package watts, top energy apps,
+            and “why drain?” without accounts.
+          </li>
+          <li>
+            <strong><a href="/fathom-pro/">Fathom Pro</a></strong> —
+            Fathom Air core plus local weather and multi-provider AI chat.
+            Unlock with a vault / scavenger <code class="mono" style="color:var(--text)">oi-pl</code> key;
+            cloud API keys are yours alone.
+          </li>
+          <li>
+            <strong><a href="/doomlike-fps/">Doomlike-FPS™</a></strong> —
+            Browser FPS experiment (Chopsticks trademark; not affiliated with id Software).
+          </li>
+          <li>
+            <strong><a href="/minecraft/">Minecraft portfolio</a></strong> —
+            Server development portfolio and live telemetry for imik2261_.
+          </li>
+          <li>
+            <strong><a href="/guides/">Guides</a></strong> &amp;
+            <strong><a href="/#vault">Vault</a></strong> —
+            Install notes, battery guides, and the password-gated Fathom Pro key generator.
+          </li>
+        </ul>
+        <div class="pill-row">
+          <a href="/rnitro/">/rnitro/</a>
+          <a href="/fathom/">/fathom/</a>
+          <a href="/fathom-pro/">/fathom-pro/</a>
+          <a href="/doomlike-fps/">/doomlike-fps/</a>
+          <a href="/minecraft/">/minecraft/</a>
+          <a href="/guides/">/guides/</a>
+          <a href="/disclaimer/">/disclaimer/</a>
+        </div>
+      </div>
+
+      <div class="wrap sec">
+        <div class="card">
+          <h3>Channels &amp; quality bar</h3>
+          <p>
+            <strong>Stable / Final</strong> is meant for daily use.
+            <strong>Beta</strong> adds features that still need feedback.
+            <strong>Experimental</strong> can change or break without ceremony — use when you want the newest toys.
+          </p>
+          <p>
+            Gatekeeper may require right-click → Open on first launch for ad-hoc signed builds.
+            Prefer official paths under chopstickshq.com or the matching GitHub release assets.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Privacy in one paragraph</h3>
+          <p>
+            Product installs do not create Chopsticks accounts. Core monitor and battery apps do not
+            phone home usage analytics. Update checks may read a public
+            <code class="mono" style="color:var(--text)">version.json</code> on this site.
+            AI features only contact the provider you configure. Vault keys are generated in the browser
+            for unlock tokens — they are not free OpenAI or OpenRouter cloud keys.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Contact &amp; source</h3>
+          <p>
+            Issues, builds, and release notes live on GitHub. Start with
+            <a href="https://github.com/ilikemacos/rNitro" rel="noopener">ilikemacos/rNitro</a>
+            and
+            <a href="https://github.com/ilikemacos" rel="noopener">other repos under ilikemacos</a>.
+            Product pages list the current ZIP and installer for each line.
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="/#projects">See all projects</a>
+            <a class="btn btn-outline" href="/rnitro/">Download rNitro</a>
+            <a class="btn btn-outline" href="/fathom/">Fathom Air</a>
+            <a class="btn btn-outline" href="/disclaimer/">Software disclaimer</a>
+            <a class="btn btn-outline" href="https://github.com/ilikemacos" rel="noopener">GitHub</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="wrap-wide">
+      <div>© ChopsticksHQ 2026</div>
+      <div class="foot-links">
+        <a href="/">HQ</a>
+        <a href="/rnitro/">rNitro</a>
+        <a href="/fathom/">Fathom Air</a>
+        <a href="/fathom-pro/">Fathom Pro</a>
+        <a href="/disclaimer/">Disclaimer</a>
+      </div>
+    </footer>
+  </div>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

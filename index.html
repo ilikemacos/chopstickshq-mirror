@@ -1,20 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chopsticks HQ — Tools &amp; Projects</title>
-<meta name="description" content="Chopsticks HQ — free tools and games. rNitro free macOS menu bar system monitor, Fathom battery app, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
-<meta name="keywords" content="Chopsticks HQ, rNitro, free macOS menu bar monitor, Apple Silicon system monitor, MacBook battery, Fathom battery, Fathom Pro, Doomlike-FPS, open source mac tools, no telemetry">
+<title>Chopsticks HQ — An Independent Software Lab</title>
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+<meta name="description" content="Chopsticks HQ — an independent software lab. Free local-first tools: rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta name="keywords" content="Chopsticks HQ, independent software lab, rNitro, free macOS menu bar monitor, Fathom battery, Fathom Pro, Doomlike-FPS, open source mac tools, no telemetry">
 <link rel="canonical" href="https://www.chopstickshq.com/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Chopsticks HQ — Tools &amp; Projects">
-<meta property="og:description" content="Free tools from Chopsticks HQ — rNitro, Fathom, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta property="og:title" content="Chopsticks HQ — An Independent Software Lab">
+<meta property="og:description" content="An independent software lab. Free local-first tools — rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
 <meta property="og:url" content="https://www.chopstickshq.com/">
 <meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Chopsticks HQ">
-<meta name="twitter:description" content="Free tools from Chopsticks HQ — rNitro, Fathom, Fathom Pro, and Doomlike-FPS™.">
+<meta name="twitter:title" content="Chopsticks HQ — An Independent Software Lab">
+<meta name="twitter:description" content="An independent software lab. Free local-first tools — rNitro, Fathom, Fathom Pro, and Doomlike-FPS™.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -40,7 +43,7 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
+  :root, html[data-theme="dark"] {
     /* 101mogged-inspired tokens (aligned with rNitro / Fathom) */
     --bg:       #0a0a0c;
     --bg2:      #0e0e12;
@@ -50,12 +53,32 @@
     --soft:     #e8e8ed;
     --text:     #f2f2f5;
     --muted:    #8b8b9a;
+    --nav-bg:   rgba(10,10,12,0.72);
+    --nav-border: rgba(255,255,255,0.08);
+    --grid-line: rgba(255,255,255,0.02);
+    --glow-spot: rgba(255,255,255,.06);
     --mono:     'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
     --sans:     'Inter', 'Varela Round', system-ui, -apple-system, sans-serif;
     --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
     --radius:   .75rem;
     --glow:     0 0 60px -15px rgba(230,230,230,.18);
     --shadow:   0 4px 24px -4px rgba(0,0,0,.45);
+  }
+  html[data-theme="light"] {
+    --bg:       #f4f4f6;
+    --bg2:      #ebebef;
+    --card:     #ffffff;
+    --card2:    #f0f0f4;
+    --border:   #d8d8e0;
+    --soft:     #14141a;
+    --text:     #121218;
+    --muted:    #5c5c6a;
+    --nav-bg:   rgba(244,244,246,0.85);
+    --nav-border: rgba(0,0,0,0.08);
+    --grid-line: rgba(0,0,0,0.04);
+    --glow-spot: rgba(0,0,0,.04);
+    --glow:     0 0 50px -20px rgba(0,0,0,.08);
+    --shadow:   0 4px 20px -6px rgba(0,0,0,.12);
   }
 
   html { scroll-behavior: smooth; }
@@ -85,9 +108,9 @@
     z-index: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      radial-gradient(ellipse 90% 50% at 50% -10%, var(--glow-spot), transparent 55%),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size: auto, 64px 64px, 64px 64px;
     mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
   }
@@ -103,11 +126,48 @@
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 100;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    background: rgba(10,10,12,0.72);
+    border-bottom: 1px solid var(--nav-border);
+    background: var(--nav-bg);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
   }
+  .theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 2.1rem; min-width: 2.1rem; padding: 0 0.75rem;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: transparent; color: var(--text); cursor: pointer;
+    font-size: 0.75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+  .install-steps {
+    display: grid; gap: 1rem;
+    grid-template-columns: 1fr;
+    margin-top: 1.25rem;
+  }
+  @media (min-width: 720px) {
+    .install-steps { grid-template-columns: repeat(3, 1fr); }
+  }
+  .install-step {
+    padding: 1.2rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+  .install-step .n {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: .5rem;
+  }
+  .install-step h3 { font-size: 1rem; margin-bottom: .35rem; }
+  .install-step p { color: var(--muted); font-size: .875rem; line-height: 1.5; }
+  .install-links {
+    display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.15rem;
+  }
+  .latest-releases {
+    font-family: var(--mono); font-size: .75rem; color: var(--muted);
+    margin-top: .65rem; letter-spacing: .02em;
+  }
+  .latest-releases strong { color: var(--text); font-weight: 500; }
   nav {
     min-height: 4rem;
     display: flex;
@@ -563,6 +623,14 @@
   }
 
   /* About */
+  .about-lead {
+    color: var(--muted);
+    font-size: 1.02rem;
+    line-height: 1.65;
+    max-width: 48rem;
+    margin-bottom: 1.5rem;
+  }
+  .about-lead strong { color: var(--text); font-weight: 600; }
   .about {
     display: grid;
     gap: 1rem;
@@ -603,6 +671,58 @@
     color: var(--text);
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  .about-wide {
+    margin-top: 1rem;
+    padding: 1.35rem 1.4rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.92);
+  }
+  .about-wide h4 {
+    font-size: 1rem;
+    margin-bottom: .55rem;
+  }
+  .about-wide p {
+    color: var(--muted);
+    font-size: .9rem;
+    line-height: 1.6;
+    margin-bottom: .75rem;
+  }
+  .about-wide p:last-child { margin-bottom: 0; }
+  .about-wide strong { color: var(--text); }
+  .about-wide a {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .about-list {
+    display: grid;
+    gap: .45rem;
+    margin: .75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .about-list li {
+    color: var(--muted);
+    font-size: .875rem;
+    line-height: 1.5;
+    padding-left: 1rem;
+    position: relative;
+  }
+  .about-list li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .about-list strong { color: var(--text); font-weight: 600; }
+  .about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    margin-top: 1.25rem;
   }
 
   /* Footer */
@@ -779,10 +899,13 @@
           <div class="nav-links">
             <a class="nav-link" href="#projects">Projects</a>
             <a class="nav-link" href="#vault">Vault</a>
-            <a class="nav-link" href="#about">About</a>
+            <a class="nav-link" href="/about/">About</a>
             <a class="nav-link" href="/guides/">Guides</a>
           </div>
           <div class="nav-right">
+            <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+              <span data-theme-label>Light</span>
+            </button>
             <a class="btn btn-outline btn-sm" href="/fathom/">Fathom</a>
             <a class="btn btn-outline btn-sm" href="/fathom-pro/">Fathom Pro</a>
             <a class="btn btn-primary btn-sm" href="/rnitro/">rNitro</a>
@@ -805,6 +928,9 @@
           No accounts. No telemetry. No subscription.
         </p>
         <p class="hero-meta">open source · GitHub releases · tools + games</p>
+        <p class="latest-releases" id="latest-releases" aria-live="polite">
+          Latest · <strong>rNitro</strong> v1.3.32 · <strong>Fathom Air</strong> v0.3.8 · <strong>Fathom Pro</strong> v0.1.6
+        </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="/rnitro/">Download rNitro</a>
           <a class="btn btn-outline" href="/fathom/">Get Fathom Air</a>
@@ -850,6 +976,40 @@
             <strong>Minecraft</strong>
             <span class="suite-desc">Server development portfolio &amp; live status.</span>
           </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" aria-label="How to install">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <div class="kicker">macOS</div>
+            <h2>Install in 3 steps</h2>
+            <p>Same path for rNitro and Fathom — App ZIP preferred.</p>
+          </div>
+        </div>
+        <div class="install-steps">
+          <article class="install-step">
+            <div class="n">01</div>
+            <h3>Download App ZIP</h3>
+            <p>Grab the current build from the product page. Files are served from this site (Netlify edge).</p>
+          </article>
+          <article class="install-step">
+            <div class="n">02</div>
+            <h3>Drag to Applications</h3>
+            <p>Unzip, then move the <code class="mono" style="color:var(--text);font-size:.8em">.app</code> into <code class="mono" style="color:var(--text);font-size:.8em">Applications</code> (or <code class="mono" style="color:var(--text);font-size:.8em">~/Applications</code>).</p>
+          </article>
+          <article class="install-step">
+            <div class="n">03</div>
+            <h3>Right-click → Open</h3>
+            <p>First launch may need Gatekeeper confirmation. Right-click the app → Open → Open. No App Store account required.</p>
+          </article>
+        </div>
+        <div class="install-links">
+          <a class="btn btn-primary btn-sm" href="/rnitro/#downloads">rNitro downloads</a>
+          <a class="btn btn-outline btn-sm" href="/fathom/#downloads">Fathom Air</a>
+          <a class="btn btn-outline btn-sm" href="/fathom-pro/#downloads">Fathom Pro</a>
         </div>
       </div>
     </section>
@@ -1132,36 +1292,111 @@
           <div>
             <div class="kicker">Studio</div>
             <h2>About the HQ</h2>
-            <p>What this domain is for.</p>
+            <p>Who we are, what we ship, and how we treat your machine.</p>
           </div>
         </div>
+
+        <p class="about-lead">
+          <strong>Chopsticks HQ</strong> is a small independent lab for free, local-first software —
+          macOS tools, browser games, and experiment pages. We publish under
+          <strong>chopstickshq.com</strong> so every product has a clear home path, honest installers,
+          and docs you can read without an account wall.
+        </p>
+
         <div class="about">
           <div class="about-card">
             <div class="n">01</div>
             <h4>Master domain</h4>
             <p>
-              <strong style="color:var(--text)">www.chopstickshq.com</strong> is the hub.
+              <strong style="color:var(--text)">chopstickshq.com</strong> is the hub.
               Product sites live under
               <a href="/rnitro/">/rnitro</a>,
               <a href="/fathom/">/fathom</a>,
-              <a href="/fathom-pro/">/fathom-pro</a>, and more.
+              <a href="/fathom-pro/">/fathom-pro</a>,
+              <a href="/doomlike-fps/">/doomlike-fps</a>,
+              <a href="/minecraft/">/minecraft</a>, and more.
             </p>
           </div>
           <div class="about-card">
             <div class="n">02</div>
             <h4>Own the stack</h4>
             <p>
-              Projects stay lightweight: native apps, clear installers,
-              and a website you can actually read.
+              Native apps where it matters (Swift on Mac), simple ZIP / <code class="mono" style="color:var(--text);font-size:.8em">curl</code> installers,
+              and static product pages — no heavy framework tax on the download site.
             </p>
           </div>
           <div class="about-card">
             <div class="n">03</div>
             <h4>Privacy-first</h4>
             <p>
-              No accounts, no tracking pixels for product installs.
-              rNitro, Fathom, and Fathom Pro do not phone home.
+              No product accounts. No telemetry from rNitro, Fathom Air, or Fathom Pro.
+              Optional AI uses <strong style="color:var(--text)">your</strong> provider keys and talks only to that provider.
             </p>
+          </div>
+          <div class="about-card">
+            <div class="n">04</div>
+            <h4>Free by default</h4>
+            <p>
+              Core tools ship free. Premium experiments (like Fathom Pro unlock keys) stay client-side
+              and optional — never a cloud subscription for basic sensors.
+            </p>
+          </div>
+          <div class="about-card">
+            <div class="n">05</div>
+            <h4>Ship in public</h4>
+            <p>
+              Releases land on this site and
+              <a href="https://github.com/ilikemacos" rel="noopener">GitHub · ilikemacos</a>
+              with versioned ZIPs, changelogs, and shell installers you can inspect.
+            </p>
+          </div>
+          <div class="about-card">
+            <div class="n">06</div>
+            <h4>Honest scope</h4>
+            <p>
+              We build small sharp tools — not a full productivity suite.
+              If something is Beta or Experimental, the page says so.
+            </p>
+          </div>
+        </div>
+
+        <div class="about-wide">
+          <h4>What we build</h4>
+          <p>
+            The HQ is the catalog for everything under the chopsticks brand. Tools focus on system
+            visibility and battery honesty on Apple Silicon. Games and portfolio pages stay lightweight
+            and self-hosted so they load fast and work offline once cached.
+          </p>
+          <ul class="about-list">
+            <li><strong>rNitro</strong> — free menu bar system monitor (CPU, temp, battery, GPU, RAM, network).</li>
+            <li><strong>Fathom Air</strong> — free local-only battery drain app for macOS.</li>
+            <li><strong>Fathom Pro</strong> — Air core plus weather and multi-provider AI (your keys).</li>
+            <li><strong>Doomlike-FPS™</strong> — browser FPS experiment.</li>
+            <li><strong>Minecraft portfolio</strong> — server work and live status for imik2261_.</li>
+            <li><strong>Guides &amp; vault</strong> — how-tos, install notes, and the Pro unlock vault.</li>
+          </ul>
+        </div>
+
+        <div class="about-wide">
+          <h4>How we treat your Mac</h4>
+          <p>
+            Sensor apps read system APIs (IOPS, IOKit, pmset, IOReport) on-device.
+            Installers prefer readable shell scripts or App ZIPs you unzip yourself.
+            We do not sell “cloud dashboard” accounts for these tools.
+            Full legal text lives on the
+            <a href="/disclaimer/">software disclaimer</a>
+            and product terms pages (for example
+            <a href="/rnitro/terms.html">rNitro Terms</a>).
+          </p>
+          <p>
+            Want the long version — principles, channels, and contact links?
+            Open the full About page.
+          </p>
+          <div class="about-actions">
+            <a class="btn btn-primary btn-sm" href="/about/">Full About page</a>
+            <a class="btn btn-outline btn-sm" href="#projects">Browse projects</a>
+            <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos" rel="noopener">GitHub</a>
+            <a class="btn btn-outline btn-sm" href="/disclaimer/">Disclaimer</a>
           </div>
         </div>
       </div>
@@ -1181,6 +1416,7 @@
         <a href="/doomlike-fps/">Doomlike-FPS™</a>
         <a href="/minecraft/">Minecraft</a>
         <a href="/guides/">Guides</a>
+        <a href="/about/">About</a>
         <a href="/disclaimer/">Disclaimer</a>
         <a href="#vault">Vault</a>
         <a href="https://github.com/ilikemacos/rNitro" rel="noopener">GitHub</a>
@@ -1198,8 +1434,38 @@
     </div>
   </div>
 
+  <script src="/js/theme.js"></script>
   <script>
     var _y=document.getElementById('y'); if(_y) _y.textContent=new Date().getFullYear();
+
+    // Live version line from product version.json files
+    (function () {
+      var el = document.getElementById('latest-releases');
+      if (!el) return;
+      function pick(v) {
+        if (!v) return null;
+        return v.experimental || v.pro || v.beta || v.latest || null;
+      }
+      function label(raw) {
+        if (!raw) return null;
+        return String(raw).replace(/^v/, 'v');
+      }
+      Promise.all([
+        fetch('/rnitro/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/fathom/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/fathom-pro/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+      ]).then(function (arr) {
+        var rn = label(pick(arr[0]) || (arr[0] && arr[0].releases && arr[0].releases.experimental && arr[0].releases.experimental.id));
+        if (!rn && arr[0] && arr[0].releases && arr[0].releases.experimental) rn = label(arr[0].releases.experimental.short || arr[0].releases.experimental.id);
+        if (arr[0] && arr[0].experimental) rn = label(arr[0].experimental);
+        var air = label(pick(arr[1]));
+        var pro = label(pick(arr[2]));
+        if (!rn && !air && !pro) return;
+        el.innerHTML = 'Latest · <strong>rNitro</strong> ' + (rn || '—') +
+          ' · <strong>Fathom Air</strong> ' + (air || '—') +
+          ' · <strong>Fathom Pro</strong> ' + (pro || '—');
+      });
+    })();
 
     // Shared unlock key mint (random every time) — must match FathomProLicense |web
     window.FathomProMintKey = (function () {

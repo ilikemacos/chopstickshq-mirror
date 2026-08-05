@@ -1,7 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Fathom Air — Local battery drain for macOS · Chopsticks HQ</title>
 <meta name="description" content="Fathom Air is the free local-only macOS menu bar battery app — charge watts, package power, top energy processes, and plain-language drain attribution. No accounts, no telemetry.">
@@ -20,6 +24,36 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,0.72); --nav-border: rgba(255,255,255,0.08);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,0.85); --nav-border: rgba(0,0,0,0.08);
+  }
+  .theme-toggle {
+    display: inline-flex; align-items: center; height: 2.15rem; padding: 0 0.75rem;
+    border-radius: 999px; border: 1px solid var(--border); background: transparent;
+    color: var(--text); cursor: pointer; font-size: 0.75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+  .gallery {
+    display: grid; gap: 1rem; margin-top: 1.25rem;
+  }
+  @media (min-width: 720px) { .gallery { grid-template-columns: 1fr 1fr; } }
+  .gallery-card {
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--card); box-shadow: var(--shadow, 0 4px 24px -4px rgba(0,0,0,.45));
+  }
+  .gallery-card .cap {
+    padding: 0.65rem 0.9rem; font-size: 0.75rem; color: var(--muted);
+    font-family: var(--mono); border-top: 1px solid var(--border);
+  }
+
   :root {
     /* 101mogged-inspired tokens (same family as rNitro) */
     --bg:       #0a0a0c;
@@ -81,10 +115,10 @@
     gap: 12px;
     padding: 0 20px;
     min-height: 4rem;
-    background: rgba(10,10,12,0.72);
+    background: var(--nav-bg);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid var(--nav-border);
   }
   .nav-logo {
     font-size: 0.95rem;
@@ -703,6 +737,59 @@
       </div>
     </section>
 
+    
+    <section class="sec" id="gallery">
+      <div class="wrap">
+        <div class="kicker">Gallery</div>
+        <h2>What it looks like</h2>
+        <p class="sec-lead">Menu bar battery + popover — same family as the rNitro product pages.</p>
+        <div class="gallery">
+          <figure class="gallery-card">
+            <div class="preview" aria-hidden="true">
+              <div class="preview-menubar">
+                <span class="mb-item">Wi‑Fi</span>
+                <span class="mb-item active"><span class="mb-batt" aria-hidden="true"><i></i></span> 87%</span>
+                <span class="mb-item">Fri 11:42</span>
+              </div>
+              <div class="preview-body">
+                <div class="preview-head">
+                  <div>
+                    <div class="preview-pct">87%</div>
+                    <div class="preview-sub">On Battery · package 12.4 W</div>
+                  </div>
+                  <span class="preview-badge">Fathom Air</span>
+                </div>
+                <div class="preview-row"><span>Power Source</span><span>Battery</span></div>
+                <div class="preview-row"><span>Time</span><span>2h 15m left</span></div>
+                <div class="preview-row"><span>Top energy</span><span>Safari · High</span></div>
+              </div>
+            </div>
+            <figcaption class="cap">Menu bar · live %</figcaption>
+          </figure>
+          <figure class="gallery-card">
+            <div class="preview" aria-hidden="true">
+              <div class="preview-menubar">
+                <span class="mb-item">···</span>
+                <span class="mb-item active">Dashboard</span>
+              </div>
+              <div class="preview-body">
+                <div class="preview-head">
+                  <div>
+                    <div class="preview-pct" style="font-size:1.6rem">Why drain?</div>
+                    <div class="preview-sub">Last hour · local log</div>
+                  </div>
+                </div>
+                <div class="preview-row"><span>Drop</span><span>≈ 4%</span></div>
+                <div class="preview-row"><span>Culprit</span><span>Browser · High</span></div>
+                <div class="preview-row"><span>Package</span><span>9.1 W avg</span></div>
+              </div>
+            </div>
+            <figcaption class="cap">Drain detail · on-device only</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <section class="sec" id="downloads">
       <div class="wrap">
         <div class="kicker">Install</div>
@@ -754,10 +841,21 @@
         <a href="/disclaimer/">Full software disclaimer</a>
       </p>
     </div>
+    <section class="gh-files" id="github-files"
+      data-repo="ilikemacos/Fathom"
+      data-cdn-base="/fathom/"
+      data-title="All release files (GitHub)"
+      data-max-releases="20"
+      aria-label="GitHub release files"></section>
+    <link rel="stylesheet" href="/js/github-files.css">
+    <script src="/js/github-files.js" defer></script>
+
     <footer class="wrap foot">
       <div>© ChopsticksHQ 2026</div>
       <div class="foot-links">
         <a href="/">HQ</a>
+        <a href="/about/">About</a>
+        <a href="/disclaimer/">Disclaimer</a>
         <a href="/rnitro/">rNitro</a>
         <a href="/fathom-pro/">Fathom Pro</a>
         <a href="/disclaimer/">Disclaimer</a>
@@ -840,5 +938,6 @@
       }
     }).catch(() => {});
   </script>
+  <script src="/js/theme.js"></script>
 </body>
 </html>

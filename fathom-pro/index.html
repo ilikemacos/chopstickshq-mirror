@@ -1,7 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Fathom Pro — Battery + weather + AI for macOS · Chopsticks HQ</title>
 <meta name="description" content="Fathom Pro for macOS: everything in Fathom Air plus local weather and multi-provider AI chat. Unlock with a vault key. No accounts, local-first.">
@@ -19,6 +23,36 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,0.72); --nav-border: rgba(255,255,255,0.08);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,0.85); --nav-border: rgba(0,0,0,0.08);
+  }
+  .theme-toggle {
+    display: inline-flex; align-items: center; height: 2.15rem; padding: 0 0.75rem;
+    border-radius: 999px; border: 1px solid var(--border); background: transparent;
+    color: var(--text); cursor: pointer; font-size: 0.75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+  .gallery {
+    display: grid; gap: 1rem; margin-top: 1.25rem;
+  }
+  @media (min-width: 720px) { .gallery { grid-template-columns: 1fr 1fr; } }
+  .gallery-card {
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--card); box-shadow: var(--shadow, 0 4px 24px -4px rgba(0,0,0,.45));
+  }
+  .gallery-card .cap {
+    padding: 0.65rem 0.9rem; font-size: 0.75rem; color: var(--muted);
+    font-family: var(--mono); border-top: 1px solid var(--border);
+  }
+
   :root {
     --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
     --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
@@ -56,9 +90,9 @@
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: 0 20px; min-height: 4rem;
-    background: rgba(10,10,12,0.72);
+    background: var(--nav-bg);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid var(--nav-border);
   }
   .nav-logo { font-size: 0.95rem; color: var(--text); white-space: nowrap; }
   .nav-logo span { color: var(--muted); font-weight: 400; }
@@ -311,6 +345,52 @@
       </div>
     </section>
 
+    
+    <section class="sec" id="gallery">
+      <div class="wrap">
+        <div class="kicker">Gallery</div>
+        <h2>What it looks like</h2>
+        <p class="sec-lead">Battery core plus weather °C and AI — same HQ chrome as Air.</p>
+        <div class="gallery">
+          <figure class="gallery-card">
+            <div class="preview" aria-hidden="true">
+              <div class="preview-menubar">
+                <span>Wi‑Fi</span>
+                <span class="active">64% · 12°</span>
+                <span>Fri 11:42</span>
+              </div>
+              <div class="preview-body">
+                <div class="preview-head">
+                  <div>
+                    <div class="preview-pct">64%</div>
+                    <div class="preview-sub">On battery · 8.2 W · 12°C</div>
+                  </div>
+                  <span class="preview-badge">Pro</span>
+                </div>
+                <div class="preview-row"><span>Weather</span><span>Local</span></div>
+                <div class="preview-row"><span>AI</span><span>Explain drain</span></div>
+              </div>
+            </div>
+            <figcaption class="cap">Menubar · % · °C</figcaption>
+          </figure>
+          <figure class="gallery-card">
+            <div class="preview" aria-hidden="true">
+              <div class="preview-menubar">
+                <span>AI Chat</span>
+                <span class="active">OpenRouter</span>
+              </div>
+              <div class="preview-body">
+                <div class="preview-row"><span>You</span><span>Why is drain high?</span></div>
+                <div class="preview-row"><span>Pro</span><span>Safari + display…</span></div>
+                <div class="preview-row"><span>Keys</span><span>Keychain</span></div>
+              </div>
+            </div>
+            <figcaption class="cap">AI · your provider keys</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
     <section class="sec" id="downloads">
       <div class="wrap">
         <div class="kicker">Install</div>
@@ -432,6 +512,15 @@
       </div>
     </section>
 
+    <section class="gh-files" id="github-files"
+      data-repo="ilikemacos/Fathom-Pro"
+      data-cdn-base="/fathom-pro/"
+      data-title="All release files (GitHub)"
+      data-max-releases="20"
+      aria-label="GitHub release files"></section>
+    <link rel="stylesheet" href="/js/github-files.css">
+    <script src="/js/github-files.js" defer></script>
+
     <div class="wrap">
       <p class="disclaimer">
         <strong>Disclaimer:</strong> All ChopsticksHQ software (including Fathom Pro) is provided
@@ -442,9 +531,10 @@
         <div>© ChopsticksHQ 2026</div>
         <div class="foot-links">
           <a href="/">HQ</a>
+          <a href="/about/">About</a>
+          <a href="/disclaimer/">Disclaimer</a>
           <a href="/fathom/">Fathom Air</a>
           <a href="/rnitro/">rNitro</a>
-          <a href="/disclaimer/">Disclaimer</a>
           <a href="version.json">version.json</a>
           <a href="https://github.com/ilikemacos/Fathom-Pro">GitHub</a>
         </div>
@@ -478,5 +568,6 @@
       if (z && zip) z.href = zip;
     }).catch(function () {});
   </script>
+  <script src="/js/theme.js"></script>
 </body>
 </html>

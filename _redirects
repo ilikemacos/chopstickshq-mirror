@@ -1,0 +1,45 @@
+# Netlify subdomain → custom domain (must be first)
+https://chopstickshq.netlify.app/*  https://chopstickshq.com/:splat  301!
+http://chopstickshq.netlify.app/*   https://chopstickshq.com/:splat  301!
+
+# Product site at /rnitro/
+/rnitro   /rnitro/   301
+/rnitro/cli   /rnitro/cli.html   301
+/rnitro/linux   /rnitro/linux.html   301
+/rnitro/windows   /rnitro/windows.html   301
+/rnitro/privacy   /rnitro/privacy.html   301
+/rnitro/terms   /rnitro/terms.html   301
+/rnitro/faq   /rnitro/faq.html   301
+/rnitro/archives   /rnitro/archives.html   301
+
+# Temporary: /macbar → /rnitro (rebrand reverted)
+/macbar   /rnitro/   301!
+/macbar/  /rnitro/   301!
+/macbar/*  /rnitro/:splat  301!
+
+# Fathom product downloads
+/fathom   /fathom/   301
+
+/shaders  /shaders/  301
+/shaders/*.zip  /shaders/  302!
+
+# Minecraft portfolio
+/minecraft   /minecraft/   301
+/port   /minecraft/   301
+/port/*  /minecraft/:splat  301
+/api/mc-status  /.netlify/functions/mc-status  200!
+
+# Optional hostname for portfolio (DNS CNAME required)
+https://minecraft.chopstickshq.com/*  https://chopstickshq.com/minecraft/:splat  301!
+http://minecraft.chopstickshq.com/*   https://chopstickshq.com/minecraft/:splat  301!
+
+# Guides
+/guides   /guides/   301
+
+# Subdomains → product path
+https://rnitro.chopstickshq.com/*  https://chopstickshq.com/rnitro/:splat  301!
+http://rnitro.chopstickshq.com/*   https://chopstickshq.com/rnitro/:splat  301!
+https://macbar.chopstickshq.com/*  https://chopstickshq.com/rnitro/:splat  301!
+http://macbar.chopstickshq.com/*   https://chopstickshq.com/rnitro/:splat  301!
+
+/launch   /launch/   301
