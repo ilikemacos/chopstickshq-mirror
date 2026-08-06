@@ -14,7 +14,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="rNitro for Windows — tray monitor (legacy)">
 <meta name="twitter:description" content="rNitro for Windows (legacy) — last tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.">
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "rNitro for Windows", "operatingSystem": "Windows", "applicationCategory": "UtilitiesApplication", "softwareVersion": "v4.2.4-Windows-Final-x86", "description": "rNitro for Windows (legacy) — last tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "downloadUrl": "https://getrnitro.netlify.app", "url": "https://getrnitro.netlify.app"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "rNitro for Windows", "operatingSystem": "Windows", "applicationCategory": "UtilitiesApplication", "softwareVersion": "v6.0.2-Windows-x64", "description": "rNitro for Windows (legacy) — portable ZIP tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "downloadUrl": "https://chopstickshq.com/rnitro/rNitro-v6.0.2-Windows-x64.zip", "url": "https://chopstickshq.com/rnitro/windows.html"}</script>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
@@ -148,12 +148,12 @@
     <p class="lead">Final Windows tray build kept for download only. No new features or active support — use macOS or Linux for current rNitro.</p>
     <div class="desc">
       <h2>About rNitro for Windows</h2>
-      <p><strong>Windows is no longer actively developed.</strong> The last tray build (<code>v4.2.4-Windows-Final-x86</code>) remains available so existing users can still download it.</p>
+      <p><strong>Windows is no longer actively developed.</strong> The current build (<code>v6.0.2-Windows-x64</code>) is shipped as a ZIP — no installer, nothing written to the registry.</p>
       <ul>
         <li><strong>What it does</strong> — system tray icon with CPU %, temperature, RAM, optional BTC, and short history graphs</li>
-        <li><strong>EXE</strong> — needs <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 Desktop Runtime (x64)</a></li>
+        <li><strong>ZIP</strong> — unzip and run <code>rNitro.exe</code>; needs the <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 Desktop Runtime (x64)</a></li>
         <li><strong>PowerShell installer</strong> — compiles with built-in <code>csc.exe</code> (no Visual Studio SDK)</li>
-        <li><strong>Install path</strong> — typically <code>%LOCALAPPDATA%\rNitro</code></li>
+        <li><strong>No install path</strong> — the ZIP runs from wherever you unpack it; delete the folder to remove it</li>
       </ul>
       <p style="margin-top:12px; color:var(--muted);">For new installs we recommend <a href="/rnitro/">macOS</a> or <a href="/rnitro/linux.html">Linux</a>.</p>
     </div>
@@ -162,13 +162,13 @@
       <div class="platform-banner platform-banner--deprecated">
         Windows is no longer actively supported. Existing builds remain available for download.
       </div>
-      <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--cyan); margin-bottom:4px;">v4.2.4-Windows-Final-x86</div>
+      <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--cyan); margin-bottom:4px;">v6.0.2-Windows-x64</div>
       <div style="font-size:16px; color:var(--muted); margin-bottom:0;">Windows 10/11 tray monitor — CPU, temp, RAM, and BTC stats.</div>
       <div class="dl-recommended" style="border-color:rgba(0,217,255,0.4); margin-top:14px;">
         <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(0,217,255,0.45); background:rgba(0,217,255,0.1);">Recommended Download</div>
-        <div class="dl-recommended-title" style="color:var(--cyan);">Windows EXE</div>
-        <p class="dl-recommended-steps">Double-click to run. Install <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> first if Windows prompts you.</p>
-        <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="requestDownload('rNitro-v4.2.4-Windows-Final-x86.exe')">⬇ Download EXE · 495 KB</button>
+        <div class="dl-recommended-title" style="color:var(--cyan);">Windows ZIP</div>
+        <p class="dl-recommended-steps">Unzip, then run <code>rNitro.exe</code>. Install <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> first if Windows prompts you.</p>
+        <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="requestDownload('rNitro-v6.0.2-Windows-x64.zip')">⬇ Download ZIP · 228 KB</button>
       </div>
       <div id="hero-win-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
         <button type="button" class="prev-versions-toggle" onclick="toggleOtherDownloads('hero-win-other')" aria-expanded="false">
@@ -188,8 +188,8 @@
         <div class="steps">
       <h2>How to install (legacy)</h2>
       <div class="step"><div class="step-num">1</div><div class="step-content">
-        <h3>Download the EXE (easiest)</h3>
-        <p>Download <strong>rNitro-v4.2.4-Windows-Final-x86.exe</strong>. If Windows asks for a runtime, install .NET 8 Desktop Runtime x64 first.</p>
+        <h3>Download the ZIP (easiest)</h3>
+        <p>Download <strong>rNitro-v6.0.2-Windows-x64.zip</strong> and unzip it anywhere. Right-click <code>rNitro.exe</code> → Properties → <strong>Unblock</strong> if Windows flags it, then run it. If Windows asks for a runtime, install .NET 8 Desktop Runtime x64 first.</p>
       </div></div>
       <div class="step"><div class="step-num">2</div><div class="step-content">
         <h3>Or compile from source</h3>
@@ -198,7 +198,7 @@
       </div></div>
       <div class="step"><div class="step-num">3</div><div class="step-content">
         <h3>Use rNitro</h3>
-        <p>rNitro runs in the system tray. Click for live stats; right-click to quit.</p>
+        <p>rNitro runs in the system tray, not the taskbar. Click for live stats; right-click to quit. Run as administrator if you want real CPU temperatures — Windows hides thermal sensors from unelevated apps.</p>
       </div></div>
     </div>
 
@@ -241,8 +241,8 @@
     "curlInstall": "curl -fsSL https://getrnitro.netlify.app/rNitro-v1.2.14.sh -o /tmp/rnitro-install.sh && bash /tmp/rnitro-install.sh"
   },
   "windows": {
-    "id": "v4.2.4-Windows-Final-x86",
-    "exe": "rNitro-v4.2.4-Windows-Final-x86.exe",
+    "id": "v6.0.2-Windows-x64",
+    "zip": "rNitro-v6.0.2-Windows-x64.zip",
     "ps1": "rNitro-v4.2.4-Windows-Final-x86.ps1"
   },
   "linux": {

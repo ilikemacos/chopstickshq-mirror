@@ -2,7 +2,7 @@
   "latest": "v1.2.9-Final",
   "beta": "v1.2.14",
   "linux": "v0.1-Linux-Beta-Pre-release-x64",
-  "windows": "v4.2.4-Windows-Final-x86",
+  "windows": "v6.0.2-Windows-x64",
   "cli": "v0.2-cli",
   "releases": {
     "stable": {
@@ -29,7 +29,9 @@
       "sh": "install-rNitro-linux.sh"
     },
     "windows": {
-      "exe": "rNitro-v4.2.4-Windows-Final-x86.exe",
+      "label": "v6.0.2 Windows x64",
+      "short": "v6.0.2",
+      "zip": "rNitro-v6.0.2-Windows-x64.zip",
       "ps1": "rNitro-v4.2.4-Windows-Final-x86.ps1"
     },
     "macos_apps": {
@@ -74,7 +76,8 @@
     "experimental_zip": "c79045d12e0aeef3ad3b5c152a93d945e4ac3e3349acc0b9a407e495f56a3f22",
     "experimental_sh": "93a6265769e2f1d59c0c41d670869c8110bdd09b1ee70702cb907f8ee3356e4d",
     "experimental_pkg": "e3ba7a8a985340a609d9471eff11af755b4ad2ad97584cd8daaccdc8c2790faf",
-    "experimental_dmg": "faa26e765f0eddfb13a69d2ba9b70b210d98552a496014c263139e5fffbbed06"
+    "experimental_dmg": "faa26e765f0eddfb13a69d2ba9b70b210d98552a496014c263139e5fffbbed06",
+    "windows_zip": "a9ff832f67b248c1dd6f071d917846be02e895812c659969407b641558fd60a1"
   },
   "archive": [
     {

@@ -2577,7 +2577,7 @@
           <tr><td><strong style="color:var(--green);">macOS</strong></td><td>v1.3.32-Experimental</td><td><span class="status-pill status-pill--active">Current</span></td><td><code>rNitro-v1.3.32-Experimental.zip</code></td><td><code>~/Applications/rNitro.app</code></td><td>In-app updater on launch</td><td>Menu bar monitor, Lab tools, all AI providers, New style UI, display modes</td></tr>
           <tr><td><strong style="color:#a78bfa;">CLI</strong> · Terminal</td><td>v0.2-cli</td><td><span class="status-pill status-pill--active">Active</span></td><td><code>rNitro-CLI.tar.gz</code></td><td><code>~/bin/rnitro</code> or <code>/usr/local/bin/rnitro</code></td><td>Manual — re-download tarball or curl one-liner</td><td>btop-style TUI: CPU, RAM, disk, network, battery, top processes; macOS + Linux; Python 3</td></tr>
           <tr><td><strong style="color:#e8a838;">Linux</strong> · Pre-release</td><td>v0.1-Linux-Beta-Pre-release-x64</td><td><span class="status-pill status-pill--prerelease">Pre-release</span></td><td><code>rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz</code> or <code>install-rNitro-linux.sh</code></td><td><code>~/.local/share/rnitro</code></td><td>Checks <code>version.json</code> on launch</td><td>GTK4 app: Monitor, Advisor, Chat, Cleaner; x86_64; needs Python 3.10+, GTK 4, libadwaita</td></tr>
-          <tr><td><strong style="color:var(--cyan);">Windows</strong> · Legacy</td><td>v4.2.4-Windows-Final-x86</td><td><span class="status-pill status-pill--deprecated">Deprecated</span></td><td><code>rNitro-v4.2.4-Windows-Final-x86.exe</code></td><td><code>%LOCALAPPDATA%\rNitro</code></td><td>Manual — check website or GitHub</td><td>Tray monitor only (CPU, temp, RAM, BTC); no AI chat or Cleaner; .NET 8 runtime for EXE</td></tr>
+          <tr><td><strong style="color:var(--cyan);">Windows</strong> · Legacy</td><td>v6.0.2-Windows-x64</td><td><span class="status-pill status-pill--deprecated">Deprecated</span></td><td><code>rNitro-v6.0.2-Windows-x64.zip</code></td><td><code>Portable — runs from any folder</code></td><td>Manual — check website or GitHub</td><td>Tray monitor only (CPU, temp, RAM, BTC); no AI chat or Cleaner; .NET 8 runtime for EXE</td></tr>
         </tbody>
       </table>
     </div>
@@ -2702,13 +2702,13 @@
 <!-- @sync:steps-win -->
   <div id="steps-win" class="steps" style="display:none;">
     <p style="font-size:15px; color:var(--orange); background:rgba(255,140,26,0.08); border:1px solid rgba(255,140,26,0.35); border-radius:8px; padding:10px 12px; margin-bottom:16px; line-height:1.55;">
-      <strong>Windows is no longer actively supported.</strong> The last build (v4.2.4-Windows-Final-x86) remains available for download below.
+      <strong>Windows is no longer actively supported.</strong> The current build (v6.0.2-Windows-x64) ships as a portable ZIP and remains available for download below.
     </p>
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
         <h3>Download the EXE (easiest)</h3>
-        <p>Switch to the <strong>Windows</strong> tab and download <strong>rNitro-v4.2.4-Windows-Final-x86.exe</strong>. If Windows asks for a runtime, install the <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime (x64)</a> first, then run the EXE again.</p>
+        <p>Switch to the <strong>Windows</strong> tab and download <strong>rNitro-v6.0.2-Windows-x64.zip</strong>. Unzip it anywhere and run <code>rNitro.exe</code>. If Windows asks for a runtime, install the <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime (x64)</a> first, then run it again.</p>
       </div>
     </div>
     <div class="step">
@@ -2795,20 +2795,20 @@
         Windows is no longer actively supported. Existing builds remain available for download.
       </div>
     <div class="download-meta">
-      <h2>rNitro v4.2.4-Windows-Final-x86</h2>
-      <p>Pre-built EXE · PowerShell source installer · system tray monitor for Windows 10/11 x64</p>
+      <h2>rNitro v6.0.2-Windows-x64</h2>
+      <p>Portable ZIP · PowerShell source installer · system tray monitor for Windows 10/11 x64</p>
       <div class="req">
         <span class="req-tag">Windows 10/11</span>
-        <span class="req-tag">x86/x64</span>
-        <span class="req-tag">.NET 8 Runtime (EXE)</span>
+        <span class="req-tag">x64</span>
+        <span class="req-tag">.NET 8 Runtime</span>
         <span class="req-tag">Free</span>
       </div>
     </div>
     <div class="dl-recommended" style="border-color:rgba(0,217,255,0.4);">
       <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(0,217,255,0.45); background:rgba(0,217,255,0.1);">Recommended Download</div>
-      <div class="dl-recommended-title" style="color:var(--cyan);">Windows EXE</div>
-      <p class="dl-recommended-steps">Double-click to run. Needs <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> if prompted.</p>
-      <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="requestDownload('rNitro-v4.2.4-Windows-Final-x86.exe')">⬇ Download EXE · 495 KB</button>
+      <div class="dl-recommended-title" style="color:var(--cyan);">Windows ZIP</div>
+      <p class="dl-recommended-steps">Unzip and run <code>rNitro.exe</code>. Needs <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> if prompted.</p>
+      <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="requestDownload('rNitro-v6.0.2-Windows-x64.zip')">⬇ Download ZIP · 228 KB</button>
     </div>
       <div id="dl-win-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
         <button type="button" class="prev-versions-toggle" onclick="toggleOtherDownloads('dl-win-other')" aria-expanded="false">
@@ -3087,8 +3087,8 @@
       "curlZipInstall": "printf \"\\n[######--------------] 1/3 Download\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.2.14.zip -o /tmp/rnitro.zip && printf \"\\n[############--------] 2/3 Unzip\\n\" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf \"[####################] 3/3 Install\\n\" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf \"\u2713 Done \u2192 ~/Applications/rNitro.app\\n\""
     },
     "windows": {
-      "id": "v4.2.4-Windows-Final-x86",
-      "exe": "rNitro-v4.2.4-Windows-Final-x86.exe",
+      "id": "v6.0.2-Windows-x64",
+      "zip": "rNitro-v6.0.2-Windows-x64.zip",
       "ps1": "rNitro-v4.2.4-Windows-Final-x86.ps1"
     },
     "linux": {
@@ -3141,7 +3141,7 @@
     }
   };
   // @end:js-versions
-  const RNITRO_FILES = new Set(["404.html", "GeistMono.ttf", "VarelaRound.ttf", "_redirects", "apple-touch-icon.png", "archives.html", "changelog.json", "cli.html", "faq.html", "favicon-192.png", "favicon.ico", "favicon.png", "googleadfac0eaf77a74e6.html", "index.html", "install-rNitro-experimental.sh", "install-rNitro-intel.sh", "install-rNitro-linux.sh", "install-rNitro-windows.ps1", "install-rNitro.sh", "linux.html", "privacy.html", "rNitro-CLI.tar.gz", "rNitro-Older-MacOS-Support-Info.zip", "rNitro-macOS-Apps.zip", "rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz", "rNitro-v1.1.0-Intel.sh", "rNitro-v1.2.12.dmg", "rNitro-v1.2.12.pkg", "rNitro-v1.2.12.sh", "rNitro-v1.2.12.zip", "rNitro-v1.2.14.dmg", "rNitro-v1.2.14.pkg", "rNitro-v1.2.14.sh", "rNitro-v1.2.14.zip", "rNitro-v1.2.3-Intel.sh", "rNitro-v1.2.8-Final.dmg", "rNitro-v1.2.8-Final.pkg", "rNitro-v1.2.8-Final.sh", "rNitro-v1.2.8-Final.zip", "rNitro-v1.2.9-Final.dmg", "rNitro-v1.2.9-Final.pkg", "rNitro-v1.2.9-Final.sh", "rNitro-v1.2.9-Final.zip", "rNitro-v1.3.3-Experimental.dmg", "rNitro-v1.3.3-Experimental.pkg", "rNitro-v1.3.3-Experimental.sh", "rNitro-v1.3.3-Experimental.zip", "rNitro-v1.3.32-Experimental.dmg", "rNitro-v1.3.32-Experimental.pkg", "rNitro-v1.3.32-Experimental.sh", "rNitro-v1.3.32-Experimental.zip", "rNitro-v4.2.4-Windows-Final-x86.exe", "rNitro-v4.2.4-Windows-Final-x86.ps1", "reviews.json", "roadmap.json", "robots.txt", "sitemap.xml", "terms-and-conditions.txt", "terms.html", "version.json", "windows.html"]);
+  const RNITRO_FILES = new Set(["404.html", "GeistMono.ttf", "VarelaRound.ttf", "_redirects", "apple-touch-icon.png", "archives.html", "changelog.json", "cli.html", "faq.html", "favicon-192.png", "favicon.ico", "favicon.png", "googleadfac0eaf77a74e6.html", "index.html", "install-rNitro-experimental.sh", "install-rNitro-intel.sh", "install-rNitro-linux.sh", "install-rNitro-windows.ps1", "install-rNitro.sh", "linux.html", "privacy.html", "rNitro-CLI.tar.gz", "rNitro-Older-MacOS-Support-Info.zip", "rNitro-macOS-Apps.zip", "rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz", "rNitro-v1.1.0-Intel.sh", "rNitro-v1.2.12.dmg", "rNitro-v1.2.12.pkg", "rNitro-v1.2.12.sh", "rNitro-v1.2.12.zip", "rNitro-v1.2.14.dmg", "rNitro-v1.2.14.pkg", "rNitro-v1.2.14.sh", "rNitro-v1.2.14.zip", "rNitro-v1.2.3-Intel.sh", "rNitro-v1.2.8-Final.dmg", "rNitro-v1.2.8-Final.pkg", "rNitro-v1.2.8-Final.sh", "rNitro-v1.2.8-Final.zip", "rNitro-v1.2.9-Final.dmg", "rNitro-v1.2.9-Final.pkg", "rNitro-v1.2.9-Final.sh", "rNitro-v1.2.9-Final.zip", "rNitro-v1.3.3-Experimental.dmg", "rNitro-v1.3.3-Experimental.pkg", "rNitro-v1.3.3-Experimental.sh", "rNitro-v1.3.3-Experimental.zip", "rNitro-v1.3.32-Experimental.dmg", "rNitro-v1.3.32-Experimental.pkg", "rNitro-v1.3.32-Experimental.sh", "rNitro-v1.3.32-Experimental.zip", "rNitro-v4.2.4-Windows-Final-x86.exe", "rNitro-v4.2.4-Windows-Final-x86.ps1", "rNitro-v6.0.2-Windows-x64.zip", "reviews.json", "roadmap.json", "robots.txt", "sitemap.xml", "terms-and-conditions.txt", "terms.html", "version.json", "windows.html"]);
 
   function togglePreviousVersions() {
     const panel = document.getElementById('prev-versions-panel');
