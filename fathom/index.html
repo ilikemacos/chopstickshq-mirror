@@ -795,8 +795,10 @@
         <div class="kicker">Install</div>
         <h2>Downloads</h2>
         <p class="sec-lead">
-          Curl installer compiles on your Mac. App ZIP is the quick path. Served from Chopsticks HQ (Netlify edge CDN).
-          Artifacts track <code class="mono" style="font-size:.8em;color:var(--text)">version.json</code>.
+          <strong style="color:var(--text)">Use the curl installer.</strong> Browser downloads get macOS&rsquo;s quarantine flag, so
+          Gatekeeper blocks the App ZIP on first launch; the installer writes the app straight to
+          <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications</code> without it.
+          Served from Chopsticks HQ (Netlify edge CDN). Artifacts track <code class="mono" style="font-size:.8em;color:var(--text)">version.json</code>.
         </p>
         <div class="dl">
           <article class="dl-card">
@@ -810,10 +812,10 @@
             <p class="note">Also via subdomain after DNS: <code class="mono">https://fathom.chopstickshq.com/install.sh</code>. Requires <a href="https://developer.apple.com/xcode/resources/">Xcode Command Line Tools</a>.</p>
           </article>
           <article class="dl-card">
-            <h3>2 · App ZIP</h3>
-            <p>Unzip → open Fathom.app (branded <strong style="color:var(--text)">Fathom Air</strong>). Right-click → Open the first time if Gatekeeper prompts.</p>
+            <h3>2 · App ZIP <span class="note" style="font-weight:400">— fallback</span></h3>
+            <p>Unzip → open Fathom.app (branded <strong style="color:var(--text)">Fathom Air</strong>). <strong style="color:var(--text)">Gatekeeper will block this on first launch</strong> — right-click → Open, then Open again, or use the curl installer above instead.</p>
             <div class="dl-actions">
-              <a class="btn btn-primary" id="zip-link" href="Fathom-v0.3.8-Beta.zip" download>Download ZIP</a>
+              <a class="btn btn-outline" id="zip-link" href="Fathom-v0.3.8-Beta.zip" download>Download ZIP</a>
               <a class="btn btn-outline" href="https://github.com/ilikemacos/Fathom" rel="noopener">GitHub</a>
               <a class="btn btn-outline" href="/fathom-pro/#downloads">Get Pro instead</a>
             </div>
@@ -858,7 +860,7 @@
         <a href="/disclaimer/">Disclaimer</a>
         <a href="/rnitro/">rNitro</a>
         <a href="/fathom-pro/">Fathom Pro</a>
-        <a href="/disclaimer/">Disclaimer</a>
+        <a href="/fathom/terms.html">Terms</a>
         <a href="version.json">version.json</a>
         <a href="changelog.json">changelog.json</a>
         <a href="https://github.com/ilikemacos/Fathom">GitHub</a>

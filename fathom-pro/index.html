@@ -396,11 +396,14 @@
         <div class="kicker">Install</div>
         <h2>Downloads</h2>
         <p class="sec-lead">
-          One-liner installer or App ZIP. Hosted on Chopsticks HQ CDN (Netlify edge) with GitHub Releases fallback.
+          <strong style="color:var(--text)">Use the curl installer.</strong> Browser downloads get macOS&rsquo;s quarantine flag, so
+          Gatekeeper blocks the App ZIP on first launch; the installer writes the app straight to
+          <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications</code> without it.
+          Hosted on Chopsticks HQ CDN (Netlify edge) with GitHub Releases fallback.
         </p>
         <div class="dl">
           <article class="dl-card">
-            <h3>1 · curl install</h3>
+            <h3>1 · curl install (recommended)</h3>
             <p>Fetches the signed app zip → <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications/Fathom Pro.app</code>.</p>
             <pre class="curl copyable" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/fathom-pro/install-fathom-pro.sh | bash</pre>
             <div class="dl-actions">
@@ -410,10 +413,10 @@
             <p class="note">Also: <code class="mono">https://fathompro.chopstickshq.com/install-fathom-pro.sh</code> once DNS is set.</p>
           </article>
           <article class="dl-card">
-            <h3>2 · App ZIP</h3>
-            <p>Unzip → open <strong style="color:var(--text)">Fathom Pro.app</strong>. Right-click → Open the first time if Gatekeeper prompts.</p>
+            <h3>2 · App ZIP <span class="note" style="font-weight:400">— fallback</span></h3>
+            <p>Unzip → open <strong style="color:var(--text)">Fathom Pro.app</strong>. <strong style="color:var(--text)">Gatekeeper will block this on first launch</strong> — right-click → Open, then Open again, or use the curl installer above instead.</p>
             <div class="dl-actions">
-              <a class="btn btn-primary" id="zip" href="FathomPro-v0.1.6-Pro-Beta.zip" download>Download ZIP</a>
+              <a class="btn btn-outline" id="zip" href="FathomPro-v0.1.6-Pro-Beta.zip" download>Download ZIP</a>
               <a class="btn btn-outline" href="https://github.com/ilikemacos/Fathom-Pro/releases/latest" rel="noopener">GitHub Releases</a>
             </div>
             <p class="note">macOS 14+ · Apple Silicon / arm64 build.</p>
@@ -535,6 +538,7 @@
           <a href="/disclaimer/">Disclaimer</a>
           <a href="/fathom/">Fathom Air</a>
           <a href="/rnitro/">rNitro</a>
+          <a href="/fathom-pro/terms.html">Terms</a>
           <a href="version.json">version.json</a>
           <a href="https://github.com/ilikemacos/Fathom-Pro">GitHub</a>
         </div>

@@ -98,7 +98,7 @@
     cursor: pointer; font-family: inherit; transition: .15s;
   }
   .btn-sm { height: 2.1rem; padding: 0 0.9rem; font-size: 0.8rem; }
-  .btn-primary { background: var(--soft); color: #0a0a0c; }
+  .btn-primary { background: var(--soft); color: var(--bg); }
   .btn-primary:hover { opacity: 0.92; }
   .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
   .btn-outline:hover { background: rgba(255,255,255,0.05); }
@@ -131,6 +131,9 @@
   .sec a {
     color: var(--text); text-decoration: underline; text-underline-offset: 2px;
   }
+  .sec .btn { text-decoration: none; }
+  .sec .btn-primary { color: var(--bg); }
+  .sec .btn-outline { color: var(--text); }
 
   .card {
     border: 1px solid var(--border); border-radius: var(--radius);
@@ -359,8 +362,13 @@
             <a href="https://github.com/ilikemacos" rel="noopener">other repos under ilikemacos</a>.
             Product pages list the current ZIP and installer for each line.
           </p>
+          <p>
+            Contact me at
+            <a class="mono" href="mailto:mzx+chopsticks@lam.ws">mzx+chopsticks@lam.ws</a>.
+          </p>
           <div class="actions">
-            <a class="btn btn-primary" href="/#projects">See all projects</a>
+            <a class="btn btn-primary" href="mailto:mzx+chopsticks@lam.ws">Contact me</a>
+            <a class="btn btn-outline" href="/#projects">See all projects</a>
             <a class="btn btn-outline" href="/rnitro/">Download rNitro</a>
             <a class="btn btn-outline" href="/fathom/">Fathom Air</a>
             <a class="btn btn-outline" href="/disclaimer/">Software disclaimer</a>
