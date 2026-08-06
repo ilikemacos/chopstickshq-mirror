@@ -671,8 +671,8 @@
   }
   .platform-banner--deprecated {
     color: var(--orange);
-    background: rgba(255, 140, 26, 0.08);
-    border: 1px solid rgba(255, 140, 26, 0.35);
+    background: rgba(168,168,180, 0.08);
+    border: 1px solid rgba(168,168,180, 0.35);
   }
 
   .channel-compare {
@@ -724,9 +724,9 @@
     border-radius: 999px;
     letter-spacing: 0.02em;
   }
-  .status-pill--active { color: var(--green); background: rgba(0,255,136,0.12); border: 1px solid rgba(0,255,136,0.35); }
-  .status-pill--beta { color: var(--orange); background: rgba(255,140,26,0.12); border: 1px solid rgba(255,140,26,0.35); }
-  .status-pill--prerelease { color: #e8a838; background: rgba(232,168,56,0.12); border: 1px solid rgba(232,168,56,0.35); }
+  .status-pill--active { color: var(--green); background: rgba(200,200,208,0.12); border: 1px solid rgba(200,200,208,0.35); }
+  .status-pill--beta { color: var(--orange); background: rgba(168,168,180,0.12); border: 1px solid rgba(168,168,180,0.35); }
+  .status-pill--prerelease { color: #a8a8b4; background: rgba(168,168,180,0.12); border: 1px solid rgba(168,168,180,0.35); }
   .status-pill--deprecated { color: var(--muted); background: rgba(107,107,138,0.12); border: 1px solid var(--border); }
 
   .download-card::before {
@@ -734,7 +734,7 @@
     position: absolute;
     top: -60px; right: -60px;
     width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(0,217,255,0.08), transparent 70%);
+    background: radial-gradient(circle, rgba(232,232,237,0.08), transparent 70%);
     pointer-events: none;
   }
 
@@ -1165,16 +1165,16 @@
     font-size: var(--text-sm);
     line-height: 1.5;
     color: var(--text);
-    background: rgba(255, 140, 26, 0.1);
-    border: 1px solid rgba(255, 140, 26, 0.35);
+    background: rgba(168,168,180, 0.1);
+    border: 1px solid rgba(168,168,180, 0.35);
   }
   .tc-platform-notice--linux {
-    background: rgba(232, 168, 56, 0.1);
-    border-color: rgba(232, 168, 56, 0.35);
+    background: rgba(168,168,180, 0.1);
+    border-color: rgba(168,168,180, 0.35);
   }
   .tc-platform-notice--windows {
-    background: rgba(0, 217, 255, 0.08);
-    border-color: rgba(0, 217, 255, 0.3);
+    background: rgba(232,232,237, 0.08);
+    border-color: rgba(232,232,237, 0.3);
   }
   .tc-modal-body {
     padding: 16px 22px;
@@ -1278,7 +1278,7 @@
     --text:     #F2F2F2;
     --muted:    #7A7A8A;
     --cyan:     #00E5FF;
-    --green:    #00FF88;
+    --green:    #c8c8d0;
   }
   
   html[data-theme="ips"] {
@@ -1414,8 +1414,8 @@
     inset: 0;
     z-index: 25000;
     background-image:
-      linear-gradient(rgba(0,217,255,0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,217,255,0.08) 1px, transparent 1px);
+      linear-gradient(rgba(232,232,237,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,232,237,0.08) 1px, transparent 1px);
     background-size: 24px 24px;
   }
   html.party {
@@ -1584,7 +1584,7 @@
       });
     </script>
 <!-- @sync:mac-arch-tabs -->
-  <div role="status" aria-live="polite" style="width:100%; max-width:640px; margin:0 auto 14px; padding:12px 16px; border-radius:10px; border:1px solid rgba(255,140,26,0.55); background:rgba(255,140,26,0.12); text-align:center; line-height:1.55;">
+  <div role="status" aria-live="polite" style="width:100%; max-width:640px; margin:0 auto 14px; padding:12px 16px; border-radius:10px; border:1px solid rgba(168,168,180,0.55); background:rgba(168,168,180,0.12); text-align:center; line-height:1.55;">
     <div style="font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:0.06em; color:var(--orange); margin-bottom:4px;">NOTICE</div>
     <div style="font-size:15px; color:var(--text); font-weight:600;">
       Intel Mac will no longer be getting updates after <strong style="color:var(--orange);">v1.2.5-Beta</strong>.
@@ -1609,7 +1609,7 @@
   </p>
 <!-- @end:mac-arch-tabs -->
 <!-- @sync:trust-strip -->
-  <div id="trust-strip" style="width:100%; max-width:640px; margin:0 auto 16px; padding:12px 14px; border-radius:10px; border:1px solid rgba(0,217,255,0.35); background:rgba(0,217,255,0.07); text-align:left;">
+  <div id="trust-strip" style="width:100%; max-width:640px; margin:0 auto 16px; padding:12px 14px; border-radius:10px; border:1px solid rgba(232,232,237,0.35); background:rgba(232,232,237,0.07); text-align:left;">
     <div style="font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:0.05em; color:var(--cyan); margin-bottom:6px;">First open on macOS</div>
     <p style="margin:0; font-size:14px; color:var(--text); line-height:1.5;">
       Builds are ad-hoc signed (not Apple-notarized yet). If macOS blocks the app: <strong>right-click rNitro.app → Open → Open</strong>. Prefer the <strong>App ZIP</strong> or <strong>Terminal install (no Xcode)</strong> from this site.
@@ -1635,13 +1635,13 @@
     <div style="width:100%; background:var(--card); border:1px solid var(--green); border-radius:12px; padding:20px; text-align:center;">
       <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--green); margin-bottom:4px;">v1.3.32-Experimental</div>
       <div style="font-size:16px; color:var(--muted); margin-bottom:0;">rNitro for macOS — menu bar monitor, Lab tools, AI chat, New style UI. Requires <strong style="color:var(--green);">macOS 14.0+</strong> (Sonoma / Sequoia / later) · universal when available.</div>
-      <div class="dl-recommended" style="border-color:rgba(0,255,136,0.4);">
-        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(0,255,136,0.45); background:rgba(0,255,136,0.1);">No Xcode</div>
+      <div class="dl-recommended" style="border-color:rgba(200,200,208,0.4);">
+        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.45); background:rgba(200,200,208,0.1);">No Xcode</div>
         <div class="dl-recommended-title" style="color:var(--green);">App ZIP</div>
         <p class="dl-recommended-steps">Unzip → Applications → right-click <strong>Open</strong> if blocked.</p>
         <button type="button" class="btn btn-primary btn-recommended" style="" onclick="requestDownload('rNitro-v1.3.32-Experimental.zip')">⬇ App ZIP · 4.9 MB</button>
         <p class="dl-recommended-steps" style="margin:12px 0 6px;"><strong>Terminal</strong> (no Xcode):</p>
-        <div style="background:var(--card2); border:1px solid rgba(0,255,136,0.3); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[######--------------] 1/3 Download\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.3.32-Experimental.zip -o /tmp/rnitro.zip && printf "\n[############--------] 2/3 Unzip\n" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf "[####################] 3/3 Install\n" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf "✓ Done → ~/Applications/rNitro.app\n"</div>
+        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.3); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[######--------------] 1/3 Download\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.3.32-Experimental.zip -o /tmp/rnitro.zip && printf "\n[############--------] 2/3 Unzip\n" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf "[####################] 3/3 Install\n" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf "✓ Done → ~/Applications/rNitro.app\n"</div>
         <button type="button" class="btn btn-secondary" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
       </div>
       <style>
@@ -1656,11 +1656,11 @@
       </style>
       <!-- collapsed by default: only the no-Xcode App ZIP above stays visible -->
       <div id="exp-advanced" hidden>
-      <div class="dl-recommended" style="border-color:rgba(0,255,136,0.3); margin-top:10px;">
-        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(0,255,136,0.35); background:rgba(0,255,136,0.06);">Optional · Xcode</div>
+      <div class="dl-recommended" style="border-color:rgba(200,200,208,0.3); margin-top:10px;">
+        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.35); background:rgba(200,200,208,0.06);">Optional · Xcode</div>
         <div class="dl-recommended-title" style="color:var(--green);">Compile from source</div>
         <p class="dl-recommended-steps">Needs <a href="https://developer.apple.com/xcode/resources/" style="color:var(--cyan);">Xcode CLT</a>. Prefer App ZIP above.</p>
-        <div style="background:var(--card2); border:1px solid rgba(0,255,136,0.25); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[########------------] 1/2 Download installer\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.3.32-Experimental.sh -o /tmp/rnitro-install.sh && printf "\n[####################] 2/2 Compile & install (Xcode CLT)\n" && bash /tmp/rnitro-install.sh</div>
+        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.25); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[########------------] 1/2 Download installer\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.3.32-Experimental.sh -o /tmp/rnitro-install.sh && printf "\n[####################] 2/2 Compile & install (Xcode CLT)\n" && bash /tmp/rnitro-install.sh</div>
         <button type="button" class="btn btn-secondary" style="" onclick="copyCurlCmd('experimental')">⎘ Copy compile install</button>
       </div>
       <div id="hero-exp-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
@@ -1722,7 +1722,7 @@
         transition: border-color .22s ease, box-shadow .22s ease;
       }
       #reviews .rv-card:hover {
-        border-color:var(--green); box-shadow:0 8px 26px -14px rgba(0,255,136,0.4);
+        border-color:var(--green); box-shadow:0 8px 26px -14px rgba(200,200,208,0.4);
       }
       #reviews .rv-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
       #reviews .rv-avatar {
@@ -2059,7 +2059,7 @@
        copy helpers rather than editing them, so this survives sync-versions.py
        regenerating those blocks. Only aggregate integers leave the page. */
     (function () {
-      var HOSTS = ['', 'https://chopstickshq-mirror.pages.dev', 'https://chopstickshq.com'];
+      var HOSTS = ['', 'https://chopstickshq.com', 'https://chopstickshq-mirror.pages.dev'];
       var API = '/api/dl-count';
 
       function firstLive(path, opts) {
@@ -2189,18 +2189,18 @@
 <!-- @end:mac-silicon-wrap-close -->
 <!-- @sync:hero-intel -->
     <div id="mac-intel-panel" style="display:none; width:100%; flex-direction:column; gap:16px;">
-      <div role="status" style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,140,26,0.55); background:rgba(255,140,26,0.12); text-align:center; line-height:1.5;">
+      <div role="status" style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(168,168,180,0.55); background:rgba(168,168,180,0.12); text-align:center; line-height:1.5;">
         <strong style="color:var(--orange);">Legacy Intel</strong>
         <div style="font-size:13px; color:var(--muted); margin-top:4px;">Last Intel updates through v1.2.5-Beta. Prefer Apple Silicon for the current build.</div>
       </div>
       <div style="width:100%; background:var(--card); border:1px solid var(--cyan); border-radius:12px; padding:20px; text-align:center;">
         <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--cyan); margin-bottom:4px;">v1.2.3-Intel</div>
         <div style="font-size:15px; color:var(--muted); margin-bottom:10px;">Intel installer — compiles from source on your Intel Mac.</div>
-        <div class="dl-recommended" style="border-color:rgba(0,217,255,0.4);">
-          <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(0,217,255,0.45); background:rgba(0,217,255,0.1);">Legacy · Intel</div>
+        <div class="dl-recommended" style="border-color:rgba(232,232,237,0.4);">
+          <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(232,232,237,0.45); background:rgba(232,232,237,0.1);">Legacy · Intel</div>
           <div class="dl-recommended-title" style="color:var(--cyan);">Terminal one-liner</div>
           <p class="dl-recommended-steps">Requires <a href="https://developer.apple.com/xcode/resources/" style="color:var(--cyan);">Xcode Command Line Tools</a>. Compiles ~30–60s on Intel.</p>
-          <div style="background:var(--card2); border:1px solid rgba(0,217,255,0.3); border-radius:8px; padding:11px 14px; font-family:var(--mono); font-size:12px; color:var(--cyan); word-break:break-all; line-height:1.45; text-align:left; margin-bottom:10px;">
+          <div style="background:var(--card2); border:1px solid rgba(232,232,237,0.3); border-radius:8px; padding:11px 14px; font-family:var(--mono); font-size:12px; color:var(--cyan); word-break:break-all; line-height:1.45; text-align:left; margin-bottom:10px;">
             printf "\n[########------------] 1/2 Download installer\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.2.3-Intel.sh -o /tmp/rnitro-install.sh && printf "\n[####################] 2/2 Compile & install (Xcode CLT)\n" && bash /tmp/rnitro-install.sh
           </div>
           <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="copyCurlCmd('intel_beta')">⎘ Copy curl one-liner</button>
@@ -2283,13 +2283,13 @@
   <div id="next-releases" class="next-releases">
     <p class="prev-versions-note">Single mainline for macOS. Older Final/Beta tags are archives only. · Updated 2026-07-23</p>
     <div class="next-rel-tabs" role="tablist" aria-label="Next releases by channel">
-      <button type="button" role="tab" id="next-tab-experimental" aria-controls="next-panel-experimental" aria-selected="true" class="next-rel-tab is-active" data-next-tab="experimental" data-color="var(--green)" data-bg="rgba(0,255,136,0.12)" data-border="rgba(0,255,136,0.35)" onclick="setNextReleaseTab('experimental')" style="padding:7px 16px; border-radius:20px; border:1px solid rgba(0,255,136,0.35); background:rgba(0,255,136,0.12); color:var(--green); font-family:var(--mono); font-size:13px; font-weight:600; cursor:pointer;">macOS</button>
-      <button type="button" role="tab" id="next-tab-other" aria-controls="next-panel-other" aria-selected="false" class="next-rel-tab" data-next-tab="other" data-color="var(--cyan)" data-bg="rgba(0,217,255,0.1)" data-border="rgba(0,217,255,0.35)" onclick="setNextReleaseTab('other')" style="padding:7px 16px; border-radius:20px; border:1px solid rgba(0,217,255,0.35); background:transparent; color:var(--muted); font-family:var(--mono); font-size:13px; font-weight:600; cursor:pointer;">Other platforms</button>
+      <button type="button" role="tab" id="next-tab-experimental" aria-controls="next-panel-experimental" aria-selected="true" class="next-rel-tab is-active" data-next-tab="experimental" data-color="var(--green)" data-bg="rgba(200,200,208,0.12)" data-border="rgba(200,200,208,0.35)" onclick="setNextReleaseTab('experimental')" style="padding:7px 16px; border-radius:20px; border:1px solid rgba(200,200,208,0.35); background:rgba(200,200,208,0.12); color:var(--green); font-family:var(--mono); font-size:13px; font-weight:600; cursor:pointer;">macOS</button>
+      <button type="button" role="tab" id="next-tab-other" aria-controls="next-panel-other" aria-selected="false" class="next-rel-tab" data-next-tab="other" data-color="var(--cyan)" data-bg="rgba(232,232,237,0.1)" data-border="rgba(232,232,237,0.35)" onclick="setNextReleaseTab('other')" style="padding:7px 16px; border-radius:20px; border:1px solid rgba(232,232,237,0.35); background:transparent; color:var(--muted); font-family:var(--mono); font-size:13px; font-weight:600; cursor:pointer;">Other platforms</button>
     </div>
       <div id="next-panel-experimental" role="tabpanel" aria-labelledby="next-tab-experimental" class="next-rel-panel" data-next-panel="experimental" style="display:block;">
         <p class="prev-versions-note">Current on this channel: <strong style="color:var(--green);">v1.3.32-Experimental</strong></p>
         <div class="next-rel-grid">
-          <div class="next-rel-card" style="border-color:rgba(0,255,136,0.35);">
+          <div class="next-rel-card" style="border-color:rgba(200,200,208,0.35);">
             <div class="next-rel-card-head">
               <strong style="color:var(--green);">v1.3.x / v1.4.0</strong>
               <span class="next-rel-badge">planned</span>
@@ -2307,7 +2307,7 @@
       <div id="next-panel-other" role="tabpanel" aria-labelledby="next-tab-other" class="next-rel-panel" data-next-panel="other" style="display:none;">
         <p class="prev-versions-note">Current on this channel: <strong style="color:var(--cyan);">Linux pre-release · Windows legacy</strong></p>
         <div class="next-rel-grid">
-          <div class="next-rel-card" style="border-color:rgba(0,217,255,0.35);">
+          <div class="next-rel-card" style="border-color:rgba(232,232,237,0.35);">
             <div class="next-rel-card-head">
               <strong style="color:var(--cyan);">Linux / Windows</strong>
               <span class="next-rel-badge">planned</span>
@@ -2347,28 +2347,28 @@
     <p class="prev-versions-note">Latest stable and beta highlights.</p>
     <div class="whats-new-body prev-versions-body" style="display:block;">
       <div class="whats-new-grid">
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.32-Experimental · 2026-07-29</h3>
           <ul>
             <li>Easter egg: triple left-click the menu bar icon (was Option-click)</li>
             <li>Fathom open: also finds ~/Applications/Fathom.app when bundle lookup fails</li>
           </ul>
         </div>
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.30-Experimental · 2026-07-28</h3>
           <ul>
             <li>Personal easter egg: Option-click menu bar icon, or tap version five times</li>
             <li>Enable Logging remains in Settings → General</li>
           </ul>
         </div>
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.26-Experimental</h3>
           <ul>
             <li>Product name restored to <strong>rNitro</strong> (MacBar rebrand reverted).</li>
             <li>Canonical site path again <strong>chopstickshq.com/rnitro</strong>.</li>
           </ul>
         </div>
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.25-Experimental</h3>
           <ul>
             <li>Product URL is now <strong>chopstickshq.com/macbar</strong> (and macbar.chopstickshq.com).</li>
@@ -2376,7 +2376,7 @@
             <li>GitHub repo: ilikemacos/MacBar.</li>
           </ul>
         </div>
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.24-Experimental</h3>
           <ul>
             <li>Renamed Experimental product to <strong>MacBar</strong> (formerly rNitro) for clearer discovery.</li>
@@ -2384,7 +2384,7 @@
             <li>Keeps rNitro as alternate name in search metadata during the transition.</li>
           </ul>
         </div>
-        <div class="whats-new-card" style="border-color:rgba(0,255,136,0.35);">
+        <div class="whats-new-card" style="border-color:rgba(200,200,208,0.35);">
           <h3 style="color:var(--green);">v1.3.23-Experimental</h3>
           <ul>
             <li>Fix: IOHID temperature sensors were never read (SetMatching void return mis-checked) — real MTR die temps now drive the gauge.</li>
@@ -2575,8 +2575,8 @@
         </thead>
         <tbody>
           <tr><td><strong style="color:var(--green);">macOS</strong></td><td>v1.3.32-Experimental</td><td><span class="status-pill status-pill--active">Current</span></td><td><code>rNitro-v1.3.32-Experimental.zip</code></td><td><code>~/Applications/rNitro.app</code></td><td>In-app updater on launch</td><td>Menu bar monitor, Lab tools, all AI providers, New style UI, display modes</td></tr>
-          <tr><td><strong style="color:#a78bfa;">CLI</strong> · Terminal</td><td>v0.2-cli</td><td><span class="status-pill status-pill--active">Active</span></td><td><code>rNitro-CLI.tar.gz</code></td><td><code>~/bin/rnitro</code> or <code>/usr/local/bin/rnitro</code></td><td>Manual — re-download tarball or curl one-liner</td><td>btop-style TUI: CPU, RAM, disk, network, battery, top processes; macOS + Linux; Python 3</td></tr>
-          <tr><td><strong style="color:#e8a838;">Linux</strong> · Pre-release</td><td>v0.1-Linux-Beta-Pre-release-x64</td><td><span class="status-pill status-pill--prerelease">Pre-release</span></td><td><code>rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz</code> or <code>install-rNitro-linux.sh</code></td><td><code>~/.local/share/rnitro</code></td><td>Checks <code>version.json</code> on launch</td><td>GTK4 app: Monitor, Advisor, Chat, Cleaner; x86_64; needs Python 3.10+, GTK 4, libadwaita</td></tr>
+          <tr><td><strong style="color:#c8c8d0;">CLI</strong> · Terminal</td><td>v0.2-cli</td><td><span class="status-pill status-pill--active">Active</span></td><td><code>rNitro-CLI.tar.gz</code></td><td><code>~/bin/rnitro</code> or <code>/usr/local/bin/rnitro</code></td><td>Manual — re-download tarball or curl one-liner</td><td>btop-style TUI: CPU, RAM, disk, network, battery, top processes; macOS + Linux; Python 3</td></tr>
+          <tr><td><strong style="color:#a8a8b4;">Linux</strong> · Pre-release</td><td>v0.1-Linux-Beta-Pre-release-x64</td><td><span class="status-pill status-pill--prerelease">Pre-release</span></td><td><code>rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz</code> or <code>install-rNitro-linux.sh</code></td><td><code>~/.local/share/rnitro</code></td><td>Checks <code>version.json</code> on launch</td><td>GTK4 app: Monitor, Advisor, Chat, Cleaner; x86_64; needs Python 3.10+, GTK 4, libadwaita</td></tr>
           <tr><td><strong style="color:var(--cyan);">Windows</strong> · Legacy</td><td>v6.0.2-Windows-x64</td><td><span class="status-pill status-pill--deprecated">Deprecated</span></td><td><code>rNitro-v6.0.2-Windows-x64.zip</code></td><td><code>Portable — runs from any folder</code></td><td>Manual — check website or GitHub</td><td>Tray monitor only (CPU, temp, RAM, BTC); no AI chat or Cleaner; .NET 8 runtime for EXE</td></tr>
         </tbody>
       </table>
@@ -2701,7 +2701,7 @@
 <!-- @end:steps-linux -->
 <!-- @sync:steps-win -->
   <div id="steps-win" class="steps" style="display:none;">
-    <p style="font-size:15px; color:var(--orange); background:rgba(255,140,26,0.08); border:1px solid rgba(255,140,26,0.35); border-radius:8px; padding:10px 12px; margin-bottom:16px; line-height:1.55;">
+    <p style="font-size:15px; color:var(--orange); background:rgba(168,168,180,0.08); border:1px solid rgba(168,168,180,0.35); border-radius:8px; padding:10px 12px; margin-bottom:16px; line-height:1.55;">
       <strong>Windows is no longer actively supported.</strong> The current build (v6.0.2-Windows-x64) ships as a portable ZIP and remains available for download below.
     </p>
     <div class="step">
@@ -2739,7 +2739,7 @@
       <div class="step-content">
         <h3>Download or curl-install</h3>
         <p>Switch to the <strong>CLI</strong> tab and download <code>rNitro-CLI.tar.gz</code>, or paste this one-liner in Terminal:</p>
-        <div style="margin-top:10px; background:var(--card2); border:1px solid rgba(167,139,250,0.35); border-radius:8px; padding:12px 16px; font-family:var(--mono); font-size:13px; color:#a78bfa; word-break:break-all; line-height:1.45;">curl -fsSL https://chopstickshq.com/rnitro/rNitro-CLI.tar.gz -o /tmp/rnitro-cli.tar.gz && mkdir -p /tmp/rnitro-cli && tar xzf /tmp/rnitro-cli.tar.gz -C /tmp/rnitro-cli && bash /tmp/rnitro-cli/install-cli.sh</div>
+        <div style="margin-top:10px; background:var(--card2); border:1px solid rgba(200,200,208,0.35); border-radius:8px; padding:12px 16px; font-family:var(--mono); font-size:13px; color:#c8c8d0; word-break:break-all; line-height:1.45;">curl -fsSL https://chopstickshq.com/rnitro/rNitro-CLI.tar.gz -o /tmp/rnitro-cli.tar.gz && mkdir -p /tmp/rnitro-cli && tar xzf /tmp/rnitro-cli.tar.gz -C /tmp/rnitro-cli && bash /tmp/rnitro-cli/install-cli.sh</div>
       </div>
     </div>
     <div class="step">
@@ -2804,8 +2804,8 @@
         <span class="req-tag">Free</span>
       </div>
     </div>
-    <div class="dl-recommended" style="border-color:rgba(0,217,255,0.4);">
-      <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(0,217,255,0.45); background:rgba(0,217,255,0.1);">Recommended Download</div>
+    <div class="dl-recommended" style="border-color:rgba(232,232,237,0.4);">
+      <div class="dl-recommended-badge" style="color:var(--cyan); border-color:rgba(232,232,237,0.45); background:rgba(232,232,237,0.1);">Recommended Download</div>
       <div class="dl-recommended-title" style="color:var(--cyan);">Windows ZIP</div>
       <p class="dl-recommended-steps">Unzip and run <code>rNitro.exe</code>. Needs <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> if prompted.</p>
       <button type="button" class="btn btn-primary btn-recommended" style="background:var(--cyan); color:#000;" onclick="requestDownload('rNitro-v6.0.2-Windows-x64.zip')">⬇ Download ZIP · 228 KB</button>
@@ -2830,18 +2830,18 @@
       <h2>rNitro v0.1-Linux-Beta-Pre-release-x64</h2>
       <p>GTK4 + libadwaita desktop app — Monitor, Advisor, AI Chat, and App Cleaner for Linux x86_64.</p>
       <div class="req">
-        <span class="req-tag" style="border-color:#e8a838; color:#e8a838;">Pre-release</span>
+        <span class="req-tag" style="border-color:#a8a8b4; color:#a8a8b4;">Pre-release</span>
         <span class="req-tag">Ubuntu / Fedora / Debian</span>
         <span class="req-tag">Python 3.10+</span>
         <span class="req-tag">GTK 4</span>
         <span class="req-tag">Free</span>
       </div>
     </div>
-    <div class="dl-recommended" style="border-color:rgba(232,168,56,0.4);">
-      <div class="dl-recommended-badge" style="color:#e8a838; border-color:rgba(232,168,56,0.45); background:rgba(232,168,56,0.1);">Recommended Download</div>
-      <div class="dl-recommended-title" style="color:#e8a838;">Linux tarball</div>
+    <div class="dl-recommended" style="border-color:rgba(168,168,180,0.4);">
+      <div class="dl-recommended-badge" style="color:#a8a8b4; border-color:rgba(168,168,180,0.45); background:rgba(168,168,180,0.1);">Recommended Download</div>
+      <div class="dl-recommended-title" style="color:#a8a8b4;">Linux tarball</div>
       <p class="dl-recommended-steps">Extract and run <code>install-rNitro-linux.sh</code>, or download the installer script alone.</p>
-      <button type="button" class="btn btn-primary btn-recommended" style="background:#e8a838; color:#000;" onclick="requestDownload('rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz')">⬇ Download tarball · 18 KB</button>
+      <button type="button" class="btn btn-primary btn-recommended" style="background:#a8a8b4; color:#000;" onclick="requestDownload('rNitro-v0.1-Linux-Beta-Pre-release-x64.tar.gz')">⬇ Download tarball · 18 KB</button>
     </div>
     <div id="dl-linux-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
       <button type="button" class="prev-versions-toggle" onclick="toggleOtherDownloads('dl-linux-other')" aria-expanded="false">

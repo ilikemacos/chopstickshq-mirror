@@ -17,133 +17,223 @@
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "rNitro CLI", "operatingSystem": "macOS, Linux", "applicationCategory": "UtilitiesApplication", "softwareVersion": "v0.2-cli", "description": "rNitro CLI — free btop-style terminal system monitor for macOS and Linux. Live CPU, RAM, disk, network, battery, top processes. Open source, no account.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "downloadUrl": "https://getrnitro.netlify.app", "url": "https://getrnitro.netlify.app"}</script>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @font-face {
-    font-family: 'Varela Round';
-    src: url('VarelaRound.ttf') format('truetype');
-    font-weight: 400; font-style: normal; font-display: swap;
-  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0A0A0F; --bg2: #0F0F18; --card: #13131E; --card2: #1A1A28;
-    --border: #2A2A40; --cyan: #00D9FF; --green: #00FF80; --orange: #FF8C1A;
-    --text: #E8E8F0; --muted: #6B6B8A;
-    --mono: ui-monospace, Menlo, monospace;
-    --sans: 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --bg:       #0a0a0c;
+    --bg2:      #0e0e12;
+    --card:     #121216;
+    --card2:    #18181e;
+    --border:   #26262e;
+    --cyan:     #e8e8ed;
+    --green:    #c8c8d0;
+    --orange:   #a8a8b4;
+    --text:     #f2f2f5;
+    --muted:    #8b8b9a;
+    --mono:     'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
+    --sans:     'Inter', 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius:   .75rem;
+    --glow:     0 0 60px -15px rgba(230,230,230,.18);
+    --shadow:   0 4px 24px -4px rgba(0,0,0,.4);
   }
-  html, body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
-  a { color: var(--cyan); }
-  code { font-family: var(--mono); font-size: 0.92em; color: var(--cyan); }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; }
-  .nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  html, body {
+    font-family: var(--sans); background: var(--bg); color: var(--text);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(900px 420px at 50% -12%, rgba(232,232,237,.05), transparent 70%);
+    background-repeat: no-repeat;
+  }
+  a { color: var(--text); text-decoration-color: rgba(232,232,237,.35); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--text); }
+  code { font-family: var(--mono); font-size: 0.9em; color: var(--text); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 16px 72px; }
+
+  .nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 44px; }
   .nav a {
-    display: inline-block; padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border);
-    text-decoration: none; color: var(--text); font-family: var(--mono); font-size: 14px; font-weight: 500;
+    display: inline-block; padding: 7px 16px; border-radius: 999px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.02);
+    text-decoration: none; color: var(--muted);
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    transition: color .18s, border-color .18s, background .18s;
   }
-  .nav a:hover { border-color: var(--cyan); }
-  .nav a.active { color: #000; font-weight: 600; }
-  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; margin-bottom: 8px; }
-  h1 { font-size: 32px; font-weight: 700; margin: 0 0 10px; line-height: 1.2; }
-  h1 span { color: var(--cyan); }
-  .lead { color: var(--muted); font-size: 16px; line-height: 1.65; margin-bottom: 20px; max-width: 640px; }
+  .nav a:hover { color: var(--text); border-color: #3a3a46; background: rgba(255,255,255,.05); }
+  .nav a.active { color: #0a0a0c; font-weight: 600; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  h1 {
+    font-family: var(--display); font-size: clamp(38px, 7vw, 56px); font-weight: 700;
+    letter-spacing: -.03em; line-height: 1.05; margin: 0 0 16px; color: var(--text);
+  }
+  h1 span { color: var(--muted); }
+  .lead {
+    color: var(--muted); font-size: 17px; line-height: 1.65;
+    margin-bottom: 40px; max-width: 620px;
+  }
+
   .desc {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 18px 20px; margin-bottom: 22px; line-height: 1.65; font-size: 15px;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px 26px; margin-bottom: 28px; line-height: 1.7; font-size: 15px;
+    box-shadow: var(--shadow);
   }
-  .desc h2 { font-family: var(--mono); font-size: 13px; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .desc ul { margin: 8px 0 0 1.15em; color: var(--text); }
-  .desc li { margin-bottom: 6px; color: var(--muted); }
-  .desc li strong { color: var(--text); }
+  .desc h2 {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted);
+    margin: 0 0 14px; text-transform: uppercase; letter-spacing: .18em;
+  }
+  .desc ul { margin: 12px 0 0; padding: 0; list-style: none; }
+  .desc li {
+    margin-bottom: 10px; color: var(--muted); padding-left: 18px; position: relative;
+  }
+  .desc li::before {
+    content: ''; position: absolute; left: 0; top: .68em;
+    width: 5px; height: 5px; border-radius: 50%; background: #3f3f4c;
+  }
+  .desc li strong { color: var(--text); font-weight: 600; }
+
   .btn {
-    display: inline-block; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--card2); color: var(--text); font-family: var(--mono); font-size: 14px;
+    display: inline-block; padding: 11px 18px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
     cursor: pointer; text-decoration: none;
+    transition: background .18s, border-color .18s, transform .18s;
   }
-  .btn:hover { border-color: var(--cyan); }
-  .btn-primary { border: none; font-weight: 600; }
-  .btn-secondary { background: transparent; }
-  .btn-recommended { width: 100%; padding: 14px 18px !important; font-size: 16px !important; }
+  .btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--text); color: #0a0a0c; border-color: transparent; font-weight: 600;
+  }
+  .btn-primary:hover { background: #fff; border-color: transparent; }
+  .btn-secondary { background: rgba(255,255,255,.03); }
+  .btn-recommended { width: 100%; padding: 15px 18px !important; font-size: 15px !important; }
+
   .dl-recommended {
-    background: var(--card2); border: 1px solid rgba(0,255,136,0.4); border-radius: 12px;
-    padding: 16px 18px; margin-top: 14px; text-align: left;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; margin-top: 20px; text-align: left; box-shadow: var(--glow);
   }
   .dl-recommended-badge {
-    display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 8px;
-    border-radius: 12px; border: 1px solid; margin-bottom: 8px;
+    display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04); color: var(--muted); margin-bottom: 14px;
   }
-  .dl-recommended-title { font-family: var(--mono); font-size: 18px; font-weight: 700; margin: 0 0 6px; }
-  .dl-recommended-steps { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
-  .dl-other-panel { margin-top: 12px; text-align: left; }
+  .dl-recommended-title {
+    font-family: var(--display); font-size: 22px; font-weight: 600;
+    letter-spacing: -.02em; margin: 0 0 8px; color: var(--text);
+  }
+  .dl-recommended-steps { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; }
+
+  .dl-other-panel { margin-top: 14px; text-align: left; }
   .prev-versions-toggle {
     width: 100%; display: flex; justify-content: space-between; align-items: center;
-    background: transparent; border: 1px solid var(--border); border-radius: 8px;
-    color: var(--muted); padding: 10px 12px; font-family: var(--mono); font-size: 13px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); padding: 11px 14px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .04em; cursor: pointer;
+    transition: color .18s, border-color .18s;
   }
-  .prev-versions-body { display: none; padding-top: 10px; }
+  .prev-versions-toggle:hover { color: var(--text); border-color: #3a3a46; }
+  .prev-versions-chevron { transition: transform .2s; }
+  .dl-other-panel.is-open .prev-versions-chevron { transform: rotate(90deg); }
+  .prev-versions-body { display: none; padding-top: 12px; }
   .dl-other-panel.is-open .prev-versions-body { display: block; }
   .dl-other-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .dl-other-note { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .dl-other-note { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
   .platform-banner {
-    font-size: 14px; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; text-align: left;
+    font-size: 13px; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    line-height: 1.6; text-align: left;
   }
   .platform-banner--deprecated {
-    color: var(--orange); background: rgba(255,140,26,0.08); border: 1px solid rgba(255,140,26,0.35);
+    color: var(--muted); background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.08);
   }
-  .footer { margin-top: 36px; text-align: center; font-family: var(--mono); font-size: 13px; color: var(--muted); line-height: 1.8; }
-  .footer a { margin: 0 8px; }
-  .steps { margin-top: 28px; text-align: left; }
-  .steps h2 { font-family: var(--mono); font-size: 16px; margin: 0 0 14px; color: var(--text); }
+
+  .steps { margin-top: 52px; text-align: left; }
+  .steps h2 {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted);
+    margin: 0 0 18px; text-transform: uppercase; letter-spacing: .18em;
+  }
   .step {
-    display: flex; gap: 14px; margin-bottom: 14px; background: var(--card);
-    border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    display: flex; gap: 16px; margin-bottom: 12px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
   }
   .step-num {
-    flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--card2);
-    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 13px; color: var(--cyan);
+    flex: 0 0 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08); display: flex; align-items: center;
+    justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
   }
-  .step-content h3 { font-size: 15px; margin: 0 0 6px; }
-  .step-content p { font-size: 14px; color: var(--muted); line-height: 1.55; margin: 0; }
+  .step-content h3 {
+    font-family: var(--display); font-size: 16px; font-weight: 600;
+    letter-spacing: -.01em; margin: 0 0 8px;
+  }
+  .step-content p { font-size: 14px; color: var(--muted); line-height: 1.65; margin: 0; }
+
   .code-block {
-    margin-top: 10px; background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--green);
-    word-break: break-all; line-height: 1.45; text-align: left; white-space: pre-wrap;
+    margin-top: 12px; background: #0c0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 12px; color: #c8c8d0;
+    word-break: break-all; line-height: 1.6; text-align: left; white-space: pre-wrap;
   }
-  .code-block.purple { color: #a78bfa; border-color: rgba(167,139,250,0.35); }
-  .code-block.gold { color: #e8a838; border-color: rgba(232,168,56,0.35); }
+  .code-block.purple, .code-block.gold { color: #c8c8d0; border-color: var(--border); }
   .tui-preview {
-    margin-top: 12px; background: #0c0c12; border: 1px solid #2a2a40; border-radius: 8px;
-    padding: 12px 14px; font-family: var(--mono); font-size: 11px; color: #8f8; line-height: 1.4;
-    white-space: pre; overflow-x: auto;
+    margin-top: 14px; background: #0c0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 11px; color: #9a9aa8;
+    line-height: 1.5; white-space: pre; overflow-x: auto;
   }
+
+  .footer {
+    margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border);
+    text-align: center; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); line-height: 2;
+  }
+  .footer a { margin: 0 10px; color: var(--muted); text-decoration: none; }
+  .footer a:hover { color: var(--text); }
+
   #toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: var(--card); border: 1px solid var(--green); color: var(--green);
-    padding: 10px 18px; border-radius: 8px; font-family: var(--mono); font-size: 13px;
-    opacity: 0; pointer-events: none; transition: 0.2s; z-index: 9999;
+    background: var(--card2); border: 1px solid rgba(255,255,255,.12); color: var(--text);
+    padding: 11px 18px; border-radius: 10px; font-family: var(--mono); font-size: 12px;
+    opacity: 0; pointer-events: none; transition: .2s; z-index: 9999; box-shadow: var(--shadow);
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   .tc-overlay {
-    display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(10,10,15,0.92);
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(10,10,12,.86); backdrop-filter: blur(6px);
     align-items: center; justify-content: center; padding: 20px;
   }
   .tc-overlay.open { display: flex; }
   .tc-box {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    max-width: 480px; width: 100%; padding: 22px; text-align: left;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    max-width: 480px; width: 100%; padding: 26px; text-align: left; box-shadow: var(--shadow);
   }
-  .tc-box h2 { font-size: 18px; margin-bottom: 8px; }
-  .tc-box p { color: var(--muted); font-size: 14px; line-height: 1.55; margin-bottom: 14px; }
+  .tc-box h2 { font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 10px; }
+  .tc-box p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
   .tc-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 28px 14px 56px; }
+    .nav { margin-bottom: 32px; }
+    .desc { padding: 20px; }
+    .dl-recommended { padding: 18px; }
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
     <nav class="nav" aria-label="Platform"><a href="/rnitro/">🍎 macOS</a>
-<a class="active" href="/rnitro/cli.html" style="background:#a78bfa; border-color:#a78bfa; color:#000;">⌨️ CLI</a>
+<a class="active" href="/rnitro/cli.html" style="background:#c8c8d0; border-color:#c8c8d0; color:#000;">⌨️ CLI</a>
 <a href="/rnitro/linux.html">🐧 Linux</a>
 <a href="/rnitro/windows.html" style="opacity:0.75; color:var(--muted);">🪟 Windows (legacy)</a></nav>
-    <p class="eyebrow" style="color:#a78bfa;">Terminal · macOS + Linux · Python 3</p>
+    <p class="eyebrow" style="color:#c8c8d0;">Terminal · macOS + Linux · Python 3</p>
     <h1>rNitro CLI</h1>
     <p class="lead">A lightweight TUI for the same rNitro-style metrics — perfect for SSH, headless boxes, and keyboard-driven workflows.</p>
     <div class="desc">
@@ -174,18 +264,18 @@
       <p style="margin-top:12px; color:var(--muted);">Prefer the menu bar app? Go back to <a href="/rnitro/">macOS downloads</a>.</p>
     </div>
     <div style="max-width:640px; margin:0 auto;">
-    <div style="width:100%; background:var(--card); border:1px solid #a78bfa; border-radius:12px; padding:24px; text-align:center;">
-      <div style="font-family:var(--mono); font-size:22px; font-weight:800; color:#a78bfa; margin-bottom:8px; letter-spacing:0.02em;">Get rNitro CLI!</div>
+    <div style="width:100%; background:var(--card); border:1px solid #c8c8d0; border-radius:12px; padding:24px; text-align:center;">
+      <div style="font-family:var(--mono); font-size:22px; font-weight:800; color:#c8c8d0; margin-bottom:8px; letter-spacing:0.02em;">Get rNitro CLI!</div>
       <div style="font-family:var(--mono); font-size:14px; font-weight:600; color:var(--muted); margin-bottom:12px;">v0.2-cli — btop-style terminal monitor</div>
       <div style="font-size:16px; color:var(--muted); margin-bottom:0; line-height:1.55;">Live CPU, memory, disk I/O, network, battery, and <strong>top processes</strong> in your terminal. macOS + Linux · Python 3 · no GUI required.</div>
-      <div class="dl-recommended" style="border-color:rgba(167,139,250,0.45); margin-top:16px;">
-        <div class="dl-recommended-badge" style="color:#a78bfa; border-color:rgba(167,139,250,0.5); background:rgba(167,139,250,0.12);">Recommended Download</div>
-        <div class="dl-recommended-title" style="color:#a78bfa;">CLI tarball</div>
+      <div class="dl-recommended" style="border-color:rgba(200,200,208,0.45); margin-top:16px;">
+        <div class="dl-recommended-badge" style="color:#c8c8d0; border-color:rgba(200,200,208,0.5); background:rgba(200,200,208,0.12);">Recommended Download</div>
+        <div class="dl-recommended-title" style="color:#c8c8d0;">CLI tarball</div>
         <p class="dl-recommended-steps">Extract → run <code>install-cli.sh</code> → type <code>rnitro</code> in any terminal. Optional: <code>pip3 install psutil</code> for smoother stats.</p>
-        <button type="button" class="btn btn-primary btn-recommended" style="background:#a78bfa; color:#000;" onclick="requestDownload('rNitro-CLI.tar.gz')">⬇ Download CLI · 8 KB</button>
+        <button type="button" class="btn btn-primary btn-recommended" style="background:#c8c8d0; color:#000;" onclick="requestDownload('rNitro-CLI.tar.gz')">⬇ Download CLI · 8 KB</button>
       </div>
-      <div style="margin-top:16px; text-align:left; background:var(--card2); border:1px solid rgba(167,139,250,0.35); border-radius:8px; padding:12px 14px;">
-        <div style="font-family:var(--mono); font-size:12px; color:#a78bfa; margin-bottom:6px;">ONE-LINE INSTALL</div>
+      <div style="margin-top:16px; text-align:left; background:var(--card2); border:1px solid rgba(200,200,208,0.35); border-radius:8px; padding:12px 14px;">
+        <div style="font-family:var(--mono); font-size:12px; color:#c8c8d0; margin-bottom:6px;">ONE-LINE INSTALL</div>
         <div style="font-family:var(--mono); font-size:12px; color:var(--text); word-break:break-all; line-height:1.45;">curl -fsSL https://chopstickshq.com/rnitro/rNitro-CLI.tar.gz -o /tmp/rnitro-cli.tar.gz && mkdir -p /tmp/rnitro-cli && tar xzf /tmp/rnitro-cli.tar.gz -C /tmp/rnitro-cli && bash /tmp/rnitro-cli/install-cli.sh</div>
         <div style="margin-top:10px;">
           <button type="button" class="btn btn-secondary" onclick="copyCliInstall()">⎘ Copy install command</button>

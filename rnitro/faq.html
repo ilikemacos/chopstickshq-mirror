@@ -124,6 +124,9 @@ window.__RNITRO_ASSET_ORIGIN__ = 'https://chopstickshq.com/rnitro';
   ]
 }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   @font-face {
     font-family: 'Varela Round';
@@ -134,10 +137,15 @@ window.__RNITRO_ASSET_ORIGIN__ = 'https://chopstickshq.com/rnitro';
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0A0A0F; --card: #13131E; --border: #2A2A40;
-    --cyan: #00D9FF; --green: #00FF80; --text: #E8E8F0; --muted: #6B6B8A;
-    --mono: ui-monospace, Menlo, monospace;
-    --sans: 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e;
+    --cyan: #e8e8ed; --green: #c8c8d0; --orange: #a8a8b4;
+    --text: #f2f2f5; --muted: #8b8b9a;
+    --mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Inter', 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius: .75rem;
+    --shadow: 0 4px 24px -4px rgba(0,0,0,.4);
   }
   body {
     background: var(--bg); color: var(--text); font-family: var(--sans);
@@ -163,7 +171,7 @@ window.__RNITRO_ASSET_ORIGIN__ = 'https://chopstickshq.com/rnitro';
   code { font-family: var(--mono); font-size: 12px; color: var(--cyan); }
   .cta {
     margin-top: 28px; padding: 18px 20px; border-radius: 12px;
-    border: 1px solid rgba(0,217,255,0.3); background: rgba(0,217,255,0.06);
+    border: 1px solid rgba(232,232,237,0.3); background: rgba(232,232,237,0.06);
   }
   .cta a.btn {
     display: inline-block; margin-top: 10px; margin-right: 10px;
@@ -171,10 +179,21 @@ window.__RNITRO_ASSET_ORIGIN__ = 'https://chopstickshq.com/rnitro';
     background: var(--cyan); color: #041018; text-decoration: none; font-weight: 600;
   }
   .cta a.ghost {
-    background: transparent; color: var(--cyan); border: 1px solid rgba(0,217,255,0.35);
+    background: transparent; color: var(--cyan); border: 1px solid rgba(232,232,237,0.35);
   }
   .muted { color: var(--muted); font-size: 13px; margin-top: 24px; }
   html { color-scheme: dark; }
+
+  body { background-image: radial-gradient(900px 420px at 50% -12%, rgba(232,232,237,.05), transparent 70%); background-repeat: no-repeat; }
+  h1, h2, h3 { font-family: var(--display); letter-spacing: -.02em; }
+  h1 { font-size: clamp(32px, 5vw, 44px); font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
+  h1 span { color: var(--muted); }
+  a { color: var(--text); text-decoration-color: rgba(232,232,237,.35); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--text); }
+  .card { border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card h2 { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .back { color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: .04em; }
+  .back:hover { color: var(--text); }
 </style>
 </head>
 <body>
