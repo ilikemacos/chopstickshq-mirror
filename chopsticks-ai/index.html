@@ -151,6 +151,27 @@
   }
   .footer a { margin-right: 1rem; }
   .footer a:hover { color: var(--text); }
+
+  .install-card {
+    margin: 1.75rem 0 2.5rem; padding: 1.25rem 1.35rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); box-shadow: var(--shadow);
+  }
+  .install-card h2 { font-size: 1.05rem; margin-bottom: 0.45rem; }
+  .install-card p { color: var(--muted); font-size: 0.9rem; margin-bottom: 0.85rem; }
+  pre.curl {
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.5;
+    padding: 0.85rem 1rem; border-radius: 0.55rem;
+    background: var(--bg2); border: 1px solid var(--border);
+    overflow-x: auto; cursor: pointer; user-select: all;
+  }
+  .install-btns { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.85rem; }
+  .btn {
+    display: inline-flex; align-items: center; padding: 0.55rem 1rem;
+    border-radius: 999px; font-size: 0.875rem; font-weight: 600; border: 1px solid var(--border);
+  }
+  .btn-primary { background: var(--soft); color: var(--bg); border-color: transparent; }
+  .btn-outline { background: transparent; color: var(--text); }
 </style>
 </head>
 <body>
@@ -186,6 +207,19 @@
         <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
         <span class="badge">Your key <strong>never needed</strong></span>
       </div>
+
+      <section class="install-card" id="macos-app">
+        <h2>macOS app</h2>
+        <p>
+          Native chat window with the same live model and offline knowledge-base fallback.
+          No Xcode required to install.
+        </p>
+        <pre class="curl" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash</pre>
+        <div class="install-btns">
+          <a class="btn btn-primary" id="zip-btn" href="#">Download macOS app</a>
+          <a class="btn btn-outline" href="install-chopsticks-ai.sh" download>Download .sh</a>
+        </div>
+      </section>
 
       <section>
         <h2>How it answers</h2>
@@ -378,5 +412,22 @@ fallback       the same knowledge base answers offline, on-device</div>
 <script src="/js/theme.js"></script>
   <script src="/js/chopsticks-ai-kb.js" defer></script>
   <script src="/js/chopsticks-ai.js" defer></script>
+  <script>
+    (function () {
+      var CURL = 'curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash';
+      var curlEl = document.getElementById('curl-cmd');
+      if (curlEl) curlEl.addEventListener('click', function () {
+        navigator.clipboard.writeText(CURL).catch(function () {});
+      });
+      fetch('macos-version.json').then(function (r) { return r.json(); }).then(function (v) {
+        var rel = v.releases && (v.releases.stable || v.releases.beta);
+        var btn = document.getElementById('zip-btn');
+        if (rel && rel.zip && btn) {
+          btn.href = rel.zip;
+          btn.textContent = 'Download ' + (v.latest || 'macOS app');
+        }
+      }).catch(function () {});
+    })();
+  </script>
 </body>
 </html>
