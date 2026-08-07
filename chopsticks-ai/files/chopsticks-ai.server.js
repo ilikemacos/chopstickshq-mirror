@@ -669,10 +669,8 @@ async function handler(event) {
         ? Math.max(8000, msLeft - 5000)
         : draftBudgetMs(replyTokens, msLeft);
       if (budgetMs <= 0) break;
-      const g = withTimeout(budgetMs);
-      const attemptStart = Date.now();
-      const g = withTimeout(budgetMs);
       let r;
+      const g = withTimeout(budgetMs);
       try {
         r = await callModel({ model: candidate, messages, key, signal: g.signal, maxTokens: replyTokens });
       } catch (e) {
