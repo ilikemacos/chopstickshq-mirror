@@ -13,9 +13,14 @@
  * entries are retrieved and injected as context so the model quotes real
  * version numbers and install commands instead of inventing them.
  */
-// Verify the exact slug at https://openrouter.ai/models - OpenRouter model ids
-// change between releases, and a wrong one fails the request with a 404.
-const MODEL = process.env.CHOPSTICKS_AI_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
+// Verified against https://openrouter.ai/api/v1/models. OpenRouter ids change
+// between releases and a wrong one 404s every request, so check before editing.
+// Tried in order: if the first is rate-limited or erroring, the next takes over.
+// Both are zero-cost tiers, so failover never introduces spend.
+const MODELS = (process.env.CHOPSTICKS_AI_MODEL ||
+  "nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free")
+  .split(",").map((m) => m.trim()).filter(Boolean);
+const MODEL = MODELS[0];
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const TIMEOUT_MS = 25000;
 
@@ -258,32 +263,47 @@ async function handler(event) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://chopstickshq.com",
-        "X-Title": "chopsticksAI",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0.3,
-        max_tokens: MAX_REPLY_TOKENS,
-      }),
-    });
+    // Walk the model chain. A 4xx/5xx from one model (rate limit, capacity,
+    // upstream outage) moves to the next rather than failing the request.
+    let res = null;
+    let usedModel = null;
+    let lastStatus = 0;
+    let lastDetail = "";
 
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
+    for (const candidate of MODELS) {
+      const attempt = await fetch(OPENROUTER_URL, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://chopstickshq.com",
+          "X-Title": "chopsticksAI",
+        },
+        body: JSON.stringify({
+          model: candidate,
+          messages,
+          temperature: 0.3,
+          max_tokens: MAX_REPLY_TOKENS,
+        }),
+      });
+      if (attempt.ok) {
+        res = attempt;
+        usedModel = candidate;
+        break;
+      }
+      lastStatus = attempt.status;
+      lastDetail = await attempt.text().catch(() => "");
+    }
+
+    if (!res) {
       return json(200, {
         reply:
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
         mode: "error",
-        status: res.status,
-        detail: detail.slice(0, 200),
+        status: lastStatus,
+        detail: lastDetail.slice(0, 200),
       });
     }
 
@@ -305,7 +325,7 @@ async function handler(event) {
       reply,
       mode: "live",
       model: "chopsticksAI 1.0",
-      referencedAgainst: MODEL,
+      poweredBy: usedModel,
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {

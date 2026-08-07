@@ -181,6 +181,7 @@
       <div class="badge-row">
         <span class="badge">Model <strong>chopsticksAI 1.0</strong></span>
         <span class="badge">Powered by <strong>NVIDIA Nemotron 3 Super</strong></span>
+        <span class="badge">Failover <strong>Google Gemma 4 26B</strong></span>
         <span class="badge">Context <strong>48K tokens</strong></span>
         <span class="badge">Limit <strong>775K tokens · 3-hour cooldown</strong></span>
         <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
@@ -194,7 +195,11 @@
           <p>
             <strong>chopsticksAI 1.0</strong> is powered by
             <strong>NVIDIA Nemotron 3 Super</strong>, a 120B mixture-of-experts
-            model with 12B active parameters, served through OpenRouter.
+            model with 12B active parameters, served through OpenRouter.</p>
+          <p>
+            If Nemotron is rate-limited or unavailable, requests fail over to
+            <strong>Google Gemma 4 26B</strong> automatically, so the assistant
+            keeps answering instead of going dark.
           </p>
           <p>
             Requests run through a Chopsticks HQ endpoint that holds the API
