@@ -21,6 +21,22 @@ const MODELS = (process.env.CHOPSTICKS_AI_MODEL ||
   "nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free")
   .split(",").map((m) => m.trim()).filter(Boolean);
 const MODEL = MODELS[0];
+
+// Two models collaborate on each answer: NVIDIA Nemotron drafts, Google Gemma
+// reviews and rewrites. Both are zero-cost tiers, so the second pass adds
+// quality without adding spend. Set CHOPSTICKS_AI_REFINE=off to disable.
+const REFINE_MODEL = process.env.CHOPSTICKS_AI_REFINE_MODEL || "google/gemma-4-26b-a4b-it:free";
+const REFINE_ENABLED = (process.env.CHOPSTICKS_AI_REFINE || "on") !== "off";
+
+const REFINE_SYSTEM = [
+  "You are the reviewer in a two-model pipeline. Another assistant drafted the ",
+  "reply below. Improve it and output ONLY the improved reply.\n\n",
+  "Fix any inaccuracy, tighten wording, remove padding and repetition, and make ",
+  "sure it directly answers what was asked. Keep the draft's facts: do not add ",
+  "version numbers, links, commands or claims that are not already there.\n\n",
+  "If the draft is already good, return it unchanged. Never mention the draft, ",
+  "the review, or yourself as a reviewer - output only the final reply text.",
+].join("");
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const TIMEOUT_MS = 25000;
 
@@ -195,6 +211,37 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
+/** One chat completion. Returns null on any non-OK response. */
+async function callModel({ model, messages, key, signal, maxTokens, temperature }) {
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    signal,
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://chopstickshq.com",
+      "X-Title": "chopsticksAI",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: temperature ?? 0.3,
+      max_tokens: maxTokens ?? MAX_REPLY_TOKENS,
+    }),
+  });
+  if (!res.ok) {
+    return { ok: false, status: res.status, detail: await res.text().catch(() => "") };
+  }
+  const data = await res.json();
+  const text = (data.choices && data.choices[0] && data.choices[0].message.content || "").trim();
+  const reported = data.usage && Number(data.usage.total_tokens);
+  return {
+    ok: true,
+    text,
+    tokens: Number.isFinite(reported) && reported > 0 ? reported : null,
+  };
+}
+
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, body: "" };
   if (event.httpMethod !== "POST") {
@@ -263,40 +310,28 @@ async function handler(event) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    // Walk the model chain. A 4xx/5xx from one model (rate limit, capacity,
-    // upstream outage) moves to the next rather than failing the request.
-    let res = null;
-    let usedModel = null;
+    // --- stage 1: draft -------------------------------------------------
+    // Walk the model chain; a rate-limited or erroring model hands off to the
+    // next rather than failing the request.
+    let draft = null;
+    let draftModel = null;
     let lastStatus = 0;
     let lastDetail = "";
 
     for (const candidate of MODELS) {
-      const attempt = await fetch(OPENROUTER_URL, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://chopstickshq.com",
-          "X-Title": "chopsticksAI",
-        },
-        body: JSON.stringify({
-          model: candidate,
-          messages,
-          temperature: 0.3,
-          max_tokens: MAX_REPLY_TOKENS,
-        }),
+      const r = await callModel({
+        model: candidate, messages, key, signal: controller.signal,
       });
-      if (attempt.ok) {
-        res = attempt;
-        usedModel = candidate;
+      if (r.ok && r.text) {
+        draft = r;
+        draftModel = candidate;
         break;
       }
-      lastStatus = attempt.status;
-      lastDetail = await attempt.text().catch(() => "");
+      lastStatus = r.status || 0;
+      lastDetail = r.detail || "";
     }
 
-    if (!res) {
+    if (!draft) {
       return json(200, {
         reply:
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
@@ -307,25 +342,49 @@ async function handler(event) {
       });
     }
 
-    const data = await res.json();
+    let spent = draft.tokens || (messages.reduce((n, m) => n + messageTokens(m), 0) + MAX_REPLY_TOKENS);
+    let reply = draft.text;
+    let refinedBy = null;
 
-    // Charge the budget with the real usage when OpenRouter reports it, and an
-    // estimate otherwise, so a missing usage block cannot make spend invisible.
-    const reported = data.usage && Number(data.usage.total_tokens);
-    const spent = Number.isFinite(reported) && reported > 0
-      ? reported
-      : messages.reduce((n, m) => n + messageTokens(m), 0) + MAX_REPLY_TOKENS;
+    // --- stage 2: refine ------------------------------------------------
+    // A second model reviews and rewrites the draft. Failure here is not fatal:
+    // the draft is already a complete answer, so we return it unchanged.
+    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel) {
+      const question = [...turns].reverse().find((m) => m.role === "user");
+      const r = await callModel({
+        model: REFINE_MODEL,
+        key,
+        signal: controller.signal,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: REFINE_SYSTEM },
+          {
+            role: "user",
+            content:
+              "QUESTION:\n" + (question ? question.content : "") +
+              "\n\nDRAFT REPLY:\n" + draft.text,
+          },
+        ],
+      });
+      if (r.ok && r.text) {
+        reply = r.text;
+        refinedBy = REFINE_MODEL;
+        spent += r.tokens || estimateTokens(draft.text) + MAX_REPLY_TOKENS;
+      }
+    }
+
     spend(spent, now);
 
-    const reply = (data.choices && data.choices[0] && data.choices[0].message.content || "").trim();
     if (!reply) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
     }
+
     return json(200, {
       reply,
       mode: "live",
       model: "chopsticksAI 1.0",
-      poweredBy: usedModel,
+      draftedBy: draftModel,
+      refinedBy,
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {

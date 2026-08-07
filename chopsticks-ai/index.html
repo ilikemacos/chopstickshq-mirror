@@ -181,7 +181,7 @@
       <div class="badge-row">
         <span class="badge">Model <strong>chopsticksAI 1.0</strong></span>
         <span class="badge">Powered by <strong>NVIDIA Nemotron 3 Super</strong></span>
-        <span class="badge">Failover <strong>Google Gemma 4 26B</strong></span>
+        <span class="badge">Reviewed by <strong>Google Gemma 4 26B</strong></span>
         <span class="badge">Context <strong>48K tokens</strong></span>
         <span class="badge">Limit <strong>775K tokens · 3-hour cooldown</strong></span>
         <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
@@ -197,9 +197,14 @@
             <strong>NVIDIA Nemotron 3 Super</strong>, a 120B mixture-of-experts
             model with 12B active parameters, served through OpenRouter.</p>
           <p>
-            If Nemotron is rate-limited or unavailable, requests fail over to
-            <strong>Google Gemma 4 26B</strong> automatically, so the assistant
-            keeps answering instead of going dark.
+            Two models collaborate on every answer. Nemotron writes the draft,
+            then <strong>Google Gemma 4 26B</strong> reviews and rewrites it &mdash;
+            tightening the wording and cutting repetition, without adding any
+            facts the draft did not already contain.</p>
+          <p>
+            If Nemotron is rate-limited, Gemma takes over drafting instead. If the
+            review pass fails, the draft is sent as-is. Both are zero-cost tiers,
+            so the second opinion adds quality rather than expense.
           </p>
           <p>
             Requests run through a Chopsticks HQ endpoint that holds the API
@@ -241,7 +246,9 @@ retrieval      score against 2,285 terms, take the 6 best topics
    ↓
 grounding      inject those facts as reference material
    ↓
-Nemotron 3 Super via the Chopsticks HQ proxy   (key stays server-side)
+draft          NVIDIA Nemotron 3 Super writes the answer
+   ↓
+review         Google Gemma 4 26B tightens and corrects it
    ↓
 answer         conversational, with real version numbers
 
