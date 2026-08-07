@@ -46,8 +46,9 @@ const REFINE_MIN_MS = 5000;
 // Long generations (the /chopailab agent asking for whole files) need most of
 // the window for the draft. Short widget replies leave room for a review pass.
 const LONG_REPLY_TOKENS = 800;
+const REFINE_RESERVE_MS = 6000;
 const draftBudgetMs = (replyTokens, msLeft) =>
-  replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.min(13000, msLeft);
+  replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.max(8000, msLeft - REFINE_RESERVE_MS);
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
@@ -401,7 +402,11 @@ async function handler(event) {
         && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
       const g = withTimeout(timeLeft - 500);
-      const r = await callModel({
+      // An abort or network error here must not lose the draft, which is
+      // already a complete answer.
+      let r;
+      try {
+      r = await callModel({
         model: REFINE_MODEL,
         key,
         signal: g.signal,
@@ -416,7 +421,11 @@ async function handler(event) {
           },
         ],
       });
-      g.done();
+      } catch (e) {
+        r = { ok: false };
+      } finally {
+        g.done();
+      }
       if (r.ok && r.text) {
         reply = r.text;
         refinedBy = REFINE_MODEL;
