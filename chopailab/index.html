@@ -481,6 +481,7 @@
             history.push({ role: 'assistant', content: off.answer });
             thinking.replaceChild(renderAssistant(off.answer + '\n\n(Offline answer — the live model was temporarily unavailable.)'), thinking.lastChild);
             showTier();
+            saveSession();
             return;
           }
         }
@@ -488,6 +489,7 @@
         thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
         showUsage(d);
         showTier();
+        saveSession();
       })
       .catch(function () {
         var msg = offline(text);

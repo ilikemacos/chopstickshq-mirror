@@ -4,7 +4,7 @@
   "releases": {
     "stable": {
       "zip": "chopsticksAI-v1.0.3.zip",
-      "sha256": "b7683fed87337016409bb5bff5207fdac2de69d3e6a807d84793b5dfd5665ee8"
+      "sha256": "070e460f00bff5a882e52b6c263727789d9da81099a50c281f86d62f26f3941e"
     }
   }
 }
