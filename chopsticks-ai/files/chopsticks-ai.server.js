@@ -38,11 +38,19 @@ const REFINE_SYSTEM = [
   "the review, or yourself as a reviewer - output only the final reply text.",
 ].join("");
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const TIMEOUT_MS = 25000;
+// Netlify caps a synchronous function at ~26s, so the whole request - both
+// model calls - must finish inside this. The draft gets the bulk of it; the
+// review pass only runs if enough time is left.
+const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 20000);
+const DRAFT_TIMEOUT_MS = 13000;
+const REFINE_MIN_MS = 5000;
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
 const MAX_REPLY_TOKENS = 400;
+// The /chopailab agent generates files and code, which needs far more room than
+// the sidebar widget. Callers may request more, within a hard ceiling.
+const MAX_REPLY_TOKENS_CEILING = 2000;
 
 const MAX_MESSAGES = 12;        // trailing turns kept from the client
 const MAX_CHARS_PER_MSG = 2000;
@@ -156,7 +164,20 @@ function retrieve(query, limit = GROUNDING_INTENTS) {
   return scored.slice(0, limit).map((s) => s.intent);
 }
 
-function systemPrompt(grounding) {
+function systemPrompt(grounding, mode) {
+  // The agent at /chopailab produces files and code; the sidebar widget answers
+  // conversationally. Same knowledge, different output contract.
+  const agent = mode === "agent" ? [
+    "\n\nYou are running as the chopsticksAI Lab agent. The user may ask you to ",
+    "write code, config, scripts, documents or data files.\n",
+    "- Put every file you produce in its own fenced code block.\n",
+    "- Start the fence with the language, then a space, then the filename, ",
+    "e.g. ```python analyse.py or ```json config.json — the interface turns that ",
+    "filename into a download button, so always supply one.\n",
+    "- Give complete, runnable files rather than fragments or ellipses.\n",
+    "- Keep explanation outside the fences and brief.",
+  ].join("") : "";
+
   const facts = grounding.length
     ? grounding.map((i) => `### ${i.label}\n${i.answer}`).join("\n\n")
     : "(no specific reference material matched this question)";
@@ -188,6 +209,7 @@ function systemPrompt(grounding) {
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
+    agent,
   ].join("");
 }
 
@@ -304,11 +326,20 @@ async function handler(event) {
     });
   }
 
-  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns))) };
+  const wanted = Number(payload.maxTokens);
+  const replyTokens = Number.isFinite(wanted)
+    ? Math.max(100, Math.min(MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
+    : MAX_REPLY_TOKENS;
+
+  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode) };
   const messages = fitContext(system, turns);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const deadline = now + TIMEOUT_MS;
+  const withTimeout = (ms) => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    return { signal: c.signal, done: () => clearTimeout(t) };
+  };
   try {
     // --- stage 1: draft -------------------------------------------------
     // Walk the model chain; a rate-limited or erroring model hands off to the
@@ -319,9 +350,17 @@ async function handler(event) {
     let lastDetail = "";
 
     for (const candidate of MODELS) {
-      const r = await callModel({
-        model: candidate, messages, key, signal: controller.signal,
-      });
+      const budgetMs = Math.min(DRAFT_TIMEOUT_MS, deadline - Date.now());
+      if (budgetMs <= 0) break;
+      const g = withTimeout(budgetMs);
+      let r;
+      try {
+        r = await callModel({ model: candidate, messages, key, signal: g.signal, maxTokens: replyTokens });
+      } catch (e) {
+        r = { ok: false, status: 0, detail: String(e && e.name) };
+      } finally {
+        g.done();
+      }
       if (r.ok && r.text) {
         draft = r;
         draftModel = candidate;
@@ -349,12 +388,18 @@ async function handler(event) {
     // --- stage 2: refine ------------------------------------------------
     // A second model reviews and rewrites the draft. Failure here is not fatal:
     // the draft is already a complete answer, so we return it unchanged.
-    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel) {
+    // A review pass rewrites prose safely, but can silently corrupt generated
+    // code or file contents, so drafts containing a fenced block skip it.
+    const hasCodeBlock = draft.text.includes("```");
+    const timeLeft = deadline - Date.now();
+    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel
+        && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
+      const g = withTimeout(timeLeft - 500);
       const r = await callModel({
         model: REFINE_MODEL,
         key,
-        signal: controller.signal,
+        signal: g.signal,
         temperature: 0.2,
         messages: [
           { role: "system", content: REFINE_SYSTEM },
@@ -366,6 +411,7 @@ async function handler(event) {
           },
         ],
       });
+      g.done();
       if (r.ok && r.text) {
         reply = r.text;
         refinedBy = REFINE_MODEL;
@@ -396,7 +442,7 @@ async function handler(event) {
       mode: "error",
     });
   } finally {
-    clearTimeout(timer);
+    // per-call timers are cleared inline
   }
 }
 

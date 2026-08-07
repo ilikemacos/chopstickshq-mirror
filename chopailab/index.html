@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chopAI Lab — the chopsticksAI web agent · Chopsticks HQ</title>
+<meta name="description" content="chopAI Lab is the chopsticksAI web agent: ask anything, generate complete files and code, and download them straight from the chat. Powered by NVIDIA Nemotron 3 Super with Google Gemma 4 26B review.">
+<link rel="canonical" href="https://chopstickshq.com/chopailab/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Chopsticks HQ">
+<meta property="og:title" content="chopAI Lab — the chopsticksAI web agent">
+<meta property="og:description" content="Ask anything, generate complete files, download them from the chat.">
+<meta property="og:url" content="https://chopstickshq.com/chopailab/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,.72); --nav-border: rgba(255,255,255,.08);
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius: .75rem;
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,.85); --nav-border: rgba(0,0,0,.08);
+  }
+  html { color-scheme: dark; height: 100%; }
+  html[data-theme="light"] { color-scheme: light; }
+
+  body {
+    height: 100%; display: flex; flex-direction: column;
+    background: var(--bg); color: var(--text); font-family: var(--sans);
+    font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  h1, h2, h3 { font-family: var(--display); letter-spacing: -.02em; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 18px; min-height: 3.5rem; flex: 0 0 auto;
+    background: var(--nav-bg); backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--nav-border);
+  }
+  .brand { font-family: var(--display); font-weight: 600; font-size: .95rem; text-decoration: none; }
+  .brand span { color: var(--muted); font-weight: 400; }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+  .nbtn {
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+    border-radius: 999px; padding: .4rem .8rem; font-size: .74rem; font-weight: 600;
+    font-family: inherit; cursor: pointer; text-decoration: none; white-space: nowrap;
+  }
+  .nbtn:hover { background: rgba(127,127,127,.12); }
+
+  .stage { flex: 1 1 auto; overflow-y: auto; }
+  .inner { width: min(52rem, calc(100% - 2rem)); margin-inline: auto; padding: 1.75rem 0 2rem; }
+
+  .intro { padding: 2.5rem 0 1rem; }
+  .kicker {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: .7rem;
+  }
+  .intro h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); font-weight: 700; letter-spacing: -.035em; margin-bottom: .6rem; }
+  .intro p { color: var(--muted); max-width: 40rem; }
+
+  .suggest { display: grid; gap: .5rem; margin-top: 1.5rem; }
+  @media (min-width: 640px) { .suggest { grid-template-columns: 1fr 1fr; } }
+  .sug {
+    text-align: left; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .8rem .95rem; cursor: pointer;
+    color: var(--text); font-family: inherit; font-size: .88rem; line-height: 1.45;
+  }
+  .sug:hover { border-color: var(--muted); }
+  .sug b { display: block; font-weight: 600; margin-bottom: .15rem; }
+  .sug span { color: var(--muted); font-size: .82rem; }
+
+  .turn { margin-bottom: 1.5rem; }
+  .who {
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: .45rem;
+  }
+  .bubble { white-space: pre-wrap; word-wrap: break-word; }
+  .turn.user .bubble {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: .75rem .95rem;
+  }
+  .bubble p { margin: 0 0 .7rem; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble code.inline {
+    font-family: var(--mono); font-size: .86em;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 5px; padding: .08em .35em;
+  }
+
+  .file {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; margin: .8rem 0; background: var(--bg2);
+  }
+  .file-head {
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    padding: .55rem .8rem; border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .file-name { font-family: var(--mono); font-size: .76rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-lang { font-family: var(--mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .file-acts { display: flex; gap: .4rem; flex: 0 0 auto; }
+  .fbtn {
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    border-radius: 999px; padding: .22rem .6rem; font-size: .68rem;
+    font-family: var(--mono); cursor: pointer; white-space: nowrap;
+  }
+  .fbtn:hover { color: var(--text); border-color: var(--muted); }
+  .file pre { margin: 0; padding: .8rem; overflow-x: auto; }
+  .file code { font-family: var(--mono); font-size: .78rem; line-height: 1.6; color: var(--text); white-space: pre; }
+
+  .composer { flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--bg); }
+  .composer-inner {
+    width: min(52rem, calc(100% - 2rem)); margin-inline: auto;
+    padding: .85rem 0 1.1rem; display: flex; gap: .6rem; align-items: flex-end;
+  }
+  textarea {
+    flex: 1; resize: none; background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px; padding: .7rem .85rem;
+    font-family: inherit; font-size: .92rem; line-height: 1.5; max-height: 11rem; min-height: 2.9rem;
+  }
+  textarea:focus { outline: none; border-color: var(--muted); }
+  .send {
+    background: var(--soft); color: var(--bg); border: none; border-radius: 12px;
+    padding: 0 1.1rem; height: 2.9rem; font-weight: 600; font-size: .9rem;
+    font-family: inherit; cursor: pointer; flex: 0 0 auto;
+  }
+  .send:disabled { opacity: .5; cursor: default; }
+  .hint {
+    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .7rem;
+    font-family: var(--mono); font-size: .64rem; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
+  @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+</style>
+</head>
+<body>
+<nav>
+  <a class="brand" href="/">Chopsticks HQ <span>· chopAI Lab</span></a>
+  <div class="nav-right">
+    <button type="button" class="nbtn" id="export">Export chat</button>
+    <button type="button" class="nbtn" id="reset">New chat</button>
+    <a class="nbtn" href="/chopsticks-ai/">About</a>
+    <button type="button" class="nbtn" data-theme-toggle>&#9680;</button>
+  </div>
+</nav>
+
+<div class="stage" id="stage">
+  <div class="inner" id="log">
+    <div class="intro" id="intro">
+      <div class="kicker">chopsticksAI 1.0 · Web agent</div>
+      <h1>chopAI Lab</h1>
+      <p>
+        Ask anything, or have it build something. Files and code come back as
+        complete, downloadable documents — not fragments you have to stitch
+        together. Nothing you type is stored.
+      </p>
+      <div class="suggest" id="suggest"></div>
+    </div>
+  </div>
+</div>
+
+<div class="composer">
+  <div class="hint">
+    <span>Enter to send · Shift+Enter for a new line</span>
+    <span id="status">Nemotron 3 Super · reviewed by Gemma 4 26B</span>
+  </div>
+  <div class="composer-inner">
+    <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
+    <button class="send" id="send">Send</button>
+  </div>
+</div>
+
+<script src="/js/theme.js"></script>
+<script src="/js/chopsticks-ai-kb.js" defer></script>
+<script>
+(function () {
+  'use strict';
+
+  var API = '/api/chopsticks-ai';
+  var history = [];
+  var busy = false;
+
+  var stage = document.getElementById('stage');
+  var log = document.getElementById('log');
+  var intro = document.getElementById('intro');
+  var input = document.getElementById('input');
+  var send = document.getElementById('send');
+  var status = document.getElementById('status');
+
+  var SUGGESTIONS = [
+    ['Write a Python script', 'that renames every file in a folder by date'],
+    ['Make me a .gitignore', 'for a Node and Python project'],
+    ['Explain how SSDs work', 'in plain language'],
+    ['How do I install rNitro?', 'on a Mac, step by step']
+  ];
+
+  (function fillSuggestions() {
+    var wrap = document.getElementById('suggest');
+    SUGGESTIONS.forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sug';
+      b.innerHTML = '<b></b><span></span>';
+      b.querySelector('b').textContent = s[0];
+      b.querySelector('span').textContent = s[1];
+      b.addEventListener('click', function () { submit(s[0] + ' ' + s[1]); });
+      wrap.appendChild(b);
+    });
+  })();
+
+  function esc(t) {
+    return String(t).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  var EXT = {
+    python: 'py', js: 'js', javascript: 'js', ts: 'ts', typescript: 'ts',
+    html: 'html', css: 'css', json: 'json', yaml: 'yml', yml: 'yml',
+    bash: 'sh', sh: 'sh', shell: 'sh', zsh: 'sh', swift: 'swift', c: 'c',
+    cpp: 'cpp', 'c++': 'cpp', java: 'java', go: 'go', rust: 'rs', rb: 'rb',
+    ruby: 'rb', php: 'php', sql: 'sql', md: 'md', markdown: 'md',
+    txt: 'txt', text: 'txt', xml: 'xml', toml: 'toml', ini: 'ini', csv: 'csv'
+  };
+
+  function download(name, body) {
+    var blob = new Blob([body], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /** Renders assistant text: fenced blocks become downloadable file cards,
+   *  everything else becomes paragraphs with inline code. */
+  function renderAssistant(text) {
+    var wrap = document.createElement('div');
+    wrap.className = 'bubble';
+    var parts = String(text).split(/```/);
+
+    parts.forEach(function (part, i) {
+      if (i % 2 === 0) {
+        if (!part.trim()) return;
+        var p = document.createElement('div');
+        p.innerHTML = esc(part.trim())
+          .replace(/`([^`\n]+)`/g, '<code class="inline">$1</code>')
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n{2,}/g, '</p><p>')
+          .replace(/^/, '<p>').replace(/$/, '</p>');
+        wrap.appendChild(p);
+        return;
+      }
+
+      // fence: first line is "lang filename", remainder is the file body
+      var nl = part.indexOf('\n');
+      var head = (nl === -1 ? part : part.slice(0, nl)).trim();
+      var body = (nl === -1 ? '' : part.slice(nl + 1)).replace(/\n+$/, '');
+      var bits = head.split(/\s+/);
+      var lang = (bits[0] || 'text').toLowerCase();
+      var name = bits.slice(1).join(' ').trim();
+      if (!name) name = 'chopailab-file.' + (EXT[lang] || 'txt');
+
+      var card = document.createElement('div');
+      card.className = 'file';
+      card.innerHTML =
+        '<div class="file-head">' +
+          '<span class="file-name"></span>' +
+          '<span class="file-lang"></span>' +
+          '<span class="file-acts">' +
+            '<button type="button" class="fbtn" data-a="copy">Copy</button>' +
+            '<button type="button" class="fbtn" data-a="dl">Download</button>' +
+          '</span>' +
+        '</div><pre><code></code></pre>';
+      card.querySelector('.file-name').textContent = name;
+      card.querySelector('.file-lang').textContent = lang;
+      card.querySelector('code').textContent = body;
+      card.querySelector('[data-a="dl"]').addEventListener('click', function () {
+        download(name, body);
+      });
+      card.querySelector('[data-a="copy"]').addEventListener('click', function (e) {
+        navigator.clipboard.writeText(body).then(function () {
+          var b = e.target; b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1400);
+        });
+      });
+      wrap.appendChild(card);
+    });
+
+    if (!wrap.childNodes.length) wrap.textContent = text;
+    return wrap;
+  }
+
+  function addTurn(who, node) {
+    if (intro && intro.parentNode) intro.remove();
+    var t = document.createElement('div');
+    t.className = 'turn ' + who;
+    var label = document.createElement('div');
+    label.className = 'who';
+    label.textContent = who === 'user' ? 'You' : 'chopsticksAI';
+    t.appendChild(label);
+    t.appendChild(node);
+    log.appendChild(t);
+    stage.scrollTop = stage.scrollHeight;
+    return t;
+  }
+
+  function plain(text, cls) {
+    var d = document.createElement('div');
+    d.className = 'bubble' + (cls ? ' ' + cls : '');
+    d.textContent = text;
+    return d;
+  }
+
+  function offline(text) {
+    if (window.chopsticksAI && window.chopsticksAI.ask) {
+      var r = window.chopsticksAI.ask(text);
+      return r.answer + '\n\n(Offline answer — the model was unreachable.)';
+    }
+    return 'The model is unreachable right now. Try again shortly.';
+  }
+
+  function submit(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+
+    addTurn('user', plain(text));
+    input.value = '';
+    input.style.height = 'auto';
+    history.push({ role: 'user', content: text });
+
+    busy = true;
+    send.disabled = true;
+    var thinking = addTurn('bot', plain('Working', 'dots'));
+
+    fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: history.slice(-12),
+        mode: 'agent',
+        maxTokens: 2000
+      })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.reply) throw new Error('empty');
+        history.push({ role: 'assistant', content: d.reply });
+        thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
+        if (d.draftedBy) {
+          var by = d.draftedBy.split('/').pop().replace(':free', '');
+          status.textContent = d.refinedBy
+            ? by + ' · reviewed by ' + d.refinedBy.split('/').pop().replace(':free', '')
+            : by;
+        }
+      })
+      .catch(function () {
+        var msg = offline(text);
+        history.push({ role: 'assistant', content: msg });
+        thinking.replaceChild(renderAssistant(msg), thinking.lastChild);
+      })
+      .then(function () {
+        busy = false;
+        send.disabled = false;
+        stage.scrollTop = stage.scrollHeight;
+        input.focus();
+      });
+  }
+
+  send.addEventListener('click', function () { submit(input.value); });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input.value); }
+  });
+  input.addEventListener('input', function () {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 176) + 'px';
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    history = [];
+    log.innerHTML = '';
+    log.appendChild(intro);
+    input.focus();
+  });
+
+  document.getElementById('export').addEventListener('click', function () {
+    if (!history.length) return;
+    var md = '# chopAI Lab conversation\n\n' + history.map(function (m) {
+      return (m.role === 'user' ? '## You\n\n' : '## chopsticksAI\n\n') + m.content;
+    }).join('\n\n');
+    var d = new Date().toISOString().slice(0, 10);
+    download('chopailab-' + d + '.md', md);
+  });
+
+  input.focus();
+})();
+</script>
+</body>
+</html>
