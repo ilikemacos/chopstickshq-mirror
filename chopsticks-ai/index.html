@@ -201,6 +201,8 @@
 
       <div class="badge-row">
         <span class="badge">Version <strong>chopsticksAI v1.0</strong></span>
+        <span class="badge">Drafts with <strong>NVIDIA Nemotron 3 Ultra 550B</strong></span>
+        <span class="badge">Reviewed by <strong>Google Gemma 4 26B (a4b)</strong></span>
         
         <span class="badge">Context <strong>48K tokens</strong></span>
         <span class="badge">Limit <strong>775K tokens · 3-hour cooldown</strong></span>
@@ -231,9 +233,17 @@
             the knowledge base below, so product details come from real reference
             material rather than guesswork.</p>
           <p>
-            Two passes run behind the scenes: one writes the answer, a second
-            reviews and tightens it. Generated files and code skip the review so
-            they are never silently rewritten.
+            Two models collaborate on each answer.
+            <strong>NVIDIA Nemotron 3 Ultra</strong> (550B, 55B active) writes the
+            draft, then <strong>Google Gemma 4 26B</strong> (26B, 4B active)
+            reviews and tightens it &mdash; correcting wording and cutting
+            repetition without adding facts the draft did not contain.</p>
+          <p>
+            Generated files and code skip the review pass, so they are never
+            silently rewritten. If the first model is rate-limited the next takes
+            over, and if the review fails the draft is sent as-is. Every model in
+            the chain is a zero-cost tier, so the second opinion adds quality
+            rather than expense.
           </p>
           <p>
             Requests run through a Chopsticks HQ endpoint that holds the API
@@ -275,9 +285,11 @@ retrieval      score against 2,285 terms, take the 6 best topics
    ↓
 grounding      inject those facts as reference material
    ↓
-draft          chopsticksAI writes the answer
+search         free sources consulted when the question needs current facts
    ↓
-review         a second pass tightens and corrects it
+draft          Nemotron 3 Ultra 550B writes the answer
+   ↓
+review         Gemma 4 26B tightens and corrects it
    ↓
 answer         conversational, with real version numbers
 
@@ -296,6 +308,10 @@ fallback       the same knowledge base answers offline, on-device</div>
           <div class="card">
             <h3>Works offline</h3>
             <p>If the model can't be reached, the on-device knowledge base answers instead of erroring. The assistant degrades rather than dies.</p>
+          </div>
+          <div class="card">
+            <h3>Searches the web</h3>
+            <p>When a question needs current facts, it consults free sources before answering and cites what it used. Product questions skip the lookup &mdash; those come from the knowledge base.</p>
           </div>
           <div class="card">
             <h3>Nothing stored</h3>

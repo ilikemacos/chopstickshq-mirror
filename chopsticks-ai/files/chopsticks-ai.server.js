@@ -46,8 +46,9 @@ const REFINE_MIN_MS = 5000;
 // Long generations (the /chopailab agent asking for whole files) need most of
 // the window for the draft. Short widget replies leave room for a review pass.
 const LONG_REPLY_TOKENS = 800;
+const REFINE_RESERVE_MS = 6000;
 const draftBudgetMs = (replyTokens, msLeft) =>
-  replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.min(13000, msLeft);
+  replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.max(8000, msLeft - REFINE_RESERVE_MS);
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
@@ -168,7 +169,109 @@ function retrieve(query, limit = GROUNDING_INTENTS) {
   return scored.slice(0, limit).map((s) => s.intent);
 }
 
-function systemPrompt(grounding, mode) {
+// ------------------------------------------------------------- web search ---
+// Free sources only (DuckDuckGo Instant Answer + Wikipedia REST), so search
+// adds no cost. Results are injected as context; the model still writes the
+// answer.
+const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
+const SEARCH_TIMEOUT_MS = 4000;
+
+// Questions the knowledge base already covers should not trigger a lookup, and
+// neither should chit-chat. These are the cues that a question wants facts
+// about the wider world.
+const SEARCH_HINTS = /\b(who|what|when|where|which|latest|current|news|today|price|population|capital|founded|born|died|weather|score|release[ds]?|version of|how many|how much|history of|meaning of|define)\b/i;
+// Product questions are covered by the knowledge base, and questions about
+// chopsticksAI itself are answered from selfFacts() - neither needs a lookup.
+const SEARCH_SKIP = /\b(rnitro|fathom|arena|chopsticks|chopsticksai|shader|your|yourself|you\b.*\b(are|can|do)|context window|token limit|rate limit)\b/i;
+
+function wantsSearch(text) {
+  if (!SEARCH_ENABLED) return false;
+  const t = String(text || "");
+  if (t.length < 8) return false;
+  if (SEARCH_SKIP.test(t)) return false;
+  return SEARCH_HINTS.test(t);
+}
+
+async function fetchJson(url, signal) {
+  const res = await fetch(url, {
+    signal,
+    headers: { "User-Agent": "chopsticksAI/1.0 (+https://chopstickshq.com)" },
+  });
+  if (!res.ok) return null;
+  return res.json().catch(() => null);
+}
+
+/** Returns a short context block, or "" when nothing useful came back. */
+async function webSearch(query) {
+  const c = new AbortController();
+  const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
+  const found = [];
+  try {
+    const ddg = await fetchJson(
+      "https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" +
+        encodeURIComponent(query), c.signal
+    ).catch(() => null);
+
+    if (ddg) {
+      if (ddg.AbstractText) {
+        found.push({
+          title: ddg.Heading || query,
+          text: ddg.AbstractText,
+          src: ddg.AbstractURL || "duckduckgo.com",
+        });
+      }
+      for (const t of (ddg.RelatedTopics || []).slice(0, 3)) {
+        if (t && t.Text) found.push({ title: t.Text.split(" - ")[0], text: t.Text, src: t.FirstURL || "" });
+      }
+    }
+
+    if (!found.length) {
+      const term = query.replace(/[?.!]/g, "").trim().split(/\s+/).slice(-4).join(" ");
+      const wiki = await fetchJson(
+        "https://en.wikipedia.org/api/rest_v1/page/summary/" +
+          encodeURIComponent(term.replace(/\s+/g, "_")), c.signal
+      ).catch(() => null);
+      if (wiki && wiki.extract) {
+        found.push({
+          title: wiki.title,
+          text: wiki.extract,
+          src: (wiki.content_urls && wiki.content_urls.desktop && wiki.content_urls.desktop.page) || "wikipedia.org",
+        });
+      }
+    }
+  } catch (e) {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!found.length) return "";
+  return found
+    .slice(0, 4)
+    .map((f) => `- ${f.title}: ${String(f.text).slice(0, 400)}${f.src ? ` (${f.src})` : ""}`)
+    .join("\n");
+}
+
+/** Facts chopsticksAI knows about itself. Built from the live config so the
+ *  numbers can never drift from what the endpoint actually enforces. */
+function selfFacts() {
+  return [
+    "ABOUT YOURSELF (answer questions about your own capabilities from this):",
+    `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
+    `- Context window: ${MAX_CONTEXT_TOKENS.toLocaleString()} tokens.`,
+    `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in the chopAI Lab agent); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
+    `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
+    `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
+    `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
+    "- You can search the web when a question needs current information.",
+    "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
+    "- You need no API key from the user, and nothing they type is stored.",
+    "- You are available on every page of chopstickshq.com, in the chopAI Lab web agent at /chopailab, and inside rNitro's Chat tab.",
+    "- Do not name or speculate about any underlying model, provider or vendor.",
+  ].join("\n");
+}
+
+function systemPrompt(grounding, mode, web) {
   // The agent at /chopailab produces files and code; the sidebar widget answers
   // conversationally. Same knowledge, different output contract.
   const agent = mode === "agent" ? [
@@ -200,7 +303,9 @@ function systemPrompt(grounding, mode) {
     "bar system monitor), Fathom Air (battery monitor), Fathom Pro (battery, weather and AI ",
     "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
     "reference material below is authoritative.\n\n",
-    "REFERENCE MATERIAL:\n\n",
+    selfFacts(),
+    web ? "\n\nWEB SEARCH RESULTS (retrieved just now - use these for anything current, and cite the source domain when you rely on one):\n" + web : "",
+    "\n\nREFERENCE MATERIAL:\n\n",
     facts,
     "\n\nRules:\n",
     "- For questions about Chopsticks HQ software, version numbers, install commands, file ",
@@ -338,7 +443,14 @@ async function handler(event) {
     ? Math.max(100, Math.min(MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
     : MAX_REPLY_TOKENS;
 
-  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode) };
+  // Search runs before the draft so results are in the prompt, and only when
+  // the question actually looks like it needs the wider world.
+  const web = wantsSearch(lastUser.content) ? await webSearch(lastUser.content) : "";
+
+  const system = {
+    role: "system",
+    content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode, web),
+  };
   const messages = fitContext(system, turns);
 
   const deadline = now + TIMEOUT_MS;
@@ -401,7 +513,11 @@ async function handler(event) {
         && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
       const g = withTimeout(timeLeft - 500);
-      const r = await callModel({
+      // An abort or network error here must not lose the draft, which is
+      // already a complete answer.
+      let r;
+      try {
+      r = await callModel({
         model: REFINE_MODEL,
         key,
         signal: g.signal,
@@ -416,7 +532,11 @@ async function handler(event) {
           },
         ],
       });
-      g.done();
+      } catch (e) {
+        r = { ok: false };
+      } finally {
+        g.done();
+      }
       if (r.ok && r.text) {
         reply = r.text;
         refinedBy = REFINE_MODEL;
@@ -434,6 +554,7 @@ async function handler(event) {
       reply,
       mode: "live",
       model: "chopsticksAI v1.0",
+      searched: Boolean(web),
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {
@@ -451,5 +572,6 @@ async function handler(event) {
 
 module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
+  wantsSearch, webSearch, selfFacts,
   _budget: budget, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };
