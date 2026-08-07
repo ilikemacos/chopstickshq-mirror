@@ -77,7 +77,9 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Netlify caps a synchronous function at ~26s, so the whole request - both
 // model calls - must finish inside this. The draft gets the bulk of it; the
 // review pass only runs if enough time is left.
-const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 24000);
+// Netlify kills a synchronous function at ~26s with a 504 - which the client
+// sees as a broken response, not our graceful message. Stay well inside it.
+const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 18000);
 const REFINE_MIN_MS = 5000;
 // Long generations (the /chopailab agent asking for whole files) need most of
 // the window for the draft. Short widget replies leave room for a review pass.
@@ -656,8 +658,12 @@ async function handler(event) {
     let lastStatus = 0;
     let lastDetail = "";
 
-    const chain = (replyTokens > LONG_REPLY_TOKENS && tier.longModels)
-      ? tier.longModels : tier.models;
+    // A long generation only has time for one attempt. Falling back would blow
+    // the platform's function limit and produce a 504 instead of an answer.
+    const longRun = replyTokens > LONG_REPLY_TOKENS;
+    const chain = longRun
+      ? (tier.longModels || tier.models).slice(0, 1)
+      : tier.models;
 
     for (let ci = 0; ci < chain.length; ci++) {
       const candidate = chain[ci];
@@ -665,9 +671,9 @@ async function handler(event) {
       // window and leave a short retry slice for the rest. Splitting evenly
       // starved every candidate and all of them timed out.
       const msLeft = deadline - Date.now();
-      const budgetMs = ci === 0 && chain.length > 1
-        ? Math.max(8000, msLeft - 5000)
-        : draftBudgetMs(replyTokens, msLeft);
+      const budgetMs = chain.length > 1
+        ? Math.max(6000, Math.floor(msLeft / (chain.length - ci)))
+        : msLeft - 700;
       if (budgetMs <= 0) break;
       let r;
       const attemptStart = Date.now();
