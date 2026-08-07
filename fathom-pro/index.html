@@ -112,7 +112,7 @@
     cursor: pointer; font-family: inherit; transition: .15s;
   }
   .btn-sm { height: 2.15rem; padding: 0 0.95rem; font-size: 0.8125rem; }
-  .btn-primary { background: var(--soft); color: #0a0a0c; }
+  .btn-primary { background: var(--soft); color: var(--bg); }
   .btn-primary:hover { opacity: 0.92; }
   .btn-outline { background: transparent; color: var(--text); border-color: var(--border); }
   .btn-outline:hover { background: rgba(255,255,255,0.05); }
@@ -404,7 +404,7 @@
         <div class="dl">
           <article class="dl-card">
             <h3>1 · curl install (recommended)</h3>
-            <p>Fetches the signed app zip → <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications/Fathom Pro.app</code>.</p>
+            <p>Fetches the current App ZIP, <strong style="color:var(--text)">verifies its SHA-256</strong>, and installs to <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications/Fathom Pro.app</code>.</p>
             <pre class="curl copyable" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/fathom-pro/install-fathom-pro.sh | bash</pre>
             <div class="dl-actions">
               <button type="button" class="btn btn-primary" id="btn-copy-curl">Copy curl install</button>

@@ -1,19 +1,59 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
-echo "Fathom Installer (App ZIP)"
+
+echo "Fathom Air Installer (App ZIP)"
+
 [[ "$(uname)" == "Darwin" ]] || { echo "macOS only"; exit 1; }
 [[ "${EUID:-$(id -u)}" -ne 0 ]] || { echo "Do not run as root"; exit 1; }
-VER="v0.3.7-Beta"
-URL="https://chopstickshq.com/fathom/Fathom-${VER}.zip"
+
+BASE="https://chopstickshq.com/fathom"
+GH_BASE="https://github.com/ilikemacos/Fathom/releases/latest/download"
+APP="Fathom.app"
+
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/fathom-install.XXXXXX")
 trap 'rm -rf -- "$TMP"' EXIT
-echo "Downloading $URL…"
-curl --progress-bar -fL "$URL" -o "$TMP/fathom.zip"
+
+json_get() {
+  grep -o "\"$2\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$1" \
+    | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//'
+}
+
+echo "Resolving latest version..."
+curl -fsSL "$BASE/version.json" -o "$TMP/version.json" \
+  || { echo "Could not reach $BASE/version.json"; exit 1; }
+
+VER="$(json_get "$TMP/version.json" latest)"
+ZIP="$(json_get "$TMP/version.json" zip)"
+WANT_SHA="$(json_get "$TMP/version.json" sha256)"
+
+[[ -n "$VER" && -n "$ZIP" ]] || { echo "Malformed version.json"; exit 1; }
+echo "Latest is $VER"
+
+echo "Downloading ${ZIP}..."
+curl --progress-bar -fL "${BASE}/${ZIP}" -o "$TMP/fathom.zip" \
+  || curl --progress-bar -fL "${GH_BASE}/${ZIP}" -o "$TMP/fathom.zip"
+
+if [[ -n "$WANT_SHA" ]]; then
+  GOT_SHA="$(shasum -a 256 "$TMP/fathom.zip" | awk '{print $1}')"
+  if [[ "$GOT_SHA" != "$WANT_SHA" ]]; then
+    echo "Checksum mismatch - refusing to install."
+    echo "  expected $WANT_SHA"
+    echo "  got      $GOT_SHA"
+    exit 1
+  fi
+  echo "Checksum verified."
+else
+  echo "No checksum published for $VER - skipping verification."
+fi
+
 unzip -qo "$TMP/fathom.zip" -d "$TMP/out"
+[[ -d "${TMP}/out/${APP}" ]] || { echo "Archive did not contain $APP"; exit 1; }
+
 mkdir -p "$HOME/Applications"
-rm -rf "$HOME/Applications/Fathom.app"
-ditto "$TMP/out/Fathom.app" "$HOME/Applications/Fathom.app"
-xattr -cr "$HOME/Applications/Fathom.app" 2>/dev/null || true
-codesign --force --deep --sign - "$HOME/Applications/Fathom.app" 2>/dev/null || true
-echo "Installed ~/Applications/Fathom.app"
-open "$HOME/Applications/Fathom.app"
+rm -rf "$HOME/Applications/${APP:?}"
+ditto "${TMP}/out/${APP}" "${HOME}/Applications/${APP}"
+xattr -cr "${HOME}/Applications/${APP}" 2>/dev/null || true
+codesign --force --sign - "${HOME}/Applications/${APP}" 2>/dev/null || true
+
+echo "Installed $VER to ~/Applications/$APP"
+open "${HOME}/Applications/${APP}"

@@ -803,13 +803,13 @@
         <div class="dl">
           <article class="dl-card">
             <h3>1 · curl install (recommended)</h3>
-            <p>Hardened shell installer → compile → <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications/Fathom.app</code> (Fathom Air).</p>
-            <pre class="curl copyable" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/fathom/install.sh -o /tmp/fathom-install.sh &amp;&amp; bash /tmp/fathom-install.sh</pre>
+            <p>Fetches the current App ZIP, <strong style="color:var(--text)">verifies its SHA-256</strong>, and installs to <code class="mono" style="font-size:.8em;color:var(--text)">~/Applications/Fathom.app</code>. No Xcode needed.</p>
+            <pre class="curl copyable" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/fathom/install-fathom.sh | bash</pre>
             <div class="dl-actions">
               <button type="button" class="btn btn-primary" id="btn-copy-curl">Copy curl install</button>
               <a class="btn btn-outline" href="install-fathom.sh" download>Download .sh</a>
             </div>
-            <p class="note">Also via subdomain after DNS: <code class="mono">https://fathom.chopstickshq.com/install.sh</code>. Requires <a href="https://developer.apple.com/xcode/resources/">Xcode Command Line Tools</a>.</p>
+            <p class="note">Always installs whatever <code class="mono">version.json</code> lists as current. To compile from source instead (needs <a href="https://developer.apple.com/xcode/resources/">Xcode Command Line Tools</a>): <code class="mono">install.sh</code>.</p>
           </article>
           <article class="dl-card">
             <h3>2 · App ZIP <span class="note" style="font-weight:400">— fallback</span></h3>
@@ -871,7 +871,7 @@
   <div class="toast" id="toast">Copied</div>
   <script src="/js/clipboard.js"></script>
   <script>
-    const CURL = 'curl -fsSL https://chopstickshq.com/fathom/install.sh -o /tmp/fathom-install.sh && bash /tmp/fathom-install.sh';
+    const CURL = 'curl -fsSL https://chopstickshq.com/fathom/install-fathom.sh | bash';
     function toast(msg) {
       const t = document.getElementById('toast');
       if (!t) return;

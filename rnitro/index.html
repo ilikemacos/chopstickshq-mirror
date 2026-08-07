@@ -951,106 +951,6 @@
   .next-rel-card li::marker { color: var(--cyan); }
 
   
-  .mc-section {
-    position: relative;
-    z-index: 1;
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 0 20px 56px;
-  }
-
-  .mc-section .section-label { color: #5DBD4A; }
-  .mc-section .section-label::after { background: rgba(93,189,74,0.25); }
-
-  .mc-card {
-    background: var(--card);
-    border: 1px solid rgba(93,189,74,0.35);
-    border-radius: 16px;
-    padding: 18px 16px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .mc-card::before {
-    content: '';
-    position: absolute;
-    bottom: -80px; left: -40px;
-    width: 220px; height: 220px;
-    background: radial-gradient(circle, rgba(93,189,74,0.12), transparent 70%);
-    pointer-events: none;
-  }
-
-  .mc-card::after {
-    content: '';
-    position: absolute;
-    top: -60px; right: -40px;
-    width: 180px; height: 180px;
-    background: radial-gradient(circle, rgba(139,90,43,0.1), transparent 70%);
-    pointer-events: none;
-  }
-
-  .mc-card h2 {
-    font-size: 17px;
-    font-weight: var(--fw-title);
-    margin-bottom: 8px;
-    letter-spacing: -0.5px;
-  }
-
-  .mc-card p {
-    font-size: var(--text-base);
-    color: var(--muted);
-    line-height: 1.6;
-    margin-bottom: 24px;
-  }
-
-  .mc-ip-row {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    max-width: 420px;
-    margin: 0 auto;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid rgba(93,189,74,0.4);
-    background: var(--bg2);
-  }
-
-  .mc-ip {
-    flex: 1;
-    font-family: var(--mono);
-    font-size: var(--text-lg);
-    font-weight: var(--fw-title);
-    color: #5DBD4A;
-    padding: 14px 18px;
-    text-align: left;
-    letter-spacing: 0.3px;
-    user-select: all;
-  }
-
-  .mc-copy-btn {
-    background: #5DBD4A;
-    color: #0A1A08;
-    border: none;
-    font-family: var(--mono);
-    font-size: var(--text-base);
-    font-weight: var(--fw-title);
-    padding: 0 20px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    white-space: nowrap;
-  }
-
-  .mc-copy-btn:hover { background: #6FD45C; }
-  .mc-copy-btn:active { transform: scale(0.97); }
-
-  .mc-hint {
-    margin-top: 14px;
-    font-family: var(--mono);
-    font-size: var(--text-sm);
-    color: var(--muted);
-  }
-
   .download-meta h2 {
     font-size: 14px;
     font-weight: var(--fw-title);
@@ -1277,7 +1177,7 @@
     --border:   #222222;
     --text:     #F2F2F2;
     --muted:    #7A7A8A;
-    --cyan:     #00E5FF;
+    --cyan:     #d8d8de;
     --green:    #c8c8d0;
   }
   
@@ -1290,8 +1190,8 @@
     --border:   #2E3A52;
     --text:     #EAF0FF;
     --muted:    #7A88A8;
-    --cyan:     #20E0FF;
-    --green:    #2CFF9A;
+    --cyan:     #dcdce2;
+    --green:    #c4c4cc;
   }
   
   html[data-theme="lcd"] {
@@ -1303,8 +1203,8 @@
     --border:   #3A3A48;
     --text:     #E4E4EC;
     --muted:    #8888A0;
-    --cyan:     #33D0E8;
-    --green:    #40E890;
+    --cyan:     #d0d0d8;
+    --green:    #b8b8c2;
   }
   
   html[data-theme="miniled"] {
@@ -1316,9 +1216,9 @@
     --border:   #2A3450;
     --text:     #F0F4FF;
     --muted:    #7080A0;
-    --cyan:     #00F0FF;
-    --green:    #00FFA0;
-    --orange:   #FFA040;
+    --cyan:     #e4e4ea;
+    --green:    #cacad2;
+    --orange:   #a8a8b4;
   }
   html[data-theme="light"] body,
   html[data-theme="dark"] body,
@@ -1515,10 +1415,11 @@
   <h1 class="hero-title"><span>rNitro</span></h1>
   <p class="hero-credit">Made by <strong>chopsticks</strong></p>
   <p class="hero-sub">Real-time CPU, temperature, memory, battery, and more — right in your Mac menu bar. Current: <strong>v1.3.32</strong> · requires <strong>macOS 14+</strong> (Sonoma or later). Free · no account · no telemetry.</p>
-  <p style="margin:14px 0 0; text-align:center;">
-    <button type="button" class="btn btn-primary btn-recommended" style="font-size:16px; padding:12px 28px;" onclick="requestDownload('rNitro-v1.3.32-Experimental.zip')">⬇ Download for Mac · App ZIP</button>
+  <p style="margin:14px 0 0; text-align:center; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+    <button type="button" class="btn btn-primary btn-recommended" style="font-size:16px; padding:12px 28px;" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
+    <button type="button" class="btn btn-secondary" style="font-size:16px; padding:12px 28px;" onclick="requestDownload('rNitro-v1.3.32-Experimental.zip')">⬇ App ZIP</button>
   </p>
-  <p style="margin:8px 0 0; font-size:13px; color:var(--muted); text-align:center;">Terms apply once per session · Apple Silicon</p>
+  <p style="margin:8px 0 0; font-size:13px; color:var(--muted); text-align:center;">Terminal install skips Gatekeeper · Apple Silicon · Terms apply once per session</p>
 <!-- @end:hero-copy -->
 
   
@@ -1636,13 +1537,13 @@
       <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--green); margin-bottom:4px;">v1.3.32-Experimental</div>
       <div style="font-size:16px; color:var(--muted); margin-bottom:0;">rNitro for macOS — menu bar monitor, Lab tools, AI chat, New style UI. Requires <strong style="color:var(--green);">macOS 14.0+</strong> (Sonoma / Sequoia / later) · universal when available.</div>
       <div class="dl-recommended" style="border-color:rgba(200,200,208,0.4);">
-        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.45); background:rgba(200,200,208,0.1);">No Xcode</div>
-        <div class="dl-recommended-title" style="color:var(--green);">App ZIP</div>
-        <p class="dl-recommended-steps">Unzip → Applications → right-click <strong>Open</strong> if blocked.</p>
-        <button type="button" class="btn btn-primary btn-recommended" style="" onclick="requestDownload('rNitro-v1.3.32-Experimental.zip')">⬇ App ZIP · 4.9 MB</button>
-        <p class="dl-recommended-steps" style="margin:12px 0 6px;"><strong>Terminal</strong> (no Xcode):</p>
+        <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.45); background:rgba(200,200,208,0.1);">Recommended · No Xcode</div>
+        <div class="dl-recommended-title" style="color:var(--green);">Terminal install</div>
+        <p class="dl-recommended-steps">Paste in Terminal. Installs to <strong>~/Applications</strong> and clears the quarantine flag, so <strong>Gatekeeper never blocks it</strong>.</p>
         <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.3); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[######--------------] 1/3 Download\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.3.32-Experimental.zip -o /tmp/rnitro.zip && printf "\n[############--------] 2/3 Unzip\n" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf "[####################] 3/3 Install\n" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf "✓ Done → ~/Applications/rNitro.app\n"</div>
-        <button type="button" class="btn btn-secondary" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
+        <button type="button" class="btn btn-primary btn-recommended" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
+        <p class="dl-recommended-steps" style="margin:14px 0 6px;"><strong>App ZIP</strong> — fallback. Unzip → Applications → <strong>Gatekeeper will block it</strong>, so right-click <strong>Open</strong>, then Open again.</p>
+        <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.3.32-Experimental.zip')">⬇ App ZIP · 4.9 MB</button>
       </div>
       <style>
         @keyframes expReveal { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
@@ -1731,7 +1632,7 @@
         font-family:var(--mono); font-size:12px; font-weight:700; color:#fff;
       }
       #reviews .rv-name { font-family:var(--mono); font-size:13px; font-weight:700; color:var(--cyan); }
-      #reviews .rv-stars { color:#f5a623; font-size:12px; letter-spacing:1px; }
+      #reviews .rv-stars { color:var(--text); font-size:12px; letter-spacing:1px; }
       #reviews .rv-date { font-family:var(--mono); font-size:11px; color:var(--muted); }
       #reviews .rv-tag {
         font-family:var(--mono); font-size:10px; color:var(--muted);
@@ -1746,8 +1647,8 @@
         font-family:var(--mono); font-size:10px; letter-spacing:.03em;
         border-radius:20px; padding:1px 7px; white-space:nowrap;
       }
-      #reviews .rv-src[data-src="AlternativeTo"] { color:#7fb3ff; border:1px solid rgba(127,179,255,.4); }
-      #reviews .rv-src[data-src="Product Hunt"]  { color:#ff7a59; border:1px solid rgba(255,122,89,.45); }
+      #reviews .rv-src[data-src="AlternativeTo"] { color:var(--muted); border:1px solid var(--border); }
+      #reviews .rv-src[data-src="Product Hunt"]  { color:var(--muted); border:1px solid var(--border); }
       #reviews .rv-quote { margin:0; font-size:14px; line-height:1.55; color:var(--text); }
       #reviews .rv-quote span { display:block; }
       #reviews .rv-quote span + span { margin-top:5px; }
@@ -1820,7 +1721,7 @@
         <!-- set 1 -->
         <figure class="rv-card">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#5c3f8f;">mz</span>
+            <span class="rv-avatar" style="background:#6a6a74;">mz</span>
             <span class="rv-name">mzxl_g</span><span class="rv-src" data-src="Product Hunt">Product Hunt</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1829,7 +1730,7 @@
         </figure>
         <figure class="rv-card">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#da552f;">dr</span>
+            <span class="rv-avatar" style="background:#5a5a64;">dr</span>
             <span class="rv-name">drdestens</span><span class="rv-src" data-src="Product Hunt">Product Hunt</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1841,7 +1742,7 @@
         </figure>
         <figure class="rv-card">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#9c3a6e;">dc</span>
+            <span class="rv-avatar" style="background:#4a4a54;">dc</span>
             <span class="rv-name">donut-coderZG</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1852,7 +1753,7 @@
 
         <figure class="rv-card">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#2f3f5c;">ja</span>
+            <span class="rv-avatar" style="background:#54545e;">ja</span>
             <span class="rv-name">jameshealy</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Jul 17, 2026</span>
@@ -1877,7 +1778,7 @@
 
         <figure class="rv-card">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#4b3b2e;">ws</span>
+            <span class="rv-avatar" style="background:#3a3a44;">ws</span>
             <span class="rv-name">wslam</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-tag">comment</span>
             <span class="rv-date">Jul 9, 2026</span>
@@ -1889,7 +1790,7 @@
         <!-- set 2: duplicate for the seamless upward loop -->
         <figure class="rv-card rv-dupe" aria-hidden="true">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#5c3f8f;">mz</span>
+            <span class="rv-avatar" style="background:#6a6a74;">mz</span>
             <span class="rv-name">mzxl_g</span><span class="rv-src" data-src="Product Hunt">Product Hunt</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1898,7 +1799,7 @@
         </figure>
         <figure class="rv-card rv-dupe" aria-hidden="true">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#da552f;">dr</span>
+            <span class="rv-avatar" style="background:#5a5a64;">dr</span>
             <span class="rv-name">drdestens</span><span class="rv-src" data-src="Product Hunt">Product Hunt</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1910,7 +1811,7 @@
         </figure>
         <figure class="rv-card rv-dupe" aria-hidden="true">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#9c3a6e;">dc</span>
+            <span class="rv-avatar" style="background:#4a4a54;">dc</span>
             <span class="rv-name">donut-coderZG</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Aug 1, 2026</span>
@@ -1921,7 +1822,7 @@
 
         <figure class="rv-card rv-dupe" aria-hidden="true">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#2f3f5c;">ja</span>
+            <span class="rv-avatar" style="background:#54545e;">ja</span>
             <span class="rv-name">jameshealy</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-stars">★★★★★</span>
             <span class="rv-date">Jul 17, 2026</span>
@@ -1946,7 +1847,7 @@
 
         <figure class="rv-card rv-dupe" aria-hidden="true">
           <div class="rv-top">
-            <span class="rv-avatar" style="background:#4b3b2e;">ws</span>
+            <span class="rv-avatar" style="background:#3a3a44;">ws</span>
             <span class="rv-name">wslam</span><span class="rv-src" data-src="AlternativeTo">AlternativeTo</span>
             <span class="rv-tag">comment</span>
             <span class="rv-date">Jul 9, 2026</span>
@@ -2465,7 +2366,7 @@
     <div class="feature">
       <div class="feature-title">v1.2.6 Experimental</div>
       <div class="feature-desc" style="margin-top:8px; line-height:1.7;">
-        <strong style="color:#9b7bff;">New Lab toys</strong> — thermal forecast, heat haiku, throttle cosplay, overnight watch, core roulette, chaos blip. Beta keeps slim Lab.
+        <strong style="color:var(--text);">New Lab toys</strong> — thermal forecast, heat haiku, throttle cosplay, overnight watch, core roulette, chaos blip. Beta keeps slim Lab.
       </div>
     </div>
     <div class="feature">
@@ -2503,20 +2404,7 @@
   </div>
 </section>
 
-<section class="mc-section" style="padding-top:40px;">
-  <div class="section-label">Community</div>
-  <div class="mc-card">
-    <h2>Join our Minecraft server!</h2>
-    <p>Nothing to do with rNitro — just a place to hang out and play. Add the server in Minecraft Java Edition and jump in.</p>
-    <div class="mc-ip-row">
-      <div class="mc-ip" id="mc-ip">macetech.minefort.com</div>
-      <button class="mc-copy-btn" onclick="copyMcIp()" type="button">Copy IP</button>
-    </div>
-    <div class="mc-hint">Click Copy IP, then Multiplayer → Add Server → paste</div>
-  </div>
-</section>
-
-<section class="section" style="padding-top:0;">
+<section class="section" style="padding-top:40px;">
   <div class="section-label">What it monitors</div>
   <div class="features">
     <div class="feature">
@@ -2642,7 +2530,7 @@
           <li><strong>DMG</strong> — open the disk image and drag <code>rNitro.app</code> to Applications.</li>
         </ul>
         <div style="margin-top:12px;">
-      <p style="font-size:16px; color:#ffcc66; background:rgba(255,180,40,0.1); border:1px solid rgba(255,180,40,0.45); border-radius:8px; padding:12px 14px; line-height:1.65; text-align:left;">
+      <p style="font-size:16px; color:var(--text); background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; line-height:1.65; text-align:left;">
         <strong>⚠ macOS security prompt:</strong> When you open the PKG, macOS may say it can't verify the file. That's normal for indie apps. <strong>Don't click Move to Trash.</strong> Click <strong>Done</strong>, then go to <strong>System Settings → Privacy &amp; Security</strong> and press <strong>Open</strong> at the bottom.
       </p>
         </div>
@@ -3655,18 +3543,6 @@
       const toast = document.getElementById('toast');
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2500);
-    });
-  }
-
-  function copyMcIp() {
-    navigator.clipboard.writeText('macetech.minefort.com').then(() => {
-      const toast = document.getElementById('toast');
-      toast.textContent = '✓ Server IP copied';
-      toast.classList.add('show');
-      setTimeout(() => {
-        toast.classList.remove('show');
-        toast.textContent = '✓ Copied to clipboard';
-      }, 2500);
     });
   }
 

@@ -1,21 +1,60 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
 echo "Fathom Pro Installer"
-VER="v0.1.0-Pro-Beta"
-URL="https://chopstickshq.com/fathom-pro/FathomPro-${VER}.zip"
-# Fallback to GitHub releases
-GH_URL="https://github.com/ilikemacos/Fathom-Pro/releases/latest/download/FathomPro-${VER}.zip"
+
+[[ "$(uname)" == "Darwin" ]] || { echo "macOS only"; exit 1; }
+[[ "${EUID:-$(id -u)}" -ne 0 ]] || { echo "Do not run as root"; exit 1; }
+
+BASE="https://chopstickshq.com/fathom-pro"
+GH_BASE="https://github.com/ilikemacos/Fathom-Pro/releases/latest/download"
+APP="Fathom Pro.app"
+
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/fathom-pro-install.XXXXXX")
-trap 'rm -rf "$TMP"' EXIT
-echo "Downloading…"
-if ! curl -fsSL "$URL" -o "$TMP/f.zip" 2>/dev/null; then
-  curl -fsSL "$GH_URL" -o "$TMP/f.zip"
+trap 'rm -rf -- "$TMP"' EXIT
+
+json_get() {
+  grep -o "\"$2\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$1" \
+    | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//'
+}
+
+echo "Resolving latest version..."
+curl -fsSL "$BASE/version.json" -o "$TMP/version.json" \
+  || { echo "Could not reach $BASE/version.json"; exit 1; }
+
+VER="$(json_get "$TMP/version.json" latest)"
+ZIP="$(json_get "$TMP/version.json" zip)"
+WANT_SHA="$(json_get "$TMP/version.json" sha256)"
+
+[[ -n "$VER" && -n "$ZIP" ]] || { echo "Malformed version.json"; exit 1; }
+echo "Latest is $VER"
+
+echo "Downloading ${ZIP}..."
+curl --progress-bar -fL "${BASE}/${ZIP}" -o "$TMP/f.zip" \
+  || curl --progress-bar -fL "${GH_BASE}/${ZIP}" -o "$TMP/f.zip"
+
+if [[ -n "$WANT_SHA" ]]; then
+  GOT_SHA="$(shasum -a 256 "$TMP/f.zip" | awk '{print $1}')"
+  if [[ "$GOT_SHA" != "$WANT_SHA" ]]; then
+    echo "Checksum mismatch - refusing to install."
+    echo "  expected $WANT_SHA"
+    echo "  got      $GOT_SHA"
+    exit 1
+  fi
+  echo "Checksum verified."
+else
+  echo "No checksum published for $VER - skipping verification."
 fi
-unzip -q "$TMP/f.zip" -d "$TMP/out"
-rm -rf "$HOME/Applications/Fathom Pro.app"
-ditto "$TMP/out/Fathom Pro.app" "$HOME/Applications/Fathom Pro.app"
-xattr -cr "$HOME/Applications/Fathom Pro.app" 2>/dev/null || true
-codesign --force --deep --sign - "$HOME/Applications/Fathom Pro.app" 2>/dev/null || true
-echo "Installed ~/Applications/Fathom Pro.app"
-echo "Unlock: vault keys or homepage scavenger (first L in Small)"
-open "$HOME/Applications/Fathom Pro.app"
+
+unzip -qo "$TMP/f.zip" -d "$TMP/out"
+[[ -d "${TMP}/out/${APP}" ]] || { echo "Archive did not contain $APP"; exit 1; }
+
+mkdir -p "$HOME/Applications"
+rm -rf "$HOME/Applications/${APP:?}"
+ditto "${TMP}/out/${APP}" "${HOME}/Applications/${APP}"
+xattr -cr "${HOME}/Applications/${APP}" 2>/dev/null || true
+codesign --force --sign - "${HOME}/Applications/${APP}" 2>/dev/null || true
+
+echo "Installed $VER to ~/Applications/$APP"
+echo "Unlock: vault keys at chopstickshq.com/vault/, or the homepage scavenger"
+open "${HOME}/Applications/${APP}"
