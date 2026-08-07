@@ -441,12 +441,21 @@
         messages: history.slice(-12),
         mode: 'agent',
         tier: tierSel.value,
-        maxTokens: 900
+        maxTokens: 700
       })
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.reply) throw new Error('empty');
+        if (d.mode === 'error' && window.chopsticksAI && window.chopsticksAI.ask) {
+          var off = window.chopsticksAI.ask(text);
+          if (off.confident) {
+            history.push({ role: 'assistant', content: off.answer });
+            thinking.replaceChild(renderAssistant(off.answer + '\n\n(Offline answer — the live model was temporarily unavailable.)'), thinking.lastChild);
+            showTier();
+            return;
+          }
+        }
         history.push({ role: 'assistant', content: d.reply });
         thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
         showUsage(d);

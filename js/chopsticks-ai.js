@@ -273,7 +273,7 @@
   }
 
   function liveFailed(d) {
-    return !d || !d.reply || (d.mode && d.mode !== 'live');
+    return !d || !d.reply || (d.mode && d.mode !== 'live' && d.mode !== 'offline');
   }
 
   function submit(text) {

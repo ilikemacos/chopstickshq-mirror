@@ -23,14 +23,16 @@ const TIERS = {
   ultra: {
     label: "Ultra",
     models: [
-      "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
       "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     // Long generations are token-rate bound, and a 55B-active model cannot emit
     // ~1.5k tokens inside the serverless window. Fewer active parameters first.
     longModels: [
       "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     context: 48000,
@@ -38,11 +40,13 @@ const TIERS = {
   super: {
     label: "Super",
     models: [
-      "nvidia/nemotron-3-super-120b-a12b:free",
       "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     longModels: [
       "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     context: 24000,
@@ -298,9 +302,9 @@ function retrievalQuery(turns) {
     .join(" ");
 }
 
-/** Same word-boundary scoring as the offline engine, used purely to pick
- *  which facts to hand the model. */
-function retrieve(query, limit = GROUNDING_INTENTS) {
+const KB_CONFIDENCE_FLOOR = 4;
+
+function scoreQuery(query) {
   const kb = knowledgeBase();
   const text = normalise(query);
   if (!text) return [];
@@ -319,8 +323,22 @@ function retrieve(query, limit = GROUNDING_INTENTS) {
     if (b.intent.priority !== a.intent.priority) return b.intent.priority - a.intent.priority;
     return a.intent.id < b.intent.id ? -1 : 1;
   });
-  return scored.slice(0, limit).map((s) => s.intent);
+  return scored;
 }
+
+/** Same word-boundary scoring as the offline engine, used purely to pick
+ *  which facts to hand the model. */
+function retrieve(query, limit = GROUNDING_INTENTS) {
+  return scoreQuery(query).slice(0, limit).map((s) => s.intent);
+}
+
+function kbFallbackAnswer(query) {
+  const top = scoreQuery(query)[0];
+  if (!top || top.score < KB_CONFIDENCE_FLOOR) return null;
+  return top.intent.answer;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ------------------------------------------------------------- web search ---
 // Free sources only (DuckDuckGo Instant Answer + Wikipedia REST), so search
@@ -534,6 +552,9 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
   }
   const data = await res.json();
   const text = (data.choices && data.choices[0] && data.choices[0].message.content || "").trim();
+  if (!text) {
+    return { ok: false, status: res.status, detail: "empty completion" };
+  }
   const reported = data.usage && Number(data.usage.total_tokens);
   return {
     ok: true,
@@ -640,14 +661,16 @@ async function handler(event) {
 
     for (let ci = 0; ci < chain.length; ci++) {
       const candidate = chain[ci];
-      // Reserve time for the remaining candidates so a slow first model cannot
-      // consume the whole window and leave no chance to fall back.
-      const remaining = chain.length - ci;
-      const share = Math.floor((deadline - Date.now()) / remaining);
-      const budgetMs = remaining > 1
-        ? Math.max(7000, share)
-        : draftBudgetMs(replyTokens, deadline - Date.now());
+      // The first candidate is the likeliest to succeed, so give it most of the
+      // window and leave a short retry slice for the rest. Splitting evenly
+      // starved every candidate and all of them timed out.
+      const msLeft = deadline - Date.now();
+      const budgetMs = ci === 0 && chain.length > 1
+        ? Math.max(8000, msLeft - 5000)
+        : draftBudgetMs(replyTokens, msLeft);
       if (budgetMs <= 0) break;
+      const g = withTimeout(budgetMs);
+      const attemptStart = Date.now();
       const g = withTimeout(budgetMs);
       let r;
       try {
@@ -657,13 +680,24 @@ async function handler(event) {
       } finally {
         g.done();
       }
+      if (!r.ok && (r.status === 429 || r.status === 503) && budgetMs > 2500) {
+        await sleep(700);
+        const g2 = withTimeout(Math.min(budgetMs, 12000));
+        try {
+          r = await callModel({ model: candidate, messages, key, signal: g2.signal, maxTokens: replyTokens });
+        } catch (e) {
+          r = { ok: false, status: 0, detail: String(e && e.name) };
+        } finally {
+          g2.done();
+        }
+      }
       if (r.ok && r.text) {
         draft = r;
         draftModel = candidate;
         break;
       }
       lastStatus = r.status || 0;
-      lastDetail = r.detail || "";
+      lastDetail = (r.detail || "") + ` [${candidate.split("/")[1]} ${Date.now() - attemptStart}/${budgetMs}ms]`;
     }
 
     if (!draft) {
@@ -671,6 +705,14 @@ async function handler(event) {
         tier: tier.label, status: lastStatus, detail: String(lastDetail).slice(0, 300),
         replyTokens, msLeft: deadline - Date.now(),
       });
+      const kbQuery = retrievalQuery(turns) || lastUser.content;
+      const kbAnswer = kbFallbackAnswer(kbQuery);
+      if (kbAnswer) {
+        return json(200, {
+          reply: kbAnswer + "\n\n(Offline answer — the live model was temporarily unavailable.)",
+          mode: "offline",
+        });
+      }
       return json(200, {
         diag: { status: lastStatus, detail: String(lastDetail).slice(0, 200) },
         reply:
