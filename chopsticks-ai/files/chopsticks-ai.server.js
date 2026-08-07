@@ -30,7 +30,7 @@ const GROUNDING_INTENTS = 6;
 // Free-tier budget: once TOKEN_BUDGET is spent the endpoint stops calling the
 // model for COOLDOWN_MS, so a burst of traffic cannot burn the whole allowance
 // and leave the assistant dead for everyone.
-const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 750000);
+const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000);
 const COOLDOWN_MS = Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000);
 const budget = { used: 0, windowStart: Date.now(), cooldownUntil: 0 };
 
@@ -99,6 +99,16 @@ function normalise(text) {
     .replace(/[^a-z0-9\s]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Last few user turns, joined — follow-ups like "how do I install it?" keep
+ *  product context from earlier in the thread. */
+function retrievalQuery(turns) {
+  return turns
+    .filter((m) => m.role === "user")
+    .slice(-3)
+    .map((m) => m.content)
+    .join(" ");
 }
 
 /** Same word-boundary scoring as the offline engine, used purely to pick
@@ -242,7 +252,7 @@ async function handler(event) {
     });
   }
 
-  const system = { role: "system", content: systemPrompt(retrieve(lastUser.content)) };
+  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns))) };
   const messages = fitContext(system, turns);
 
   const controller = new AbortController();
@@ -312,6 +322,6 @@ async function handler(event) {
 }
 
 module.exports = {
-  handler, retrieve, systemPrompt, normalise, fitContext,
+  handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   _budget: budget, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };

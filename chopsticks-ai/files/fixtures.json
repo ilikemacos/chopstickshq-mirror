@@ -14,6 +14,10 @@
       "meta.capabilities"
     ],
     [
+      "how does chopsticksai work",
+      "meta.how-it-works"
+    ],
+    [
       "do you track me",
       "meta.privacy"
     ],
@@ -24,6 +28,10 @@
     [
       "what is chopsticks hq",
       "hq.what"
+    ],
+    [
+      "where are the guides",
+      "hq.guides"
     ],
     [
       "what apps do you make",
@@ -60,6 +68,10 @@
     [
       "how do i install rnitro",
       "rnitro.install.macos"
+    ],
+    [
+      "brew install rnitro",
+      "rnitro.install.homebrew"
     ],
     [
       "macos says it cant be opened",
@@ -176,6 +188,10 @@
     [
       "how do i install fathom",
       "fathom.install"
+    ],
+    [
+      "uninstall fathom",
+      "fathom.uninstall"
     ],
     [
       "difference between fathom and rnitro",

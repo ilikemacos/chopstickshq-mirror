@@ -142,7 +142,25 @@
         "capabilities",
         "commands"
       ],
-      "answer": "I can help with:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows\n• Fathom Air — the free battery monitor\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Privacy, licensing, and where to download things\n\nJust ask in plain English."
+      "answer": "I can answer general questions — coding, writing, science, recommendations, casual chat — and I'm also the in-house expert on Chopsticks HQ software:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows, Homebrew\n• Fathom Air — battery monitor, install, uninstall\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Guides, privacy, licensing, and downloads\n\nJust ask in plain English."
+    },
+    {
+      "id": "meta.how-it-works",
+      "product": "general",
+      "priority": 85,
+      "label": "How does chopsticksAI work?",
+      "phrases": [
+        "how do you work",
+        "how does chopsticksai work",
+        "live vs offline",
+        "do you use a cloud model",
+        "what model do you use"
+      ],
+      "keywords": [
+        "openrouter",
+        "offline mode"
+      ],
+      "answer": "chopsticksAI answers in two layers:\n\n1. Live answers — your question goes to chopstickshq.com/api/chopsticks-ai, which retrieves facts from a knowledge base (version numbers, install commands, unlock steps), then calls a language model to answer naturally. No account and no API key on your side.\n\n2. Offline fallback — if the endpoint is unreachable, on cooldown, or errors out, chopsticksAI answers from the compiled knowledge base on your device for Chopsticks HQ topics.\n\nInside rNitro's Chat tab, chopsticksAI is the default provider and works the same way."
     },
     {
       "id": "meta.privacy",
@@ -178,6 +196,22 @@
         "chopstickshq"
       ],
       "answer": "Chopsticks HQ is the home for a small set of macOS apps and side projects, made by chopsticks.\n\nMain apps:\n• rNitro — menu bar system monitor\n• Fathom Air — battery monitor\n• Fathom Pro — battery + weather + AI\n• ARENA — an FPS game\n\nEverything is free, with no accounts and no telemetry."
+    },
+    {
+      "id": "hq.guides",
+      "product": "general",
+      "priority": 55,
+      "label": "Where are the guides?",
+      "phrases": [
+        "where are the guides",
+        "what guides do you have",
+        "read the guides"
+      ],
+      "keywords": [
+        "guides",
+        "tutorials"
+      ],
+      "answer": "Guides live at chopstickshq.com/guides/\n\nCurrent topics:\n• Free Mac menu bar monitor\n• rNitro battery readings on Apple Silicon\n• Minecraft gens Skript checklist\n\nThe index always lists what's there — more get added as they are written."
     },
     {
       "id": "hq.products",
@@ -312,6 +346,21 @@
         "install"
       ],
       "answer": "The Terminal install is the recommended path — it installs to ~/Applications and clears the quarantine flag, so Gatekeeper never blocks it.\n\nCopy the Terminal command from chopstickshq.com/rnitro and paste it into Terminal.\n\nThe App ZIP is a fallback. Because browser downloads get macOS's quarantine flag, Gatekeeper will block it on first launch — right-click the app, choose Open, then Open again."
+    },
+    {
+      "id": "rnitro.install.homebrew",
+      "product": "rnitro",
+      "priority": 72,
+      "label": "Install rNitro with Homebrew",
+      "phrases": [
+        "install with homebrew",
+        "brew install rnitro",
+        "homebrew rnitro"
+      ],
+      "keywords": [
+        "homebrew"
+      ],
+      "answer": "If you use Homebrew:\n\nbrew tap ilikemacos/rnitro\nbrew install rnitro\n\nThat installs the stable formula. For the latest experimental build with the full feature set, use the Terminal installer from chopstickshq.com/rnitro instead.\n\nNo Homebrew? The curl one-liner on the rNitro page works without it."
     },
     {
       "id": "rnitro.gatekeeper",
@@ -813,6 +862,21 @@
         "fathomversion"
       ],
       "answer": "Fathom Air is on v0.3.8-Beta.\n\nThe installer always resolves whatever chopstickshq.com/fathom/version.json lists, so re-running it upgrades you."
+    },
+    {
+      "id": "fathom.uninstall",
+      "product": "fathom",
+      "priority": 58,
+      "label": "How do I uninstall Fathom Air?",
+      "phrases": [
+        "uninstall fathom",
+        "remove fathom air",
+        "delete fathom"
+      ],
+      "keywords": [
+        "uninstallfathom"
+      ],
+      "answer": "Quit Fathom Air from the menu bar, then delete Fathom Air.app from ~/Applications (or /Applications).\n\nTo remove saved settings:\ndefaults delete com.chopstickshq.fathom"
     },
     {
       "id": "fathom.vs.rnitro",

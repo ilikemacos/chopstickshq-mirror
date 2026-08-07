@@ -78,6 +78,14 @@ enum ChopsticksAIKB {
             terms: [("download fathom air", 8), ("download fathom air air", 8), ("download fathom battery air", 8), ("get fathom air", 8), ("get started fathom", 8), ("grab fathom air", 8), ("how do i download fathom", 8), ("how do i get fathom", 8), ("how do i get fathom air", 8), ("how do i get fathom battery", 8), ("how do i grab fathom", 8), ("how do i obtain fathom", 8), ("insatllfathom", 4), ("instalflathom", 4), ("install fathom", 8), ("install fathom air", 8), ("install fathom battery", 8), ("installation fathom", 8), ("installfathom", 8), ("installfathoms", 4), ("installing fathom", 8), ("instlalfathom", 4), ("intsallfathom", 4), ("isntallfathom", 4), ("nistallfathom", 4), ("obtain fathom air", 8), ("set up fathom", 8), ("setup fathom", 8), ("setupfathom", 7)]
         ),
         ChopsticksAIIntent(
+            id: "fathom.uninstall",
+            product: "fathom",
+            label: "How do I uninstall Fathom Air?",
+            priority: 58,
+            answer: "Quit Fathom Air from the menu bar, then delete Fathom Air.app from ~/Applications (or /Applications).\n\nTo remove saved settings:\ndefaults delete com.chopstickshq.fathom",
+            terms: [("delete fathom", 8), ("delete fathom air", 8), ("delete fathom battery", 8), ("deletefathom", 8), ("get rid of fathom", 8), ("get rid of fathom air", 8), ("nuinstallfathom", 4), ("remove fathom", 8), ("remove fathom air", 8), ("remove fathom air air", 8), ("remove fathom battery air", 8), ("removefathom", 8), ("uinnstallfathom", 4), ("uninsatllfathom", 4), ("uninstall fathom", 8), ("uninstall fathom air", 8), ("uninstall fathom battery", 8), ("uninstallfathom", 4), ("uninstallfathoms", 4), ("unintsallfathom", 4), ("unisntallfathom", 4), ("unnistallfathom", 4)]
+        ),
+        ChopsticksAIIntent(
             id: "fathom.version",
             product: "fathom",
             label: "What version is Fathom Air?",
@@ -166,6 +174,14 @@ enum ChopsticksAIKB {
             terms: [("cost", 2), ("costs", 2), ("do i have to cost", 8), ("do i have to free", 8), ("do i have to money", 8), ("do i have to paid", 8), ("do i have to pay", 8), ("do i have to price", 8), ("free", 2), ("frees", 2), ("frial", 2), ("how much does it cost", 8), ("how much does it free", 8), ("how much does it money", 8), ("how much does it paid", 8), ("how much does it pay", 8), ("how much does it price", 8), ("ilcence", 3), ("ilcense", 3), ("is it cost", 7), ("is it free", 7), ("is it money", 7), ("is it paid", 7), ("is it pay", 7), ("is it price", 7), ("is there a subscription", 8), ("joney", 2), ("lcience", 3), ("lciense", 3), ("licecne", 3), ("licence", 3), ("licences", 3), ("licenec", 3), ("licenes", 3), ("license", 3), ("licenses", 3), ("licesne", 3), ("licnece", 3), ("licnese", 3), ("liecnce", 3), ("liecnse", 3), ("lrice", 2), ("mnoey", 2), ("moeny", 2), ("money", 2), ("monye", 2), ("noney", 2), ("omney", 2), ("orice", 2), ("paid", 2), ("paids", 2), ("pay", 2), ("pirce", 2), ("pircing", 3), ("prcie", 2), ("prciing", 3), ("price", 2), ("prices", 3), ("pricign", 3), ("pricing", 3), ("pricnig", 3), ("priec", 2), ("priicng", 3), ("rpice", 2), ("rpicing", 3), ("rrial", 2), ("rtial", 2), ("sbuscription", 4), ("subcsription", 4), ("subscirption", 4), ("subscription", 4), ("subscriptions", 4), ("subsrciption", 4), ("susbcription", 4), ("tiral", 2), ("trail", 2), ("trial", 2), ("trials", 3), ("trila", 2), ("usbscription", 4)]
         ),
         ChopsticksAIIntent(
+            id: "hq.guides",
+            product: "general",
+            label: "Where are the guides?",
+            priority: 55,
+            answer: "Guides live at chopstickshq.com/guides/\n\nCurrent topics:\n• Free Mac menu bar monitor\n• rNitro battery readings on Apple Silicon\n• Minecraft gens Skript checklist\n\nThe index always lists what's there — more get added as they are written.",
+            terms: [("fuides", 3), ("giudes", 3), ("gudies", 3), ("guide", 2), ("guides", 3), ("guidse", 3), ("guieds", 3), ("read the guides", 8), ("ttuorials", 3), ("tuotrials", 3), ("tutoirals", 3), ("tutorails", 3), ("tutorial", 3), ("tutorials", 3), ("tutroials", 3), ("ugides", 3), ("uttorials", 3), ("what guides do you have", 8), ("where are the guides", 8)]
+        ),
+        ChopsticksAIIntent(
             id: "hq.opensource",
             product: "general",
             label: "Is the source code available?",
@@ -202,8 +218,16 @@ enum ChopsticksAIKB {
             product: "general",
             label: "What can you help with?",
             priority: 80,
-            answer: "I can help with:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows\n• Fathom Air — the free battery monitor\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Privacy, licensing, and where to download things\n\nJust ask in plain English.",
+            answer: "I can answer general questions — coding, writing, science, recommendations, casual chat — and I'm also the in-house expert on Chopsticks HQ software:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows, Homebrew\n• Fathom Air — battery monitor, install, uninstall\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Guides, privacy, licensing, and downloads\n\nJust ask in plain English.",
             terms: [("acpabilities", 4), ("caapbilities", 4), ("capabilitie", 3), ("capabilities", 4), ("capabliities", 4), ("capaiblities", 4), ("capbailities", 4), ("cmomands", 3), ("comamnds", 3), ("commadns", 3), ("command", 3), ("commands", 3), ("commansd", 3), ("commnads", 3), ("cpaabilities", 4), ("help me", 7), ("helpme", 7), ("ocmmands", 3), ("what can you do", 8), ("what can you help", 8), ("what do you know", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "meta.how-it-works",
+            product: "general",
+            label: "How does chopsticksAI work?",
+            priority: 85,
+            answer: "chopsticksAI answers in two layers:\n\n1. Live answers — your question goes to chopstickshq.com/api/chopsticks-ai, which retrieves facts from a knowledge base (version numbers, install commands, unlock steps), then calls a language model to answer naturally. No account and no API key on your side.\n\n2. Offline fallback — if the endpoint is unreachable, on cooldown, or errors out, chopsticksAI answers from the compiled knowledge base on your device for Chopsticks HQ topics.\n\nInside rNitro's Chat tab, chopsticksAI is the default provider and works the same way.",
+            terms: [("do you use a cloud model", 8), ("how do you work", 8), ("how does chopsticksai work", 8), ("live vs offline", 8), ("oepnrouter", 3), ("offline mode", 6), ("offlinemode", 3), ("openoruter", 3), ("openrouter", 3), ("openrouters", 3), ("openruoter", 3), ("opernouter", 3), ("opnerouter", 3), ("poenrouter", 3), ("what model do you use", 8)]
         ),
         ChopsticksAIIntent(
             id: "meta.identity",
@@ -308,6 +332,14 @@ enum ChopsticksAIKB {
             priority: 55,
             answer: "Yes — GPU utilisation as a percentage, with its own alert threshold.\n\nHigh GPU usage during games, video export, or Metal work is normal; the Advisor tab flags it only when it crosses the limit you set.",
             terms: [("does it show gpu", 8), ("does it show graphics", 8), ("does it show metal", 8), ("does it show video card", 8), ("emtal", 2), ("garphics", 3), ("gpu", 2), ("gpu monitoring", 8), ("gpu usage", 7), ("gpumonitoring", 8), ("gpuusage", 7), ("grahpics", 3), ("graphcis", 3), ("graphic", 3), ("graphics", 3), ("graphics monitoring", 8), ("graphics usage", 8), ("graphicsusage", 8), ("grapihcs", 3), ("grpahics", 3), ("jetal", 2), ("meatl", 2), ("metal", 2), ("metal monitoring", 8), ("metal usage", 7), ("metals", 3), ("metalusage", 7), ("metla", 2), ("mteal", 2), ("netal", 2), ("rgaphics", 3), ("video card", 5), ("video card monitoring", 8), ("video card usage", 8), ("videocard", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.install.homebrew",
+            product: "rnitro",
+            label: "Install rNitro with Homebrew",
+            priority: 72,
+            answer: "If you use Homebrew:\n\nbrew tap ilikemacos/rnitro\nbrew install rnitro\n\nThat installs the stable formula. For the latest experimental build with the full feature set, use the Terminal installer from chopstickshq.com/rnitro instead.\n\nNo Homebrew? The curl one-liner on the rNitro page works without it.",
+            terms: [("brew get started rnitro", 8), ("brew install macbar", 8), ("brew install nitro", 8), ("brew install r nitro", 8), ("brew install rnitro", 8), ("brew install rnitro app", 8), ("brew installation rnitro", 8), ("brew installing rnitro", 8), ("brew set up rnitro", 8), ("brew setup rnitro", 8), ("get started with homebrew", 8), ("hmoebrew", 3), ("hoembrew", 3), ("homberew", 3), ("homeberw", 3), ("homebrew", 3), ("homebrew macbar", 8), ("homebrew nitro", 8), ("homebrew r nitro", 8), ("homebrew rnitro", 8), ("homebrew rnitro app", 8), ("homebrewnitro", 8), ("homebrews", 3), ("homerbew", 3), ("install with homebrew", 8), ("installation with homebrew", 8), ("installing with homebrew", 8), ("ohmebrew", 3), ("set up with homebrew", 8), ("setup with homebrew", 8)]
         ),
         ChopsticksAIIntent(
             id: "rnitro.install.macos",

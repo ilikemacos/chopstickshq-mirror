@@ -216,6 +216,21 @@
 
   var busy = false;
 
+  function kbFallback(text, target) {
+    var res = ask(text);
+    target.textContent = res.answer;
+    if (res.suggestions && res.suggestions.length) showChips(res.suggestions);
+  }
+
+  function canKbFallback(text) {
+    var ranked = score(text);
+    return ranked.length && ranked[0].score >= CONFIDENCE_FLOOR;
+  }
+
+  function liveFailed(d) {
+    return !d || !d.reply || (d.mode && d.mode !== 'live');
+  }
+
   function submit(text) {
     text = (text || '').trim();
     if (!text || busy) return;
@@ -228,14 +243,21 @@
 
     askModel(text)
       .then(function (d) {
-        thinking.textContent = d.reply;
+        if (liveFailed(d) && canKbFallback(text)) {
+          kbFallback(text, thinking);
+        } else {
+          thinking.textContent = d && d.reply
+            ? d.reply
+            : "I couldn't reach the model just now — try again in a moment.";
+        }
       })
       .catch(function () {
-        // Endpoint unreachable - fall back to the on-device knowledge base so
-        // the assistant still answers rather than showing an error.
-        var res = ask(text);
-        thinking.textContent = res.answer;
-        if (res.suggestions && res.suggestions.length) showChips(res.suggestions);
+        if (canKbFallback(text)) {
+          kbFallback(text, thinking);
+        } else {
+          thinking.textContent =
+            "I couldn't reach the model just now — try again in a moment.";
+        }
       })
       .then(function () {
         busy = false;
