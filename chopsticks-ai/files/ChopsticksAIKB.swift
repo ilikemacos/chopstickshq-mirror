@@ -418,7 +418,7 @@ enum ChopsticksAIKB {
             product: "rnitro",
             label: "What version is current?",
             priority: 55,
-            answer: "The current macOS build is v1.3.32-Experimental.\n\nOther platforms:\n• CLI — v0.2-cli\n• Linux — v0.1 Beta pre-release\n• Windows — v6.0.2 (deprecated)\n\nThe live numbers always come from chopstickshq.com/rnitro/version.json.",
+            answer: "The current macOS build is v1.4.0-Final.\n\nOther platforms:\n• CLI — v0.2-cli\n• Linux — v0.1 Beta pre-release\n• Windows — v6.0.2 (deprecated)\n\nThe live numbers always come from chopstickshq.com/rnitro/version.json.",
             terms: [("biuld", 2), ("buidl", 2), ("build", 2), ("builds", 3), ("bulid", 2), ("cahngelog", 7), ("chagnelog", 7), ("chaneglog", 7), ("changelog", 7), ("changelogs", 7), ("changleog", 7), ("chnagelog", 7), ("current release", 8), ("erlease", 3), ("evrsion", 3), ("guild", 2), ("hcangelog", 7), ("latest version", 8), ("latestversion", 8), ("reelase", 3), ("relaese", 3), ("releaes", 3), ("release", 3), ("releases", 3), ("relesae", 3), ("rleease", 3), ("ubild", 2), ("verison", 3), ("versino", 3), ("version", 3), ("versions", 3), ("versoin", 3), ("vesrion", 3), ("vresion", 3), ("vuild", 2), ("what version", 8), ("whats new", 7), ("whatsnew", 7), ("whatversion", 7)]
         ),
         ChopsticksAIIntent(

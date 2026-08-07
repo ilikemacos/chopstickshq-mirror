@@ -30,7 +30,7 @@ const GROUNDING_INTENTS = 6;
 // Free-tier budget: once TOKEN_BUDGET is spent the endpoint stops calling the
 // model for COOLDOWN_MS, so a burst of traffic cannot burn the whole allowance
 // and leave the assistant dead for everyone.
-const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 750000);
+const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000);
 const COOLDOWN_MS = Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000);
 const budget = { used: 0, windowStart: Date.now(), cooldownUntil: 0 };
 
@@ -101,6 +101,16 @@ function normalise(text) {
     .trim();
 }
 
+/** Last few user turns, joined — follow-ups like "how do I install it?" keep
+ *  product context from earlier in the thread. */
+function retrievalQuery(turns) {
+  return turns
+    .filter((m) => m.role === "user")
+    .slice(-3)
+    .map((m) => m.content)
+    .join(" ");
+}
+
 /** Same word-boundary scoring as the offline engine, used purely to pick
  *  which facts to hand the model. */
 function retrieve(query, limit = GROUNDING_INTENTS) {
@@ -131,21 +141,31 @@ function systemPrompt(grounding) {
     : "(no specific reference material matched this question)";
 
   return [
-    "You are chopsticksAI, the assistant for Chopsticks HQ — a small studio that makes free, ",
-    "local-first macOS software: rNitro (menu bar system monitor), Fathom Air (battery monitor), ",
-    "Fathom Pro (battery + weather + AI), ARENA (an FPS game), and Chopsticks Shaders.\n\n",
-    "Answer naturally and conversationally, like a knowledgeable support engineer. ",
-    "Be concise — usually two to five sentences. Use plain text, not markdown headers.\n\n",
-    "REFERENCE MATERIAL (authoritative — prefer it over your own assumptions):\n\n",
+    "You are chopsticksAI, a helpful and knowledgeable general-purpose assistant, ",
+    "made by Chopsticks HQ.\n\n",
+    "Answer ANY question the user asks — general knowledge, science, history, coding, ",
+    "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
+    "full assistant, not a support bot, and you should never refuse a question simply ",
+    "because it is unrelated to Chopsticks HQ.\n\n",
+    "Answer naturally and conversationally. Be concise by default — a short paragraph — ",
+    "and go longer only when the question genuinely needs it. Plain text reads best; ",
+    "use markdown only when structure really helps, such as code blocks for code.\n\n",
+    "You are also the in-house expert on Chopsticks HQ's own software: rNitro (macOS menu ",
+    "bar system monitor), Fathom Air (battery monitor), Fathom Pro (battery, weather and AI ",
+    "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
+    "reference material below is authoritative.\n\n",
+    "REFERENCE MATERIAL:\n\n",
     facts,
     "\n\nRules:\n",
-    "- Version numbers, install commands, file names and prices must come from the reference ",
-    "material above. If it does not say, tell the user you're not certain and point them to ",
-    "chopstickshq.com rather than guessing.\n",
-    "- Never invent a download link, command, or version number.\n",
-    "- All Chopsticks software is free. Never imply anything costs money.\n",
-    "- If asked about something unrelated to Chopsticks HQ or macOS, briefly say it's outside ",
-    "what you cover.\n",
+    "- For questions about Chopsticks HQ software, version numbers, install commands, file ",
+    "names and pricing must come from the reference material above. If it does not cover the ",
+    "detail, say you're not certain and point to chopstickshq.com rather than guessing.\n",
+    "- Never invent a download link, command, or version number for Chopsticks software.\n",
+    "- Never imply Chopsticks software costs money or needs a subscription.\n",
+    "- For everything else, just answer the question well using your own knowledge. Do not ",
+    "steer the conversation back to Chopsticks HQ, and do not mention the reference material ",
+    "when it isn't relevant.\n",
+    "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
   ].join("");
 }
@@ -232,7 +252,7 @@ async function handler(event) {
     });
   }
 
-  const system = { role: "system", content: systemPrompt(retrieve(lastUser.content)) };
+  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns))) };
   const messages = fitContext(system, turns);
 
   const controller = new AbortController();
@@ -284,7 +304,8 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: MODEL,
+      model: "chopsticksAI 1.0",
+      referencedAgainst: MODEL,
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {
@@ -301,6 +322,6 @@ async function handler(event) {
 }
 
 module.exports = {
-  handler, retrieve, systemPrompt, normalise, fitContext,
+  handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   _budget: budget, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };

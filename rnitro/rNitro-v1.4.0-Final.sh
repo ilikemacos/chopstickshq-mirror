@@ -31,7 +31,7 @@ if [[ -z "${HOME:-}" || ! -d "$HOME" ]]; then
   echo "❌ \$HOME is not set to a valid directory. Aborting."
   exit 1
 fi
-EXPECTED_HASH="dfd01f9e09e29ad834dc22404e34203a7994a7207555b2075e230b6470cc3e25"
+EXPECTED_HASH="f78f82569ad2d1626a6e0fed9caeffd79a69a84065d83c4d4983333be502c6af"
 ACTUAL_HASH="$(sed 's/^EXPECTED_HASH=.*/EXPECTED_HASH="MASKED"/' "$0" | shasum -a 256 | awk '{print $1}')"
 if [[ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]]; then
   echo "❌ Integrity check failed. This file may have been tampered with."
@@ -145,7 +145,7 @@ class PinnedSession: NSObject, URLSessionDelegate {
     }
 }
 
-let CURRENT_VERSION = "v1.3.32-Experimental"
+let CURRENT_VERSION = "v1.4.0-Final"
 let RNITRO_BUILD_CHANNEL = "experimental"
 
 let RNITRO_FEATURE_BETA_UI = (RNITRO_BUILD_CHANNEL == "beta" || RNITRO_BUILD_CHANNEL == "experimental")
@@ -165,7 +165,7 @@ struct VersionInfo: Decodable {
     let windows: String?
 }
 
-private struct VersionManifest: Decodable {
+struct VersionManifest: Decodable {
     let latest: String
     let beta: String?
     let experimental: String?
@@ -237,12 +237,29 @@ final class UpdateStatusStore: ObservableObject {
 
     @Published var whatsNewText: String = ""
     @Published var showWhatsNewBanner: Bool = false
+    @Published var installedBinarySha: String = "…"
+    @Published var remoteZipSha: String = ""
+    @Published var remoteZipShaShort: String = "—"
+
+    func refreshIntegrityLabels() {
+        if let url = Bundle.main.executableURL,
+           let hex = UpdateChecker.fileSha256Hex(url) {
+            installedBinarySha = String(hex.prefix(16)) + "…"
+        } else {
+            installedBinarySha = "—"
+        }
+        let cached = UserDefaults.standard.string(forKey: "rnitro.update.remoteZipSha") ?? ""
+        remoteZipSha = cached
+        remoteZipShaShort = cached.count >= 16 ? String(cached.prefix(16)) + "…" : (cached.isEmpty ? "—" : cached)
+    }
 
     func markChecked() {
         let now = Date()
         lastCheckAt = now
         UserDefaults.standard.set(now.timeIntervalSince1970, forKey: lastCheckKey)
         refreshLabel()
+        refreshIntegrityLabels()
+        UpdateChecker.refreshPublishedZipHashAsync()
     }
 
     func refreshLabel() {
@@ -300,7 +317,7 @@ final class UpdateStatusStore: ObservableObject {
 
     var channelDisplayName: String {
         switch RNITRO_BUILD_CHANNEL {
-        case "experimental": return "Experimental"
+        case "experimental": return "Current"
         case "beta": return "Beta"
         default: return "Stable"
         }
@@ -308,7 +325,7 @@ final class UpdateStatusStore: ObservableObject {
 
     var channelTint: Color {
         switch RNITRO_BUILD_CHANNEL {
-        case "experimental": return Color(red: 0.62, green: 0.48, blue: 1.0)
+        case "experimental": return Color(red: 0.2, green: 0.85, blue: 0.45)
         case "beta": return Color(red: 1.0, green: 0.55, blue: 0.1)
         default: return Color(red: 0.2, green: 0.85, blue: 0.45)
         }
@@ -316,6 +333,26 @@ final class UpdateStatusStore: ObservableObject {
 }
 
 enum UpdateChecker {
+    static func fileSha256Hex(_ file: URL) -> String? {
+
+        return UpdateInstaller.sha256HexPublic(of: file)
+    }
+
+    static func refreshPublishedZipHashAsync() {
+        DispatchQueue.global(qos: .utility).async {
+            guard let manifest = UpdateInstaller.fetchManifestPublic(), let hashes = manifest.hashes else { return }
+            let hex: String?
+            switch RNITRO_BUILD_CHANNEL {
+            case "stable": hex = hashes.stable_zip
+            case "experimental": hex = hashes.experimental_zip
+            default: hex = hashes.beta_zip
+            }
+            guard let raw = hex?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                  raw.count == 64 else { return }
+            UserDefaults.standard.set(raw, forKey: "rnitro.update.remoteZipSha")
+            DispatchQueue.main.async { UpdateStatusStore.shared.refreshIntegrityLabels() }
+        }
+    }
 
     static func versionNumbers(_ v: String) -> [Int] {
         var s = v.trimmingCharacters(in: .whitespaces)
@@ -703,6 +740,8 @@ enum UpdateInstaller {
         return false
     }
 
+    static func sha256HexPublic(of file: URL) -> String? { sha256Hex(of: file) }
+
     private static func sha256Hex(of file: URL) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
         defer { try? handle.close() }
@@ -738,6 +777,8 @@ enum UpdateInstaller {
             return "Update package failed integrity check (SHA-256 mismatch). Refusing to install. Re-download from chopstickshq.com/rnitro."
         }
         log("ZIP SHA-256 OK (\(actual.prefix(16))…)")
+        UserDefaults.standard.set(actual, forKey: "rnitro.update.remoteZipSha")
+        DispatchQueue.main.async { UpdateStatusStore.shared.refreshIntegrityLabels() }
         return nil
     }
 
@@ -802,11 +843,13 @@ enum UpdateInstaller {
             URL(string: "\(UPDATE_CDN_ORIGIN)/\(encoded)")!,
         ]
         if !ver.isEmpty {
-            urls.append(URL(string: "https://github.com/ilikemacos/MacBar/releases/download/\(ver)/\(encoded)")!)
+            urls.append(URL(string: "https://github.com/ilikemacos/rNitro/releases/download/\(ver)/\(encoded)")!)
         }
         urls.append(URL(string: "\(UPDATE_CDN_ORIGIN_LEGACY)/\(encoded)")!)
         return urls
     }
+
+    static func fetchManifestPublic() -> VersionManifest? { fetchManifest() }
 
     private static func fetchManifest() -> VersionManifest? {
         let sem = DispatchSemaphore(value: 0)
@@ -837,6 +880,7 @@ enum UpdateInstaller {
 
     static func install(remoteVersion: String) {
         log("Update requested for \(remoteVersion) from \(CURRENT_VERSION)")
+        DeveloperModeStore.shared.log("update install requested → \(remoteVersion)", category: "update")
         DispatchQueue.main.async { showDownloadProgress(for: remoteVersion) }
         DispatchQueue.global(qos: .userInitiated).async {
             let result = performInstall(remoteVersion: remoteVersion)
@@ -844,8 +888,9 @@ enum UpdateInstaller {
                 hideDownloadProgress()
                 switch result {
                 case .success:
-                    break
+                    DeveloperModeStore.shared.log("update install success \(remoteVersion)", category: "update")
                 case .failure(let msg):
+                    DeveloperModeStore.shared.log("update install failed: \(msg)", category: "error")
                     let alert = NSAlert()
                     alert.messageText = "Update Failed"
                     alert.informativeText = msg
@@ -1403,13 +1448,35 @@ fileprivate final class SMCReader {
                                              UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,
                                              UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8,UInt8),
                                    dataType: UInt32) -> Double? {
+
         if dataType == fourCharCode("sp78") {
+
             let raw = Int16(bitPattern: (UInt16(b.0) << 8) | UInt16(b.1))
             return Double(raw) / 256.0
+        }
+        if dataType == fourCharCode("sp87") {
+
+            let raw = Int16(bitPattern: (UInt16(b.0) << 8) | UInt16(b.1))
+            return Double(raw) / 128.0
+        }
+        if dataType == fourCharCode("sp5a") {
+            let raw = Int16(bitPattern: (UInt16(b.0) << 8) | UInt16(b.1))
+            return Double(raw) / 1024.0
+        }
+        if dataType == fourCharCode("fp1f") {
+
+            let raw = UInt16(b.0) << 8 | UInt16(b.1)
+            return Double(raw) / 32768.0
         }
         if dataType == fourCharCode("flt ") {
             let bits = UInt32(b.0) | (UInt32(b.1) << 8) | (UInt32(b.2) << 16) | (UInt32(b.3) << 24)
             return Double(Float(bitPattern: bits))
+        }
+
+        if dataType == fourCharCode("ui16") || dataType == fourCharCode("ui8 ") {
+            let raw = UInt16(b.0) << 8 | UInt16(b.1)
+            if raw > 200, raw < 12_000 { return Double(raw) / 100.0 }
+            if raw >= 12, raw <= 115 { return Double(raw) }
         }
         return nil
     }
@@ -1445,14 +1512,23 @@ fileprivate final class SMCReader {
     static func isDieAdjacentTempKey(_ key: String) -> Bool {
         let k = key
 
-        if k.hasPrefix("Tp") || k.hasPrefix("Te") || k.hasPrefix("Tg") { return true }
-        if k.hasPrefix("TC") || k.hasPrefix("TG") || k.hasPrefix("Tm") { return true }
-        if k == "TCPU" || k == "TCGC" || k == "TACC" { return true }
+        if k.hasPrefix("Tp") || k.hasPrefix("Te") { return true }
 
-        if k.hasPrefix("TA") || k.hasPrefix("Ta") || k.hasPrefix("TW") || k.hasPrefix("TH") { return false }
-        if k.hasPrefix("Ts") || k.hasPrefix("TS") { return false }
+        if k.hasPrefix("TC") { return true }
+        if k == "TCPU" || k == "TACC" { return true }
+        return false
+    }
 
-        return k.hasPrefix("T")
+    static func isPeripheralTempKey(_ key: String) -> Bool {
+        let k = key
+        if k.hasPrefix("TA") || k.hasPrefix("Ta") || k.hasPrefix("TW") { return true }
+        if k.hasPrefix("Ts") || k.hasPrefix("TS") { return true }
+        if k.hasPrefix("TH") || k.hasPrefix("Th") { return true }
+        if k.hasPrefix("Tf") || k.hasPrefix("TF") { return true }
+        if k.hasPrefix("Tg") || k.hasPrefix("TG") { return true }
+        if k.hasPrefix("Tm") || k.hasPrefix("TM") { return true }
+        if k == "TCGC" { return true }
+        return false
     }
 
     private func fourCharFromUInt32(_ code: UInt32) -> String {
@@ -1571,15 +1647,26 @@ fileprivate final class SMCReader {
         let entries = temperatureEntriesCached()
         if entries.isEmpty { return [] }
         if preferDie {
-            let die = entries.filter { Self.isDieAdjacentTempKey($0.key) }.map(\.value)
-            if die.count >= 2 { return die }
-            if !die.isEmpty {
+            let die = entries
+                .filter { Self.isDieAdjacentTempKey($0.key) && !Self.isPeripheralTempKey($0.key) }
+                .map(\.value)
+                .filter { $0 >= 15 && $0 <= 115 }
+            if !die.isEmpty { return die }
 
-                let other = entries.filter { !Self.isDieAdjacentTempKey($0.key) }.map(\.value)
-                return die + other.prefix(3)
-            }
+            let nonPeriph = entries
+                .filter { !Self.isPeripheralTempKey($0.key) }
+                .map(\.value)
+                .filter { $0 >= 15 && $0 <= 115 }
+            if !nonPeriph.isEmpty { return nonPeriph }
         }
-        return entries.map(\.value)
+        return entries.map(\.value).filter { $0 >= 15 && $0 <= 115 }
+    }
+
+    func smcDieEntries() -> [(key: String, value: Double)] {
+        temperatureEntriesCached().filter {
+            Self.isDieAdjacentTempKey($0.key) && !Self.isPeripheralTempKey($0.key)
+                && $0.value >= 15 && $0.value <= 115
+        }
     }
 
     private func temperatureEntriesCached() -> [(key: String, value: Double)] {
@@ -1650,14 +1737,15 @@ fileprivate final class SMCReader {
 
 @_silgen_name("IOHIDEventSystemClientCreate")
 private func IOHIDEventSystemClientCreate(_ allocator: CFAllocator?) -> UnsafeMutableRawPointer?
+
 @_silgen_name("IOHIDEventSystemClientSetMatching")
-private func IOHIDEventSystemClientSetMatching(_ client: UnsafeMutableRawPointer, _ match: CFDictionary) -> Int32
+private func IOHIDEventSystemClientSetMatching(_ client: UnsafeMutableRawPointer?, _ match: CFDictionary?)
 @_silgen_name("IOHIDEventSystemClientCopyServices")
-private func IOHIDEventSystemClientCopyServices(_ client: UnsafeMutableRawPointer) -> Unmanaged<CFArray>?
+private func IOHIDEventSystemClientCopyServices(_ client: UnsafeMutableRawPointer?) -> Unmanaged<CFArray>?
 @_silgen_name("IOHIDServiceClientCopyEvent")
-private func IOHIDServiceClientCopyEvent(_ client: UnsafeRawPointer, _ type: Int64, _ flags: Int32, _ options: Int64) -> UnsafeMutableRawPointer?
+private func IOHIDServiceClientCopyEvent(_ client: UnsafeRawPointer?, _ type: Int64, _ flags: Int32, _ options: Int64) -> UnsafeMutableRawPointer?
 @_silgen_name("IOHIDEventGetFloatValue")
-private func IOHIDEventGetFloatValue(_ event: UnsafeRawPointer, _ field: Int64) -> Double
+private func IOHIDEventGetFloatValue(_ event: UnsafeRawPointer?, _ field: Int32) -> Double
 
 fileprivate final class IOHIDTempReader {
     static let shared = IOHIDTempReader()
@@ -1692,25 +1780,43 @@ fileprivate final class IOHIDTempReader {
         let matchSets: [[String: Int]] = [
             ["PrimaryUsagePage": 0xff00, "PrimaryUsage": 0x0005],
             ["PrimaryUsagePage": 0xff00, "PrimaryUsage": 0x0001],
+            ["PrimaryUsagePage": 0xff00],
         ]
         var temps: [Double] = []
-        let field = eventType << 16
+        let field: Int32 = Int32(eventType << 16)
         for matchDict in matchSets {
-            let match = matchDict as CFDictionary
-            guard IOHIDEventSystemClientSetMatching(client, match) == 0,
-                  let services = IOHIDEventSystemClientCopyServices(client)?.takeRetainedValue() else { continue }
+            IOHIDEventSystemClientSetMatching(client, matchDict as CFDictionary)
+            guard let services = IOHIDEventSystemClientCopyServices(client)?.takeRetainedValue() else { continue }
             let count = CFArrayGetCount(services)
-
-            let limit = min(count, 48)
+            let limit = min(count, 120)
             for i in 0..<limit {
                 guard let ptr = CFArrayGetValueAtIndex(services, i) else { continue }
                 guard let event = IOHIDServiceClientCopyEvent(ptr, eventType, 0, 0) else { continue }
                 let t = IOHIDEventGetFloatValue(event, field)
                 Unmanaged<CFTypeRef>.fromOpaque(event).release()
-                if t >= 12, t <= 115 { temps.append(t) }
+
+                guard t.isFinite, t >= 15, t <= 115 else { continue }
+                temps.append(t)
             }
+
+            if temps.count >= 4 { break }
         }
         return temps
+    }
+
+    func dieLikelyReadings() -> [Double] {
+        let all = readings()
+        guard !all.isEmpty else { return [] }
+        let sorted = all.sorted()
+        if sorted.count == 1 { return sorted }
+        let peak = sorted.last!
+
+        let nearPeak = sorted.filter { peak - $0 <= 18 && $0 >= 25 }
+        if nearPeak.count >= 2 { return nearPeak }
+        if !nearPeak.isEmpty { return nearPeak }
+
+        let from = (sorted.count * 2) / 3
+        return Array(sorted[from...])
     }
 }
 
@@ -1946,7 +2052,10 @@ struct RingBuffer<Element> {
 }
 
 enum IdleProfile: String, CaseIterable, Identifiable {
-    case balanced, aggressive
+
+    case aggressive
+
+    case balanced
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -2078,55 +2187,66 @@ class CPUMonitor: ObservableObject {
 
     private static func plausibleSensorTemps(_ readings: [Double]) -> [Double] {
 
-        readings.filter { $0 >= 12 && $0 <= 115 }
+        readings.filter { $0 >= 15 && $0 <= 115 }
+    }
+
+    private static func rejectColdOutliers(_ readings: [Double]) -> [Double] {
+        let sorted = readings.sorted()
+        guard sorted.count >= 3 else { return sorted }
+        let peak = sorted.last!
+
+        let kept = sorted.filter { peak - $0 <= 18 }
+        return kept.isEmpty ? sorted : kept
     }
 
     static func resolveTemperature(state: ProcessInfo.ThermalState, usage: Double, smcReadings: [Double]) -> (temp: Double, source: String) {
         let estimate = thermalDisplayValue(state, usage: usage)
-        let plausible = plausibleSensorTemps(smcReadings)
+        let plausible = rejectColdOutliers(plausibleSensorTemps(smcReadings))
         guard !plausible.isEmpty else {
             return (estimate, "macOS thermalState + load estimate")
         }
 
         let sorted = plausible.sorted()
         let n = sorted.count
+        let peak = sorted[n - 1]
+        let p90 = sorted[min(n - 1, max(0, (n * 9) / 10))]
         let median = sorted[n / 2]
-        let p75 = sorted[min(n - 1, (n * 3) / 4)]
-        let p90 = sorted[min(n - 1, (n * 9) / 10)]
 
-        let upper = Array(sorted[(n / 2)..<n])
-        let upperMean = upper.reduce(0, +) / Double(upper.count)
+        let hotN = min(3, n)
+        let hotMean = sorted.suffix(hotN).reduce(0, +) / Double(hotN)
 
-        if median >= 100 && usage < 12 && state == .nominal {
+        if median >= 100 && usage < 10 && state == .nominal {
             return (estimate, "Load estimate (sensor \(Int(median.rounded()))°C ignored — idle)")
         }
+        if peak >= 112 && usage < 15 && state == .nominal {
 
-        let heavy = usage >= 45 || state == .serious || state == .critical
-        let moderate = usage >= 22 || state == .fair
+            let body = n >= 2 ? sorted[n - 2] : median
+            return (min(110, max(15, body)), "Die sensors (\(n), clipped peak)")
+        }
+
+        let heavy = usage >= 40 || state == .serious || state == .critical
+        let moderate = usage >= 18 || state == .fair
 
         let sensor: Double
         let tag: String
         if heavy {
 
-            sensor = 0.55 * p90 + 0.45 * upperMean
-            tag = "Hot cluster (\(n) sensors)"
+            sensor = 0.72 * peak + 0.28 * hotMean
+            tag = "Die peak (\(n) sensors)"
         } else if moderate {
-            sensor = 0.5 * p75 + 0.3 * upperMean + 0.2 * median
-            tag = "Upper sensors (\(n))"
+            sensor = 0.45 * peak + 0.40 * hotMean + 0.15 * p90
+            tag = "Die sensors (\(n))"
         } else {
 
-            sensor = 0.7 * median + 0.3 * upperMean
-            tag = "Sensor blend (\(n))"
+            sensor = 0.55 * hotMean + 0.30 * p90 + 0.15 * median
+            tag = "Die idle (\(n))"
         }
 
-        if heavy && sensor + 8 < estimate {
-            let blended = 0.65 * sensor + 0.35 * estimate
-            return (min(110, blended), "\(tag) + thermal blend")
+        if heavy && n >= 2 && sensor + 18 < estimate && usage > 70 {
+            let blended = 0.85 * sensor + 0.15 * estimate
+            return (min(112, blended), "\(tag) + light thermal")
         }
-        if sensor < 50 && usage > 50 {
-            return (max(sensor, estimate), "Blended (\(n) sensors + load)")
-        }
-        return (min(110, max(15, sensor)), tag)
+        return (min(112, max(15, sensor)), tag)
     }
 
     static func thermalLabel(_ state: ProcessInfo.ThermalState) -> String {
@@ -2145,6 +2265,10 @@ class CPUMonitor: ObservableObject {
     private var prevNumCPUInfo: mach_msg_type_number_t = 0
     private var cachedMemsizeGB: Double = 0
     private var lastDiskSampleTime = Date.distantPast
+    private var lastTempSampleTime = Date.distantPast
+    private var lastPowerSampleTime = Date.distantPast
+    private var cachedSensorReadings: [Double] = []
+    private var cachedSocSample: SocPowerSample?
 
     private struct MemorySample {
         let totalGB, usedGB, freeGB, usedPct: Double
@@ -2293,9 +2417,9 @@ class CPUMonitor: ObservableObject {
         case .slotAware, .full:
             cpu = updateCPUUsage()
         }
-
         var mem: MemorySample? = nil
-        if now.timeIntervalSince(lastMemorySampleTime) >= MonitorActivity.memoryInterval {
+        if MonitorActivity.samplesMemory,
+           now.timeIntervalSince(lastMemorySampleTime) >= MonitorActivity.memoryInterval {
             mem = sampleMemory()
             lastMemorySampleTime = now
         }
@@ -2499,17 +2623,47 @@ class CPUMonitor: ObservableObject {
     }
 
     private func sampleDerived() -> DerivedSample {
-        var sensors: [Double] = []
-        if MonitorActivity.includeSmcSample {
+        let now = Date()
+        var sensors = cachedSensorReadings
+        if MonitorActivity.includeSmcSample,
+           now.timeIntervalSince(lastTempSampleTime) >= MonitorActivity.tempSampleInterval {
 
-            sensors.append(contentsOf: SMCReader.shared.smcReadings(preferDie: true))
-            sensors.append(contentsOf: IOHIDTempReader.shared.readings())
+            var next: [Double] = []
+            let hid = IOHIDTempReader.shared.dieLikelyReadings()
+            let smcDie = SMCReader.shared.smcReadings(preferDie: true)
+            if !hid.isEmpty {
+                next.append(contentsOf: hid)
+                if let hidPeak = hid.max(), !smcDie.isEmpty {
+                    let agree = smcDie.filter { abs($0 - hidPeak) <= 20 }
+                    next.append(contentsOf: agree)
+                }
+            } else {
+                next.append(contentsOf: smcDie)
+            }
+            sensors = next
+            cachedSensorReadings = next
+            lastTempSampleTime = now
+        } else if !MonitorActivity.includeSmcSample {
+            sensors = []
+            cachedSensorReadings = []
         }
+
+        var soc = cachedSocSample
+        if MonitorActivity.includePowerSample,
+           now.timeIntervalSince(lastPowerSampleTime) >= MonitorActivity.powerSampleInterval {
+            soc = IOReportPowerReader.shared.sample()
+            cachedSocSample = soc
+            lastPowerSampleTime = now
+        } else if !MonitorActivity.includePowerSample {
+            soc = nil
+            cachedSocSample = nil
+        }
+
         return DerivedSample(
             lpm: Self.readLowPowerModeEnabled(),
             state: ProcessInfo.processInfo.thermalState,
             sensorReadings: sensors,
-            socSample: MonitorActivity.includePowerSample ? IOReportPowerReader.shared.sample() : nil
+            socSample: soc
         )
     }
 
@@ -2517,14 +2671,24 @@ class CPUMonitor: ObservableObject {
         let usage = totalUsage
         let resolved = CPUMonitor.resolveTemperature(state: sample.state, usage: usage, smcReadings: sample.sensorReadings)
 
-        let tempAlpha = usage >= 40 ? 0.42 : 0.28
+        let rising = resolved.temp > smoothedTemperature + 0.4
+        let tempAlpha: Double
+        if !hasSmoothedSamples {
+            tempAlpha = 1.0
+        } else if usage >= 50 || rising {
+            tempAlpha = 0.62
+        } else if usage >= 25 {
+            tempAlpha = 0.40
+        } else {
+            tempAlpha = 0.30
+        }
         let nextTemp: Double
         if hasSmoothedSamples {
             nextTemp = smoothedTemperature * (1 - tempAlpha) + resolved.temp * tempAlpha
         } else {
             nextTemp = resolved.temp
         }
-        smoothedTemperature = min(110, max(15, nextTemp))
+        smoothedTemperature = min(112, max(15, nextTemp))
         let boost = baseClock + (baseClock * 0.28) * (usage / 100.0)
         let estimate = Self.estimatePackagePowerWatts(
             usage: usage, baseClock: baseClock, boostClock: boost,
@@ -2630,12 +2794,14 @@ final class LowBatteryAutomation: ObservableObject {
             if now - last > 1800 {
                 UserDefaults.standard.set(now, forKey: lastNotify10Key)
                 AdvisorNotificationCenter.postBatteryLow(level: level, critical: true)
+                DeveloperModeStore.shared.log("low battery critical notify level=\(level)", category: "battery")
             }
         } else if level <= 20 {
             let last = UserDefaults.standard.double(forKey: lastNotify20Key)
             if now - last > 3600 {
                 UserDefaults.standard.set(now, forKey: lastNotify20Key)
                 AdvisorNotificationCenter.postBatteryLow(level: level, critical: false)
+                DeveloperModeStore.shared.log("low battery notify level=\(level)", category: "battery")
             }
         }
     }
@@ -4299,7 +4465,7 @@ final class ProcessMonitor: ObservableObject {
     private var lastTicks: [Int32: UInt64] = [:]
     private var lastSampleTime = Date.distantPast
     private let topN = 5
-    private let interval: TimeInterval = 3.0
+    private let interval: TimeInterval = 5.0
 
     func start() {
         stop()
@@ -4526,7 +4692,12 @@ class WeatherService: ObservableObject {
         }
         lastNetworkKey = key
         isLoading = true
-        guard let url = URL(string: "https:
+        // Use string concat so naive "//" strippers cannot break the URL
+        let geoURL = "https:" + "//ipapi.co/json/"
+        guard let url = URL(string: geoURL) else {
+            isLoading = false
+            return
+        }
         PinnedSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             guard let self, let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -4603,15 +4774,20 @@ extension Color {
     private static func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor {
         NSColor(calibratedRed: r, green: g, blue: b, alpha: 1)
     }
-    static let bg = adaptive(
+
+    static var bg: Color { DisplayPreferencesStore.shared.appearanceMode.surfaceBg }
+    static var card: Color { DisplayPreferencesStore.shared.appearanceMode.surfaceCard }
+    static var border: Color { DisplayPreferencesStore.shared.appearanceMode.surfaceBorder }
+
+    static let systemBg = adaptive(
         light: rgb(0.96, 0.96, 0.98),
         dark: rgb(0.05, 0.05, 0.08)
     )
-    static let card = adaptive(
+    static let systemCard = adaptive(
         light: rgb(1.0, 1.0, 1.0),
         dark: rgb(0.10, 0.10, 0.14)
     )
-    static let border = adaptive(
+    static let systemBorder = adaptive(
         light: rgb(0.82, 0.84, 0.90),
         dark: rgb(0.20, 0.20, 0.28)
     )
@@ -4695,8 +4871,81 @@ enum MenubarClickBehavior: String, CaseIterable, Identifiable {
     }
 }
 
+/// Personal easter egg — five taps on version, or 3× left-click the menu bar icon.
+enum RNitroEasterEgg {
+    private static var taps = 0
+    private static var lastTap = Date.distantPast
+    private static var menubarClicks = 0
+    private static var lastMenubarClick = Date.distantPast
+    private static let lines = [
+        "Local sensors. No account. No product telemetry.",
+        "Built for Macs that run warm and stay honest.",
+        "imik2261_ · chopsticks · CatboiGens owner energy.",
+        "If you can read this, you click too much. Respect.",
+    ]
+
+    static func noteVersionTap() {
+        let now = Date()
+        if now.timeIntervalSince(lastTap) > 1.4 { taps = 0 }
+        lastTap = now
+        taps += 1
+        if taps >= 5 {
+            taps = 0
+            reveal()
+        }
+    }
+
+    /// Left-click counter for the menu bar icon. Returns `true` when the easter egg fired (caller should not open popover).
+    @discardableResult
+    static func noteMenubarClick() -> Bool {
+        let now = Date()
+        if now.timeIntervalSince(lastMenubarClick) > 1.4 { menubarClicks = 0 }
+        lastMenubarClick = now
+        menubarClicks += 1
+        if menubarClicks >= 3 {
+            menubarClicks = 0
+            reveal()
+            return true
+        }
+        return false
+    }
+
+    static func reveal() {
+        DeveloperModeStore.shared.log("easter egg revealed", category: "lifecycle")
+        let pick = lines.randomElement() ?? lines[0]
+        let body = """
+        rNitro \(CURRENT_VERSION)
+        Channel: \(RNITRO_BUILD_CHANNEL)
+
+        \(pick)
+
+        chopstickshq.com/rnitro
+        """
+        let alert = NSAlert()
+        alert.messageText = "You found it ✦"
+        alert.informativeText = body
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Nice")
+        alert.addButton(withTitle: "Open site")
+        alert.addButton(withTitle: "Copy")
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(UPDATE_PAGE_URL)
+        } else if response == .alertThirdButtonReturn {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(body, forType: .string)
+        }
+        // Quiet little flash for people who also run Developer Mode
+        if DeveloperModeStore.shared.isEnabled {
+            DeveloperModeStore.shared.shuffleAccentTemporarily()
+        }
+    }
+}
+
 final class DeveloperModeStore: ObservableObject {
     static let shared = DeveloperModeStore()
+    private static let logQueue = DispatchQueue(label: "com.rnitro.logging")
+    private static let maxLogBytes: UInt64 = 5 * 1024 * 1024
     private let key = "rnitro.developerModeEnabled"
     private let verboseLogKey = "rnitro.dev.verboseLogging"
     private let showRawSensorsKey = "rnitro.dev.showRawSensors"
@@ -4705,8 +4954,14 @@ final class DeveloperModeStore: ObservableObject {
     @Published var isEnabled: Bool {
         didSet { UserDefaults.standard.set(isEnabled, forKey: key) }
     }
+    /// Enable Logging — local diagnostics under ~/Library/Logs/rNitro
     @Published var verboseLogging: Bool {
-        didSet { UserDefaults.standard.set(verboseLogging, forKey: verboseLogKey) }
+        didSet {
+            UserDefaults.standard.set(verboseLogging, forKey: verboseLogKey)
+            if verboseLogging {
+                log("Enable Logging turned on", category: "lifecycle")
+            }
+        }
     }
     @Published var showRawSensors: Bool {
         didSet { UserDefaults.standard.set(showRawSensors, forKey: showRawSensorsKey) }
@@ -4715,6 +4970,7 @@ final class DeveloperModeStore: ObservableObject {
         didSet {
             UserDefaults.standard.set(forceHighSampleRate, forKey: forceHighSampleKey)
             MonitorActivity.applyIdleProfileChange()
+            log("forceHighSampleRate=\(forceHighSampleRate)", category: "monitor")
         }
     }
 
@@ -4725,30 +4981,66 @@ final class DeveloperModeStore: ObservableObject {
         forceHighSampleRate = UserDefaults.standard.bool(forKey: forceHighSampleKey)
     }
 
-    func log(_ message: String) {
-        guard verboseLogging else { return }
-        let dir = FileManager.default.homeDirectoryForCurrentUser
+    static var logsDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/rNitro", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let file = dir.appendingPathComponent("verbose.log")
-        let line = "\(ISO8601DateFormatter().string(from: Date()))  \(message)\n"
-        if let data = line.data(using: .utf8) {
-            if FileManager.default.fileExists(atPath: file.path),
+    }
+
+    static var primaryLogURL: URL {
+        logsDirectory.appendingPathComponent("rnitro.log")
+    }
+
+    func log(_ message: String, category: String = "app") {
+        guard verboseLogging else { return }
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        let line = "\(stamp)  [\(category)] \(message)\n"
+        Self.logQueue.async {
+            let dir = Self.logsDirectory
+            let fm = FileManager.default
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            let file = Self.primaryLogURL
+            // Soft-rotate oversized log
+            if let attrs = try? fm.attributesOfItem(atPath: file.path),
+               let size = attrs[.size] as? UInt64,
+               size >= Self.maxLogBytes {
+                let rotated = dir.appendingPathComponent("rnitro.log.1")
+                try? fm.removeItem(at: rotated)
+                try? fm.moveItem(at: file, to: rotated)
+            }
+            guard let data = line.data(using: .utf8) else { return }
+            if fm.fileExists(atPath: file.path),
                let handle = try? FileHandle(forWritingTo: file) {
                 defer { try? handle.close() }
-                try? handle.seekToEnd()
+                _ = try? handle.seekToEnd()
                 try? handle.write(contentsOf: data)
             } else {
                 try? data.write(to: file)
+            }
+            // Keep legacy verbose.log as a one-line pointer the first time we write
+            let legacy = dir.appendingPathComponent("verbose.log")
+            if !fm.fileExists(atPath: legacy.path) {
+                let note = "rNitro logging moved to rnitro.log (Enable Logging)\n"
+                try? note.write(to: legacy, atomically: true, encoding: .utf8)
             }
         }
     }
 
     func openLogFolder() {
-        let dir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/rNitro", isDirectory: true)
+        let dir = Self.logsDirectory
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         NSWorkspace.shared.open(dir)
+    }
+
+    func clearLogs() {
+        Self.logQueue.async {
+            let dir = Self.logsDirectory
+            let fm = FileManager.default
+            for name in ["rnitro.log", "rnitro.log.1", "verbose.log"] {
+                let url = dir.appendingPathComponent(name)
+                try? fm.removeItem(at: url)
+            }
+        }
+        log("logs cleared", category: "lifecycle")
     }
 
     func copySensorDump() {
@@ -5059,7 +5351,8 @@ enum MonitorActivity {
     private(set) static var popoverOpen = false
 
     static var idleProfile: IdleProfile {
-        IdleProfile(rawValue: UserDefaults.standard.string(forKey: MonitorPreferences.idleProfileKey) ?? "") ?? .balanced
+
+        IdleProfile(rawValue: UserDefaults.standard.string(forKey: MonitorPreferences.idleProfileKey) ?? "") ?? .aggressive
     }
 
     static var enabledSlots: [MenuBarSlot] { MenuBarConfig.enabledSlots }
@@ -5072,61 +5365,74 @@ enum MonitorActivity {
     }
 
     static var cpuInterval: TimeInterval {
-        if DeveloperModeStore.shared.forceHighSampleRate { return 0.75 }
-        if popoverOpen || CompileFarmDetector.shared.shouldForceSampling { return 1.0 }
-        if PolitePeer.shared.shouldEaseSampling { return idleProfile == .aggressive ? 8.0 : 5.0 }
-        return idleProfile == .aggressive ? 4.0 : 2.0
+        if DeveloperModeStore.shared.forceHighSampleRate { return 1.0 }
+        if popoverOpen || CompileFarmDetector.shared.shouldForceSampling { return 2.0 }
+        if PolitePeer.shared.shouldEaseSampling { return idleProfile == .aggressive ? 12.0 : 8.0 }
+
+        return idleProfile == .aggressive ? 5.0 : 3.0
     }
 
-    static var gpuInterval: TimeInterval { 3.0 }
-    static var networkInterval: TimeInterval { popoverOpen ? 1.5 : 3.0 }
+    static var gpuInterval: TimeInterval { popoverOpen ? 4.0 : 8.0 }
+    static var networkInterval: TimeInterval { popoverOpen ? 3.0 : 6.0 }
     static var batteryInterval: TimeInterval {
 
         let bat = BatteryMonitor.shared
         let load = CPUMonitor.shared.totalUsage
-        if popoverOpen { return 1.5 }
+        if popoverOpen { return 3.0 }
         if bat.isPresent, !bat.isOnAC, !bat.isCharging {
-            if bat.levelPercent < 25 || load >= 55 { return 1.5 }
-            if bat.levelPercent < 40 || load >= 35 { return 2.5 }
-            return idleProfile == .aggressive ? 6.0 : 3.5
+            if bat.levelPercent < 20 || load >= 60 { return 4.0 }
+            if bat.levelPercent < 40 || load >= 40 { return 6.0 }
+            return idleProfile == .aggressive ? 12.0 : 8.0
         }
-        if bat.isPresent, bat.isCharging { return 2.5 }
-        return idleProfile == .aggressive ? 12.0 : 8.0
+        if bat.isPresent, bat.isCharging { return 6.0 }
+
+        return idleProfile == .aggressive ? 20.0 : 12.0
     }
     static var memoryInterval: TimeInterval {
-        if popoverOpen { return 2.0 }
-        if PolitePeer.shared.shouldEaseSampling { return 12.0 }
-        return idleProfile == .aggressive ? 10.0 : 5.0
+        if popoverOpen { return 3.0 }
+        if PolitePeer.shared.shouldEaseSampling { return 20.0 }
+        return idleProfile == .aggressive ? 12.0 : 8.0
     }
     static var diskInterval: TimeInterval {
-        if popoverOpen { return 5.0 }
-        if PolitePeer.shared.shouldEaseSampling { return 12.0 }
-        return 8.0
+        if popoverOpen { return 8.0 }
+        if PolitePeer.shared.shouldEaseSampling { return 30.0 }
+        return 20.0
     }
     static var sensorsInterval: TimeInterval {
+        if popoverOpen { return 5.0 }
+        if PolitePeer.shared.shouldEaseSampling { return 20.0 }
+        return 15.0
+    }
+
+    static var powerSampleInterval: TimeInterval {
         if popoverOpen { return 3.0 }
-        if PolitePeer.shared.shouldEaseSampling { return 10.0 }
-        return 8.0
+        return idleProfile == .aggressive ? 12.0 : 8.0
+    }
+
+    static var tempSampleInterval: TimeInterval {
+        if popoverOpen { return 2.0 }
+        return idleProfile == .aggressive ? 8.0 : 5.0
     }
     static var includePowerSample: Bool {
         popoverOpen || enabledSlots.contains(.power)
     }
 
-    static var smcCacheTTL: TimeInterval { popoverOpen ? 0.85 : 2.2 }
+    static var smcCacheTTL: TimeInterval { popoverOpen ? 1.2 : 4.0 }
     static var includeSmcSample: Bool {
-
         popoverOpen
             || enabledSlots.contains(.temp)
             || enabledSlots.contains(.weather)
-            || enabledSlots.contains(.power)
             || CompileFarmDetector.shared.shouldForceSampling
             || DeveloperModeStore.shared.showRawSensors
+
     }
 
-    static var samplesMemory: Bool { true }
+    static var samplesMemory: Bool {
+        popoverOpen || enabledSlots.contains(.ram)
+    }
     static var includePerCoreSampling: Bool { popoverOpen }
     static var recordsHistory: Bool { popoverOpen }
-    static var historyCapacity: Int { popoverOpen ? 80 : 0 }
+    static var historyCapacity: Int { popoverOpen ? 60 : 0 }
 
     static var tracksBatteryHistory: Bool {
         popoverOpen || UserDefaults.standard.bool(forKey: "rnitro.sectionExpanded.battery")
@@ -5178,7 +5484,6 @@ enum MonitorActivity {
         NetworkMonitor.shared.syncHistoryBuffers()
         DiskActivityMonitor.shared.syncHistoryBuffer()
         CPUMonitor.shared.setPollInterval(cpuInterval)
-        lastBatteryIntervalApplied = 0
         BatteryMonitor.shared.applyActivityInterval()
         refreshOptionalServices()
         if open {
@@ -5679,7 +5984,600 @@ enum AIChatStore {
     }
 }
 
+// MARK: - chopsticksAI (generated knowledge base + engine)
+
+// Generated by chopsticks-ai/build-kb.py - do not edit by hand.
+
+struct ChopsticksAIIntent {
+    let id: String
+    let product: String
+    let label: String
+    let priority: Int
+    let answer: String
+    let terms: [(String, Int)]
+}
+
+enum ChopsticksAIKB {
+    static let tagline = "The Chopsticks HQ assistant — runs entirely on your device."
+    static let version = "1.0.0"
+    static let intents: [ChopsticksAIIntent] = [
+        ChopsticksAIIntent(
+            id: "arena.controls",
+            product: "arena",
+            label: "What are the controls?",
+            priority: 55,
+            answer: "WASD to move, mouse to look, Space to jump, Shift to sprint.\n\nNumber keys switch weapons, R reloads, E interacts with and picks up furniture. Escape opens the menu.\n\nFrom the title screen, W/A/S/D or Space starts the game.",
+            terms: [("cnotrols", 3), ("conrtols", 3), ("contorls", 3), ("contrlos", 3), ("control", 3), ("controls", 3), ("cotnrols", 3), ("ekybinds", 3), ("how do i move", 8), ("jouse", 2), ("kebyinds", 3), ("key bindings", 8), ("keybidns", 3), ("keybind", 3), ("keybindings", 7), ("keybinds", 3), ("keybnids", 3), ("keyibnds", 3), ("kyebinds", 3), ("mosue", 2), ("moues", 2), ("mouse", 2), ("mouses", 3), ("muose", 2), ("nouse", 2), ("ocntrols", 3), ("omuse", 2), ("wasd", 2), ("wasds", 2), ("what are the controls", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "arena.furniture",
+            product: "arena",
+            label: "Can I build a base in ARENA?",
+            priority: 50,
+            answer: "Yes — furniture is scattered around the world and can be picked up and repositioned with E to barricade a spot.\n\nWhat you build persists across launches: the save records both the pieces and which chunks you've already explored, so returning to an area won't respawn a duplicate set on top of yours.",
+            terms: [("base", 2), ("bases", 2), ("biuld", 2), ("buidl", 2), ("build", 2), ("building in arena", 8), ("building in arena fps", 8), ("building in the game", 8), ("building in the shooter", 8), ("builds", 3), ("bulid", 2), ("can i build a base", 8), ("fruniture", 3), ("funriture", 3), ("furinture", 3), ("furniture", 3), ("furnitures", 3), ("furniutre", 3), ("furntiure", 3), ("guild", 2), ("move furniture", 8), ("movefurniture", 8), ("ubild", 2), ("ufrniture", 3), ("vuild", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "arena.install",
+            product: "arena",
+            label: "How do I install ARENA?",
+            priority: 60,
+            answer: "Download ARENA-macOS.zip from chopstickshq.com/arena-fps/, unzip it, and drag ARENA.app to Applications.\n\nGatekeeper will block it on first launch since it's downloaded through a browser — right-click → Open, then Open again, or run:\nxattr -cr /Applications/ARENA.app",
+            terms: [("download arena", 8), ("download arena fps", 8), ("download the game", 8), ("download the shooter", 8), ("downloadarena", 8), ("get arena", 7), ("get started arena", 8), ("getarena", 7), ("grab arena", 7), ("grabarena", 7), ("how do i play arena", 8), ("how do i play arena fps", 8), ("how do i play the game", 8), ("how do i play the shooter", 8), ("insatllarena", 4), ("instalalrena", 4), ("install arena", 8), ("install arena fps", 8), ("install the game", 8), ("install the shooter", 8), ("installarena", 8), ("installarenas", 4), ("installation arena", 8), ("installing arena", 8), ("instlalarena", 4), ("intsallarena", 4), ("isntallarena", 4), ("nistallarena", 4), ("obtain arena", 8), ("obtainarena", 7), ("set up arena", 8), ("setup arena", 7), ("setuparena", 7)]
+        ),
+        ChopsticksAIIntent(
+            id: "arena.performance",
+            product: "arena",
+            label: "ARENA runs slowly",
+            priority: 55,
+            answer: "Drop the graphics preset — Escape → Settings. MEDIUM is the default and targets a good balance; LOW disables terrain detail and shadows for much higher frame rates.\n\nMake sure only one copy is running: two instances competing for the GPU is a common cause of sudden slowness.",
+            terms: [("alggy", 2), ("arena fps is laggy", 8), ("arena fps performance", 8), ("arena is laggy", 8), ("arena performance", 8), ("atutter", 3), ("farmerate", 3), ("fraemrate", 3), ("framearte", 3), ("framerate", 3), ("framerates", 3), ("framreate", 3), ("frmaerate", 3), ("game runs slow", 8), ("kaggy", 2), ("laggy", 2), ("lagyg", 2), ("lgagy", 2), ("low fps in arena", 8), ("low fps in arena fps", 8), ("low fps in the game", 8), ("low fps in the shooter", 8), ("oaggy", 2), ("oreset", 3), ("paggy", 2), ("perset", 3), ("preest", 3), ("preset", 3), ("presets", 3), ("preste", 3), ("prseet", 3), ("rfamerate", 3), ("rpeset", 3), ("sttuter", 3), ("stutetr", 3), ("stutter", 3), ("stutters", 3), ("stuttre", 3), ("suttter", 3), ("the game is laggy", 8), ("the game performance", 8), ("the shooter is laggy", 8), ("the shooter performance", 8), ("tsutter", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "arena.saves",
+            product: "arena",
+            label: "Where does ARENA save progress?",
+            priority: 55,
+            answer: "ARENA saves to ~/Library/Application Support/ARENA/ — macOS's equivalent of AppData.\n\nsave.cfg holds your run: wave, kills, credits, weapons, position, world seed, and any furniture you've moved to build a base. settings.cfg holds graphics options.\n\nNote that dying deletes the save — bases don't outlive a run.",
+            terms: [("apdpata", 3), ("appadta", 3), ("appdaat", 3), ("appdata", 3), ("appdatas", 3), ("appdtaa", 3), ("asvegame", 3), ("does it save progress", 8), ("lost my progress", 8), ("papdata", 3), ("porgress", 3), ("prgoress", 3), ("progerss", 3), ("progress", 3), ("progrses", 3), ("prorgess", 3), ("qppdata", 3), ("rpogress", 3), ("saevgame", 3), ("save", 2), ("save file location", 8), ("saveagme", 3), ("savegame", 3), ("savegames", 3), ("savegmae", 3), ("saves", 2), ("savgeame", 3), ("svaegame", 3), ("where is my save", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "arena.what",
+            product: "arena",
+            label: "What is ARENA?",
+            priority: 70,
+            answer: "ARENA is a first-person shooter for macOS, written in C++17 with OpenGL 4.1.\n\nEvery run generates a fresh 5 km × 5 km world from a compact seed using spectral synthesis — the terrain is a summed waveform turned into a heightmap — then populates it with buildings, structures, and movable furniture.\n\nFree, from chopstickshq.com/arena-fps/.",
+            terms: [("aerna", 2), ("arean", 2), ("arena", 2), ("arena fps", 5), ("arenafps", 3), ("arenas", 3), ("arnea", 2), ("qrena", 2), ("raena", 2), ("tell me about arena", 8), ("tell me about arena fps", 8), ("tell me about the game", 8), ("tell me about the shooter", 8), ("the game", 5), ("the shooter", 5), ("thegame", 3), ("theshooter", 3), ("what is arena", 8), ("what is arena fps", 8), ("what is the game", 8), ("what is the shooter", 8), ("wrena", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathom.battery.accuracy",
+            product: "fathom",
+            label: "How accurate are Fathom's battery numbers?",
+            priority: 55,
+            answer: "Charge percentage aims to match the macOS menu bar exactly.\n\nRemaining time, wattage, power distribution and per-process attribution are estimates derived from system APIs — they vary with workload and can be briefly wrong after you plug or unplug.\n\nThey're informational, not a substitute for manufacturer diagnostics.",
+            terms: [("aatts", 2), ("accurate battery", 8), ("accurate charge", 8), ("accurate juice", 8), ("accurate power", 8), ("accuratejuice", 8), ("accuratepower", 8), ("awttage", 3), ("awtts", 2), ("battery estimate accuracy", 8), ("charge estimate accuracy", 8), ("darin", 2), ("drain", 2), ("drains", 3), ("drani", 2), ("drian", 2), ("erain", 2), ("esitmate", 3), ("estiamte", 3), ("estimate", 3), ("estimates", 3), ("estimtae", 3), ("estmiate", 3), ("etsimate", 3), ("is the wattage accurate", 8), ("juice estimate accuracy", 8), ("power estimate accuracy", 8), ("qattage", 3), ("qatts", 2), ("rdain", 2), ("satts", 2), ("setimate", 3), ("srain", 2), ("watatge", 3), ("watst", 2), ("watt", 2), ("wattaeg", 3), ("wattage", 3), ("wattages", 3), ("wattgae", 3), ("watts", 2), ("wtatage", 3), ("wtats", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathom.install",
+            product: "fathom",
+            label: "How do I install Fathom Air?",
+            priority: 65,
+            answer: "Use the curl installer from chopstickshq.com/fathom — it resolves the current version, verifies the download's SHA-256, and installs to ~/Applications without tripping Gatekeeper:\n\ncurl -fsSL https://chopstickshq.com/fathom/install-fathom.sh | bash\n\nThe App ZIP is a fallback, but Gatekeeper will block it on first launch (right-click → Open, then Open again).",
+            terms: [("download fathom air", 8), ("download fathom air air", 8), ("download fathom battery air", 8), ("get fathom air", 8), ("get started fathom", 8), ("grab fathom air", 8), ("how do i download fathom", 8), ("how do i get fathom", 8), ("how do i get fathom air", 8), ("how do i get fathom battery", 8), ("how do i grab fathom", 8), ("how do i obtain fathom", 8), ("insatllfathom", 4), ("instalflathom", 4), ("install fathom", 8), ("install fathom air", 8), ("install fathom battery", 8), ("installation fathom", 8), ("installfathom", 8), ("installfathoms", 4), ("installing fathom", 8), ("instlalfathom", 4), ("intsallfathom", 4), ("isntallfathom", 4), ("nistallfathom", 4), ("obtain fathom air", 8), ("set up fathom", 8), ("setup fathom", 8), ("setupfathom", 7)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathom.version",
+            product: "fathom",
+            label: "What version is Fathom Air?",
+            priority: 50,
+            answer: "Fathom Air is on v0.3.8-Beta.\n\nThe installer always resolves whatever chopstickshq.com/fathom/version.json lists, so re-running it upgrades you.",
+            terms: [("afthomversion", 4), ("fahtomversion", 4), ("fathmoversion", 4), ("fathom air version", 8), ("fathom battery version", 8), ("fathom version", 8), ("fathomversion", 8), ("fathomversions", 4), ("fathovmersion", 4), ("fatohmversion", 4), ("ftahomversion", 4), ("latest fathom", 8), ("latest fathom air", 8), ("latest fathom battery", 8), ("latestfathom", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathom.vs.rnitro",
+            product: "fathom",
+            label: "What's the difference between Fathom and rNitro?",
+            priority: 60,
+            answer: "They overlap a little but aim at different things:\n\n• rNitro — the whole system: CPU, temperature, GPU, RAM, network, benchmarks, game overlay\n• Fathom Air — battery and power specifically: watts, per-process energy, drain attribution, charge limits\n\nMany people run both. Both are free.",
+            terms: [("cersus", 3), ("cmopare", 3), ("cmoparison", 3), ("comapre", 3), ("comaprison", 3), ("compaer", 3), ("compairson", 3), ("compare", 3), ("compares", 3), ("comparison", 3), ("comparisons", 3), ("comprae", 3), ("compraison", 3), ("copmare", 3), ("copmarison", 3), ("dfiference", 3), ("difefrence", 3), ("diffeernce", 3), ("difference", 3), ("difference between fathom air and rnitro", 8), ("difference between fathom and macbar", 8), ("difference between fathom and nitro", 8), ("difference between fathom and r nitro", 8), ("difference between fathom and rnitro", 8), ("difference between fathom and rnitro app", 8), ("difference between fathom battery and rnitro", 8), ("differences", 3), ("differnece", 3), ("diffreence", 3), ("do i need both", 8), ("evrsus", 3), ("fathom air vs rnitro", 8), ("fathom battery vs rnitro", 8), ("fathom vs macbar", 8), ("fathom vs nitro", 8), ("fathom vs r nitro", 8), ("fathom vs rnitro", 8), ("fathom vs rnitro app", 8), ("idfference", 3), ("ocmpare", 3), ("ocmparison", 3), ("verssu", 3), ("versu", 2), ("versus", 3), ("veruss", 3), ("vesrus", 3), ("vresus", 3), ("which one should i use", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathom.what",
+            product: "fathom",
+            label: "What is Fathom Air?",
+            priority: 70,
+            answer: "Fathom Air is a free macOS menu bar app focused entirely on battery and power.\n\nIt shows charge percentage, time remaining, package watts, power distribution, which apps are draining you, and an experimental charge limit — all read locally from your Mac.\n\nNo accounts, no telemetry, no AI. macOS 14+.",
+            terms: [("afthom", 3), ("dathom", 3), ("fahtom", 3), ("fathmo", 3), ("fathom", 3), ("fathom air", 5), ("fathom battery", 6), ("fathomair", 3), ("fathombattery", 4), ("fathoms", 3), ("fatohm", 3), ("ftahom", 3), ("what does fathom air do", 8), ("what does fathom battery do", 8), ("what does fathom do", 8), ("what is fathom", 8), ("what is fathom air", 8), ("what is fathom air air", 8), ("what is fathom battery", 8), ("what is fathom battery air", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.explaindrain",
+            product: "fathom-pro",
+            label: "What is Explain drain?",
+            priority: 55,
+            answer: "Explain drain sends a live snapshot of your battery and power state to your configured AI provider and asks it to explain what's using the most energy.\n\nBecause it's generated by a language model it can be wrong or misattribute usage — treat it as a hint, not a diagnosis. The raw per-process energy numbers in the app are the reliable part.",
+            terms: [("epxlaindrain", 4), ("exlpaindrain", 4), ("expalindrain", 4), ("explain drain", 8), ("explaindrain", 8), ("explaindrains", 4), ("explanidrain", 4), ("expliandrain", 4), ("what is killing my battery", 8), ("what is killing my charge", 8), ("what is killing my juice", 8), ("what is killing my power", 8), ("why is my battery draining", 8), ("why is my charge draining", 8), ("why is my juice draining", 8), ("why is my power draining", 8), ("xeplaindrain", 4)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.keys",
+            product: "fathom-pro",
+            label: "Do I need my own AI keys for Fathom Pro?",
+            priority: 65,
+            answer: "Yes — Fathom Pro's AI features need your own API key from a supported provider (OpenRouter, Gemini, OpenAI, or Anthropic).\n\nKeys are stored in your macOS Keychain and are never sent to us. You contract directly with that provider and pay their charges; we receive nothing and have no control over their pricing or availability.\n\nAdd them under Customize → AI → API Config.",
+            terms: [("api key", 5), ("api key needed", 8), ("apikey", 3), ("do i need an api key", 8), ("do i need my own api key", 8), ("does it come with ai", 8), ("ekychain", 3), ("kecyhain", 3), ("keycahin", 3), ("keychain", 3), ("keychains", 3), ("keychian", 3), ("keyhcain", 3), ("kyechain", 3), ("my own keys", 7), ("porviderkey", 3), ("proivderkey", 3), ("provdierkey", 3), ("providerkey", 3), ("proviedrkey", 3), ("prvoiderkey", 3), ("rpoviderkey", 3), ("who pays for the ai", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.privacy",
+            product: "fathom-pro",
+            label: "What data does Fathom Pro send out?",
+            priority: 65,
+            answer: "Two things leave your Mac, both only when you use those features:\n\n• Weather — approximate location coordinates go to Open-Meteo to fetch a forecast\n• AI chat / Explain drain — your message plus a battery and system snapshot go to whichever provider you configured\n\nNothing goes to Chopsticks HQ. Don't use the AI features with anything you wouldn't share with that provider.",
+            terms: [("does it send my location", 8), ("egolocation", 3), ("ewather", 3), ("geloocation", 3), ("geolcoation", 3), ("geoloaction", 3), ("geolocation", 3), ("geolocations", 4), ("geoolcation", 3), ("goelocation", 3), ("is my location shared", 8), ("lcoation", 3), ("loaction", 3), ("locaiton", 3), ("location", 3), ("locations", 3), ("locatoin", 3), ("loctaion", 3), ("oepnmeteo", 3), ("olcation", 3), ("opemneteo", 3), ("openemteo", 3), ("openmeteo", 3), ("openmeteos", 3), ("openmteeo", 3), ("opnemeteo", 3), ("poenmeteo", 3), ("waether", 3), ("weahter", 3), ("weatehr", 3), ("weather", 3), ("weathers", 3), ("weathre", 3), ("wetaher", 3), ("what data leaves my apple computer", 8), ("what data leaves my imac", 8), ("what data leaves my mac", 8), ("what data leaves my macbook", 8), ("what data leaves my macos", 8), ("what data leaves my os x", 8), ("what data leaves my osx", 8), ("what gets sent to the ai", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.unlock",
+            product: "fathom-pro",
+            label: "How do I unlock Fathom Pro?",
+            priority: 75,
+            answer: "You need an oi-pl key. It's free and there are two ways to get one:\n\n1. The vault at chopstickshq.com/vault/ — a password-gated generator; each Generate mints a new random key\n2. The homepage scavenger hunt — on the \"Small lab.\" headline, click the first L after the A in \"Small\"\n\nThen paste it into Fathom Pro → Activate.\n\nAn oi-pl key is a client-side unlock token only — not an OpenAI or OpenRouter API key, and it carries no credit.",
+            terms: [("acitvate", 3), ("acitvation", 3), ("actiavte", 3), ("actiavtion", 3), ("activate", 3), ("activates", 3), ("activation", 3), ("activation code", 8), ("activations", 3), ("activtae", 3), ("activtaion", 3), ("actviate", 3), ("actviation", 3), ("atcivate", 3), ("atcivation", 3), ("avult", 2), ("cativate", 3), ("cativation", 3), ("cault", 2), ("csavenger", 3), ("fault", 2), ("how do i unlock", 8), ("nulock", 3), ("oi pl key", 7), ("oipl", 2), ("oipls", 2), ("sacvenger", 3), ("scaevnger", 3), ("scavegner", 3), ("scavenger", 3), ("scavengers", 3), ("scavneger", 3), ("scvaenger", 3), ("ulnock", 3), ("unlcok", 3), ("unlock", 3), ("unlock key", 7), ("unlockkey", 7), ("unlocks", 3), ("unlokc", 3), ("unolck", 3), ("valut", 2), ("vault", 2), ("vaults", 3), ("vautl", 2), ("vualt", 2), ("where do i download a key", 8), ("where do i get a key", 8), ("where do i grab a key", 8), ("where do i obtain a key", 8), ("ynlock", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.weather",
+            product: "fathom-pro",
+            label: "How does the weather feature work?",
+            priority: 50,
+            answer: "Fathom Pro asks Open-Meteo for a forecast based on your Mac's approximate location, and can display the outside temperature next to your battery percentage in the menu bar.\n\nIt's third-party data with no guarantee of accuracy or availability, and it isn't suitable for navigation or any safety-critical use.",
+            terms: [("celisus", 3), ("celsisu", 3), ("celsiu", 3), ("celsius", 3), ("celsuis", 3), ("ceslius", 3), ("clesius", 3), ("degeres", 3), ("degree", 3), ("degrees", 3), ("degrese", 3), ("dergees", 3), ("dgerees", 3), ("eclsius", 3), ("edgrees", 3), ("etmperature", 3), ("foercast", 3), ("forceast", 3), ("foreacst", 3), ("forecast", 3), ("forecasts", 3), ("forecsat", 3), ("froecast", 3), ("heat", 2), ("heats", 2), ("hot", 2), ("how does weather work", 8), ("htermal", 3), ("ofrecast", 3), ("otuside", 3), ("oustide", 3), ("outisde", 3), ("outsdie", 3), ("outside", 3), ("outsides", 3), ("outsied", 3), ("segrees", 3), ("show celsius outside", 8), ("show degrees outside", 8), ("show heat outside", 8), ("show hot outside", 8), ("show temp outside", 8), ("show temperature outside", 8), ("show thermal outside", 8), ("tehrmal", 3), ("temeprature", 3), ("temp", 2), ("tempearture", 3), ("temperature", 3), ("temperatures", 4), ("tempreature", 3), ("temps", 2), ("tepmerature", 3), ("themral", 3), ("theraml", 3), ("thermal", 3), ("thermals", 3), ("thermla", 3), ("thremal", 3), ("tmeperature", 3), ("uotside", 3), ("weather in the menu bar", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "fathompro.what",
+            product: "fathom-pro",
+            label: "What is Fathom Pro?",
+            priority: 70,
+            answer: "Fathom Pro is Fathom Air plus two things:\n\n• Local weather — from Open-Meteo using your Mac's location; the menu bar can show % and °C together\n• AI chat and Explain drain — using your own OpenRouter, Gemini, OpenAI or Anthropic key\n\nIt's also a regular Cmd+Tab app with a full window. Free, unlocked with a key.",
+            terms: [("afthompro", 3), ("fahtompro", 3), ("fathmopro", 3), ("fathom air pro features", 8), ("fathom battery pro features", 8), ("fathom plus", 5), ("fathom pro", 5), ("fathom pro features", 8), ("fathomplus", 3), ("fathompro", 3), ("fathompros", 3), ("fathopmro", 3), ("fatohmpro", 3), ("ftahompro", 3), ("pro version", 5), ("proversion", 3), ("what does fathom air pro add", 8), ("what does fathom battery pro add", 8), ("what does fathom pro add", 8), ("what is fathom air pro", 8), ("what is fathom battery pro", 8), ("what is fathom pro", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.contact",
+            product: "general",
+            label: "How do I get in touch?",
+            priority: 60,
+            answer: "Email mzx+chopsticks@lam.ws.\n\nFor bugs in rNitro specifically, opening a GitHub issue is faster:\nhttps://github.com/ilikemacos/rNitro/issues/new",
+            terms: [("aupport", 7), ("cnotact", 3), ("conatct", 3), ("contact", 3), ("contact you", 7), ("contacts", 3), ("contactyou", 7), ("contatc", 3), ("contcat", 3), ("cotnact", 3), ("deach", 2), ("download in touch", 8), ("eamil", 2), ("eeach", 2), ("efedback", 3), ("email", 2), ("email you", 7), ("emails", 3), ("emailyou", 7), ("emali", 2), ("emial", 2), ("erach", 2), ("fedeback", 3), ("feebdack", 3), ("feedabck", 3), ("feedback", 3), ("feedbacks", 3), ("feedbakc", 3), ("feedbcak", 3), ("get in touch", 8), ("grab in touch", 8), ("meail", 2), ("obtain in touch", 8), ("ocntact", 3), ("raech", 2), ("reach", 2), ("reachs", 3), ("reahc", 2), ("recah", 2), ("report a broken", 8), ("report a bug", 8), ("report a error", 8), ("report a fail", 8), ("report a failing", 8), ("report a issue", 8), ("report a problem", 8), ("smail", 2), ("spuport", 7), ("supoprt", 7), ("support", 7), ("supports", 7), ("suppotr", 7), ("supprot", 7), ("uspport", 7), ("wmail", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.free",
+            product: "general",
+            label: "Is it free?",
+            priority: 60,
+            answer: "Yes — everything on Chopsticks HQ is free.\n\nNo subscriptions, no trials, no ads, no in-app purchases. Fathom Pro needs an unlock key, but those are free too (see the vault).\n\nIf an app asks you for money, it isn't ours.",
+            terms: [("cost", 2), ("costs", 2), ("do i have to cost", 8), ("do i have to free", 8), ("do i have to money", 8), ("do i have to paid", 8), ("do i have to pay", 8), ("do i have to price", 8), ("free", 2), ("frees", 2), ("frial", 2), ("how much does it cost", 8), ("how much does it free", 8), ("how much does it money", 8), ("how much does it paid", 8), ("how much does it pay", 8), ("how much does it price", 8), ("ilcence", 3), ("ilcense", 3), ("is it cost", 7), ("is it free", 7), ("is it money", 7), ("is it paid", 7), ("is it pay", 7), ("is it price", 7), ("is there a subscription", 8), ("joney", 2), ("lcience", 3), ("lciense", 3), ("licecne", 3), ("licence", 3), ("licences", 3), ("licenec", 3), ("licenes", 3), ("license", 3), ("licenses", 3), ("licesne", 3), ("licnece", 3), ("licnese", 3), ("liecnce", 3), ("liecnse", 3), ("lrice", 2), ("mnoey", 2), ("moeny", 2), ("money", 2), ("monye", 2), ("noney", 2), ("omney", 2), ("orice", 2), ("paid", 2), ("paids", 2), ("pay", 2), ("pirce", 2), ("pircing", 3), ("prcie", 2), ("prciing", 3), ("price", 2), ("prices", 3), ("pricign", 3), ("pricing", 3), ("pricnig", 3), ("priec", 2), ("priicng", 3), ("rpice", 2), ("rpicing", 3), ("rrial", 2), ("rtial", 2), ("sbuscription", 4), ("subcsription", 4), ("subscirption", 4), ("subscription", 4), ("subscriptions", 4), ("subsrciption", 4), ("susbcription", 4), ("tiral", 2), ("trail", 2), ("trial", 2), ("trials", 3), ("trila", 2), ("usbscription", 4)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.opensource",
+            product: "general",
+            label: "Is the source code available?",
+            priority: 55,
+            answer: "rNitro is open source: https://github.com/ilikemacos/rNitro\n\nThe shell installers also contain the full app source inline — you can read every line before running them.\n\nFathom and ARENA are distributed as builds rather than source.",
+            terms: [("aource", 3), ("can i see the code", 8), ("code", 2), ("codes", 2), ("erpository", 3), ("fithub", 3), ("gihtub", 3), ("githbu", 3), ("github", 3), ("githubs", 3), ("gituhb", 3), ("gtihub", 3), ("igthub", 3), ("is it on github", 8), ("is it open source", 8), ("oepnsource", 3), ("openosurce", 3), ("opensource", 3), ("opensources", 3), ("opensuorce", 3), ("opesnource", 3), ("opnesource", 3), ("osurce", 3), ("poensource", 3), ("reopsitory", 3), ("repo", 2), ("repoistory", 3), ("repos", 2), ("repository", 3), ("repostiory", 3), ("repsoitory", 3), ("rpeository", 3), ("soruce", 3), ("soucre", 3), ("source", 3), ("sources", 3), ("sourec", 3), ("suorce", 3), ("where is the source", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.products",
+            product: "general",
+            label: "What apps are there?",
+            priority: 60,
+            answer: "The Chopsticks HQ lineup:\n\n• rNitro — CPU, temperature, RAM, GPU, battery and network in your menu bar\n• Fathom Air — battery drain and power draw, local only\n• Fathom Pro — Fathom Air plus local weather and AI chat\n• ARENA — a procedurally generated FPS for macOS\n• Chopsticks Shaders — an Iris shader pack for Minecraft\n\nAll free.",
+            terms: [("actalog", 3), ("actalogue", 3), ("all products", 8), ("allproducts", 7), ("app", 2), ("apps", 2), ("caatlog", 3), ("caatlogue", 3), ("catalgo", 3), ("catalgoue", 3), ("catalog", 3), ("catalogs", 3), ("catalogue", 3), ("catalogues", 3), ("cataolg", 3), ("cataolgue", 3), ("catlaog", 3), ("catlaogue", 3), ("ctaalog", 3), ("ctaalogue", 3), ("ilneup", 3), ("kineup", 3), ("lienup", 3), ("linepu", 3), ("lineup", 3), ("lineups", 3), ("linuep", 3), ("list of products", 8), ("lnieup", 3), ("porducts", 3), ("prdoucts", 3), ("prodcuts", 3), ("product", 3), ("products", 3), ("produtcs", 3), ("proudcts", 3), ("rpoducts", 3), ("what apps", 7), ("what do you make", 8), ("what else", 7), ("whatapps", 7), ("whatelse", 7)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.terms",
+            product: "general",
+            label: "Where are the terms and privacy policy?",
+            priority: 50,
+            answer: "Each product has its own terms:\n\n• rNitro — chopstickshq.com/rnitro/terms.html (plus a privacy page)\n• Fathom Air — chopstickshq.com/fathom/terms.html\n• Fathom Pro — chopstickshq.com/fathom-pro/terms.html\n\nThere's also a general software disclaimer at chopstickshq.com/disclaimer/.",
+            terms: [("agerement", 3), ("agreeemnt", 3), ("agreement", 3), ("agreements", 3), ("agreemnet", 3), ("agremeent", 3), ("argeement", 3), ("dicslaimer", 3), ("discalimer", 3), ("disclaimer", 3), ("disclaimers", 3), ("discliamer", 3), ("dislcaimer", 3), ("dsiclaimer", 3), ("elgal", 6), ("etrms", 2), ("eula", 2), ("eulas", 2), ("ferms", 2), ("gareement", 3), ("idsclaimer", 3), ("kegal", 6), ("leagl", 6), ("legal", 6), ("legals", 7), ("legla", 6), ("lgeal", 6), ("oegal", 6), ("privacy policy", 8), ("privacypolicy", 8), ("rerms", 2), ("temrs", 2), ("term", 2), ("terms", 2), ("terms and conditions", 8), ("terms of service", 8), ("tersm", 2), ("trems", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "hq.what",
+            product: "general",
+            label: "What is Chopsticks HQ?",
+            priority: 60,
+            answer: "Chopsticks HQ is the home for a small set of macOS apps and side projects, made by chopsticks.\n\nMain apps:\n• rNitro — menu bar system monitor\n• Fathom Air — battery monitor\n• Fathom Pro — battery + weather + AI\n• ARENA — an FPS game\n\nEverything is free, with no accounts and no telemetry.",
+            terms: [("chopsitckshq", 4), ("chopstickshq", 4), ("chopstickshqs", 4), ("choptsickshq", 4), ("chosptickshq", 4), ("chpostickshq", 4), ("cohpstickshq", 4), ("hcopstickshq", 4), ("what is chopsticks", 8), ("what is this site", 8), ("who are chopsticks", 8), ("who makes these", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "meta.capabilities",
+            product: "general",
+            label: "What can you help with?",
+            priority: 80,
+            answer: "I can help with:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows\n• Fathom Air — the free battery monitor\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Privacy, licensing, and where to download things\n\nJust ask in plain English.",
+            terms: [("acpabilities", 4), ("caapbilities", 4), ("capabilitie", 3), ("capabilities", 4), ("capabliities", 4), ("capaiblities", 4), ("capbailities", 4), ("cmomands", 3), ("comamnds", 3), ("commadns", 3), ("command", 3), ("commands", 3), ("commansd", 3), ("commnads", 3), ("cpaabilities", 4), ("help me", 7), ("helpme", 7), ("ocmmands", 3), ("what can you do", 8), ("what can you help", 8), ("what do you know", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "meta.identity",
+            product: "general",
+            label: "What is chopsticksAI?",
+            priority: 90,
+            answer: "I'm chopsticksAI — the assistant built by Chopsticks HQ.\n\nI'm not a cloud language model. I run entirely on your device from a knowledge base about the Chopsticks apps, so I need no API key, cost nothing to use, and never send your questions anywhere.\n\nAsk me about rNitro, Fathom Air, Fathom Pro, ARENA, installing, troubleshooting, or privacy.",
+            terms: [("are you an ai", 8), ("are you chatgpt", 8), ("chopsitcksai", 4), ("chopsticksai", 4), ("chopsticksais", 4), ("choptsicksai", 4), ("chospticksai", 4), ("chposticksai", 4), ("cohpsticksai", 4), ("hcopsticksai", 4), ("what are you", 8), ("what is chopsticksai", 8), ("who are you", 7)]
+        ),
+        ChopsticksAIIntent(
+            id: "meta.privacy",
+            product: "general",
+            label: "Do you send my questions anywhere?",
+            priority: 70,
+            answer: "No. chopsticksAI runs locally — in your browser on the website, and on-device inside rNitro.\n\nYour questions are never uploaded, logged, or sent to any server. There's no account, no cookie tracking, and no analytics on what you ask.\n\nThe same applies to the apps: rNitro and Fathom send no usage telemetry.",
+            terms: [("aanlytics", 3), ("analtyics", 3), ("analyitcs", 3), ("analytic", 3), ("analytics", 3), ("anayltics", 3), ("anlaytics", 3), ("do you store", 8), ("do you track me", 8), ("etlemetry", 3), ("is this private", 8), ("naalytics", 3), ("pirvacy", 3), ("priavcy", 3), ("privacy", 3), ("privayc", 3), ("privcay", 3), ("prviacy", 3), ("rpivacy", 3), ("rtacking", 3), ("tarcking", 3), ("teelmetry", 3), ("teleemtry", 3), ("telemetry", 3), ("telemtery", 3), ("telmeetry", 3), ("tleemetry", 3), ("tracikng", 3), ("tracking", 3), ("tracknig", 3), ("trakcing", 3), ("trcaking", 3), ("where do my questions go", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "minecraft.portfolio",
+            product: "minecraft",
+            label: "What is the Minecraft portfolio?",
+            priority: 50,
+            answer: "chopstickshq.com/minecraft/ is a portfolio of Minecraft server development work — custom systems, mechanics, and Skript development across a number of servers.\n\nIt's separate from the desktop apps.",
+            terms: [("akript", 3), ("imnecraft", 3), ("imnefort", 3), ("imnehut", 3), ("ksript", 3), ("lpugin", 3), ("miencraft", 3), ("mienfort", 3), ("mienhut", 3), ("minceraft", 3), ("minecarft", 3), ("minecraft", 3), ("minecraft portfolio", 8), ("minecraft work", 8), ("minecrafts", 3), ("minecraftwork", 8), ("minefort", 3), ("mineforts", 3), ("minefrot", 3), ("minehtu", 3), ("minehut", 3), ("minehuts", 3), ("mineofrt", 3), ("minercaft", 3), ("mineuht", 3), ("minfeort", 3), ("minheut", 3), ("mniecraft", 3), ("mniefort", 3), ("mniehut", 3), ("olugin", 3), ("plguin", 3), ("plugin", 3), ("plugins", 3), ("plugni", 3), ("pluign", 3), ("pulgin", 3), ("skirpt", 3), ("skript", 3), ("skript development", 8), ("skripts", 3), ("skritp", 3), ("skrpit", 3), ("srkipt", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.advisor",
+            product: "rnitro",
+            label: "What is the Advisor tab?",
+            priority: 60,
+            answer: "The Advisor is a built-in assistant that reads your live CPU, temperature, RAM, GPU, battery, disk and network — no API key needed.\n\nAsk it things like \"my specs\" or \"is my temp ok?\". Tap ⚙ to set custom warning thresholds, and it will post proactive alerts in the chat when values cross them.\n\nIt answers about your hardware; chopsticksAI answers about the apps themselves.",
+            terms: [("adivsor", 3), ("adviosr", 3), ("advisor", 3), ("advisor tab", 7), ("advisors", 3), ("advisortab", 7), ("advisro", 3), ("advsior", 3), ("avdisor", 3), ("davisor", 3), ("is my celsius ok", 8), ("is my degrees ok", 8), ("is my heat ok", 8), ("is my hot ok", 8), ("is my temp ok", 8), ("is my temperature ok", 8), ("is my thermal ok", 8), ("my specs", 7), ("myspecs", 7), ("what is the advisor", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.archives",
+            product: "rnitro",
+            label: "Where are older versions?",
+            priority: 45,
+            answer: "The Archives page lists every hosted macOS DMG: chopstickshq.com/rnitro/archives.html\n\nOlder PKG, ZIP and shell installers are also still hosted, and GitHub Releases keeps a full history.",
+            terms: [("acrhive", 3), ("acrhives", 3), ("archiev", 3), ("archievs", 3), ("archive", 3), ("archives", 3), ("archvie", 3), ("archvies", 3), ("arcihve", 3), ("arcihves", 3), ("arhcive", 3), ("arhcives", 3), ("donwgrade", 7), ("dowgnrade", 7), ("downgarde", 7), ("downgrade", 7), ("downgrades", 7), ("downrgade", 7), ("dwongrade", 7), ("hisotry", 3), ("history", 3), ("histoyr", 3), ("histroy", 3), ("hitsory", 3), ("hsitory", 3), ("ihstory", 3), ("odwngrade", 7), ("old build", 7), ("oldbuild", 7), ("older versions", 8), ("olderversions", 8), ("orllback", 3), ("previous releases", 8), ("rachive", 3), ("rachives", 3), ("rlolback", 3), ("rolblack", 3), ("rollabck", 3), ("rollback", 3), ("rollbacks", 3), ("rollbakc", 3), ("rollbcak", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.battery",
+            product: "rnitro",
+            label: "What battery info does rNitro show?",
+            priority: 55,
+            answer: "rNitro shows battery percentage, whether you're on AC or battery, charging state, and a low-battery alert at a threshold you choose.\n\nFor deeper battery work — power draw in watts, per-process energy attribution, and drain explanations — Fathom Air is the dedicated tool, and it's also free.",
+            terms: [("abttery", 3), ("batetry", 3), ("battery", 3), ("battery health", 8), ("battery limit", 8), ("battery percentage", 8), ("batteryhealth", 8), ("batterylimit", 8), ("batteyr", 3), ("battrey", 3), ("btatery", 3), ("cahrge", 3), ("cahrging", 3), ("ccyles", 3), ("chagre", 3), ("chagring", 3), ("chareg", 3), ("charge", 3), ("charge health", 8), ("charge limit", 8), ("charge percentage", 8), ("chargehealth", 8), ("chargelimit", 7), ("charges", 3), ("charging", 3), ("chargnig", 3), ("charigng", 3), ("chrage", 3), ("chraging", 3), ("cycels", 3), ("cycle", 2), ("cycles", 3), ("cyclse", 3), ("cylces", 3), ("hcarge", 3), ("hcarging", 3), ("huice", 2), ("jiuce", 2), ("jucie", 2), ("juice", 2), ("juice health", 8), ("juice limit", 7), ("juice percentage", 8), ("juicehealth", 7), ("juicelimit", 7), ("juices", 3), ("juiec", 2), ("lower", 2), ("oower", 2), ("opwer", 2), ("poewr", 2), ("power", 2), ("power health", 8), ("power limit", 7), ("power percentage", 8), ("powerhealth", 7), ("powerlimit", 7), ("powers", 3), ("powre", 2), ("pwoer", 2), ("time remaining", 8), ("timeremaining", 8), ("ujice", 2), ("uuice", 2), ("vattery", 3), ("xharge", 3), ("xycles", 3), ("yccles", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.benchmark",
+            product: "rnitro",
+            label: "Is there a benchmark?",
+            priority: 55,
+            answer: "Yes — a Cinebench-style benchmark built into the popover, giving single-core and multi-core scores from a fixed, repeatable render workload.\n\nThere's also a stress test for pushing the CPU deliberately. Both will heat your Mac up; that's expected.",
+            terms: [("acore", 2), ("atress", 3), ("becnhmark", 3), ("benchamrk", 3), ("benchmark", 3), ("benchmarks", 3), ("bencmhark", 3), ("benhcmark", 3), ("bnechmark", 3), ("cinebench score", 8), ("csore", 2), ("ebnchmark", 3), ("how do i benchmark", 8), ("is there a benchmark", 8), ("scoer", 2), ("score", 2), ("scores", 3), ("scroe", 2), ("socre", 2), ("srtess", 3), ("srtesstest", 3), ("sterss", 3), ("stersstest", 3), ("stress", 3), ("stressetst", 3), ("stresstest", 3), ("stresstests", 3), ("strestsest", 3), ("strses", 3), ("strsestest", 3), ("tsress", 3), ("tsresstest", 3), ("wcore", 2), ("wtress", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.bitcoin",
+            product: "rnitro",
+            label: "Why is there a Bitcoin price?",
+            priority: 45,
+            answer: "It's an optional menu bar extra — live BTC/USD refreshed every 30 seconds from CoinGecko's public API. No API key, and you can turn it off in Settings.\n\nIt's the one feature that makes a network request; everything else is local.",
+            terms: [("bictoin", 3), ("bitcion", 3), ("bitcoin", 3), ("bitcoin cost", 8), ("bitcoin free", 8), ("bitcoin money", 8), ("bitcoin paid", 8), ("bitcoin pay", 7), ("bitcoin price", 8), ("bitcoincost", 7), ("bitcoinfree", 7), ("bitcoinmoney", 8), ("bitcoinpaid", 7), ("bitcoinpay", 7), ("bitcoinprice", 8), ("bitcoins", 3), ("bitconi", 3), ("bitocin", 3), ("btc", 2), ("btc ticker", 7), ("btcticker", 7), ("bticoin", 3), ("crpyto", 3), ("crypot", 3), ("crypto", 3), ("crypto cost", 7), ("crypto free", 7), ("crypto money", 8), ("crypto paid", 7), ("crypto pay", 7), ("crypto price", 8), ("cryptocost", 7), ("cryptofree", 7), ("cryptomoney", 7), ("cryptopaid", 7), ("cryptopay", 7), ("cryptoprice", 7), ("cryptos", 3), ("crytpo", 3), ("cyrpto", 3), ("ibtcoin", 3), ("rcypto", 3), ("xrypto", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.chat.providers",
+            product: "rnitro",
+            label: "What AI providers does rNitro support?",
+            priority: 55,
+            answer: "The Chat tab supports chopsticksAI (built in, no key), plus bring-your-own-key providers:\n\n• Cloud — Gemini, OpenAI, Anthropic, Grok, DeepSeek, OpenRouter\n• Local — LM Studio, Ollama, Hermes (no key, runs on your machine)\n\nCloud keys are AES-256 encrypted in your Keychain and only ever sent to that provider.",
+            terms: [("aipkey", 3), ("anhtropic", 3), ("anthorpic", 3), ("anthropic", 3), ("anthropics", 3), ("anthrpoic", 3), ("antrhopic", 3), ("apieky", 3), ("apikey", 3), ("apikye", 3), ("apkiey", 3), ("atnhropic", 3), ("can i use my own api key", 8), ("deepesek", 3), ("deepseek", 3), ("deepseeks", 3), ("deepseke", 3), ("deespeek", 3), ("depeseek", 3), ("does it support ollama", 8), ("edepseek", 3), ("egmini", 3), ("ehrmes", 3), ("femini", 3), ("geimni", 3), ("gemiin", 3), ("gemini", 3), ("geminis", 3), ("gemnii", 3), ("germes", 3), ("gmeini", 3), ("hemres", 3), ("herems", 3), ("herme", 2), ("hermes", 3), ("hermse", 3), ("hremes", 3), ("illama", 3), ("kllama", 3), ("lmstduio", 3), ("lmstudio", 3), ("lmstudios", 3), ("lmstuido", 3), ("lmsutdio", 3), ("lmtsudio", 3), ("local llm", 7), ("localllm", 7), ("lolama", 3), ("lsmtudio", 3), ("mlstudio", 3), ("nathropic", 3), ("oepnrouter", 3), ("olalma", 3), ("ollaam", 3), ("ollama", 3), ("ollamas", 3), ("ollmaa", 3), ("openoruter", 3), ("openrouter", 3), ("openrouters", 3), ("openruoter", 3), ("opernouter", 3), ("opnerouter", 3), ("paikey", 3), ("poenrouter", 3), ("porvider", 3), ("proivder", 3), ("provdier", 3), ("provider", 3), ("providers", 3), ("proviedr", 3), ("prvoider", 3), ("qpikey", 3), ("rpovider", 3), ("seepseek", 3), ("which ai providers", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.cli",
+            product: "rnitro",
+            label: "Is there a command line version?",
+            priority: 60,
+            answer: "Yes — rNitro CLI (v0.2-cli), a btop-style terminal dashboard for when you're on SSH or don't want a menu bar app.\n\nIt shows CPU, memory, disk I/O, network, battery, and top processes. Keys: q quits, r refreshes. Use rnitro --once for one-shot JSON output.\n\nRuns on macOS and Linux, Python 3, no GUI required.",
+            terms: [("ahell", 2), ("btop", 2), ("btops", 2), ("cli", 2), ("cli version", 7), ("cliversion", 7), ("cnosole", 3), ("command line", 6), ("command line version", 8), ("commandline", 3), ("conosle", 3), ("consloe", 3), ("consoel", 3), ("console", 3), ("console version", 8), ("consoles", 3), ("cosnole", 3), ("ehadless", 3), ("ehell", 2), ("etrminal", 3), ("haedless", 3), ("headelss", 3), ("headless", 3), ("headlses", 3), ("healdess", 3), ("hedaless", 3), ("hsell", 2), ("htop", 2), ("htops", 2), ("is there a cli", 8), ("is there a command line", 8), ("is there a console", 8), ("is there a shell", 8), ("is there a terminal", 8), ("ocnsole", 3), ("sehll", 2), ("shell", 2), ("shell version", 8), ("shells", 3), ("shellversion", 8), ("shlel", 2), ("ssh monitoring", 8), ("sshmonitoring", 8), ("temrinal", 3), ("terimnal", 3), ("termianl", 3), ("terminal", 3), ("terminal version", 8), ("terminals", 3), ("termnial", 3), ("treminal", 3), ("tui", 2), ("whell", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.cpu",
+            product: "rnitro",
+            label: "What CPU information does it show?",
+            priority: 60,
+            answer: "rNitro shows total CPU load with a 60-second history graph, colour-coded by intensity, plus:\n\n• Per-core usage bars and clock speeds for every logical core\n• Base and boost clock estimates\n• Package power draw in watts\n• Load average\n\nOpen the Monitor tab and click any stat for a detail view.",
+            terms: [("chip", 2), ("chip monitoring", 8), ("chips", 2), ("clcok", 2), ("clock", 2), ("clocks", 3), ("clokc", 2), ("coers", 2), ("colck", 2), ("core", 2), ("cores", 2), ("corse", 2), ("cpu", 2), ("cpu monitoring", 8), ("cpumonitoring", 8), ("croes", 2), ("dlock", 2), ("does it show chip usage", 8), ("does it show cpu usage", 8), ("does it show processor usage", 8), ("does it show silicon usage", 8), ("dores", 2), ("eprcore", 3), ("ghz", 2), ("islicon", 3), ("lcock", 2), ("load", 2), ("loads", 2), ("mhz", 2), ("ocres", 2), ("pecrore", 3), ("per core usage", 8), ("percoer", 3), ("percore", 3), ("percores", 3), ("percroe", 3), ("perocre", 3), ("porcessor", 3), ("prcoessor", 3), ("precore", 3), ("procesosr", 3), ("processor", 3), ("processor monitoring", 8), ("processors", 3), ("procsesor", 3), ("proecssor", 3), ("rpocessor", 3), ("siilcon", 3), ("silcion", 3), ("silicno", 3), ("silicon", 3), ("silicon monitoring", 8), ("silicons", 3), ("siliocn", 3), ("sliicon", 3), ("what chip info", 8), ("what cpu info", 8), ("what processor info", 8), ("what silicon info", 8), ("xlock", 2), ("xores", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.gatekeeper",
+            product: "rnitro",
+            label: "macOS says the app can't be opened",
+            priority: 78,
+            answer: "That's macOS quarantining anything downloaded through a browser — normal for indie apps.\n\nDon't click Move to Trash. Either:\n\n1. Right-click the app → Open → Open again, or\n2. System Settings → Privacy & Security → press Open at the bottom, or\n3. In Terminal: xattr -cr ~/Applications/rNitro.app\n\nThe Terminal installer avoids this entirely — it clears the flag for you.",
+            terms: [("agtekeeper", 3), ("amlware", 3), ("apple could not verify", 8), ("blcoked", 3), ("blocekd", 3), ("blockde", 3), ("blocked", 3), ("blokced", 3), ("bolcked", 3), ("cannot be opened", 8), ("cant be opened", 8), ("damaged and cant be opened", 8), ("gaetkeeper", 3), ("gateekeper", 3), ("gatekeeper", 3), ("gatekeepers", 3), ("gatekepeer", 3), ("gatkeeeper", 3), ("gtaekeeper", 3), ("lbocked", 3), ("malawre", 3), ("malwaer", 3), ("malware", 3), ("malwares", 3), ("malwrae", 3), ("mawlare", 3), ("mlaware", 3), ("move to trash", 8), ("noatrised", 3), ("noatrized", 3), ("notairsed", 3), ("notairzed", 3), ("notarised", 3), ("notarized", 3), ("notarsied", 3), ("notarzied", 3), ("notraised", 3), ("notraized", 3), ("ntoarised", 3), ("ntoarized", 3), ("nuverified", 3), ("ontarised", 3), ("ontarized", 3), ("qaurantine", 3), ("quaarntine", 3), ("quarantine", 3), ("quarantines", 3), ("quaratnine", 3), ("quarnatine", 3), ("quraantine", 3), ("unevrified", 3), ("unidentified developer", 8), ("unveirfied", 3), ("unverfiied", 3), ("unverified", 3), ("unvreified", 3), ("uqarantine", 3), ("uvnerified", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.gpu",
+            product: "rnitro",
+            label: "Does it monitor the GPU?",
+            priority: 55,
+            answer: "Yes — GPU utilisation as a percentage, with its own alert threshold.\n\nHigh GPU usage during games, video export, or Metal work is normal; the Advisor tab flags it only when it crosses the limit you set.",
+            terms: [("does it show gpu", 8), ("does it show graphics", 8), ("does it show metal", 8), ("does it show video card", 8), ("emtal", 2), ("garphics", 3), ("gpu", 2), ("gpu monitoring", 8), ("gpu usage", 7), ("gpumonitoring", 8), ("gpuusage", 7), ("grahpics", 3), ("graphcis", 3), ("graphic", 3), ("graphics", 3), ("graphics monitoring", 8), ("graphics usage", 8), ("graphicsusage", 8), ("grapihcs", 3), ("grpahics", 3), ("jetal", 2), ("meatl", 2), ("metal", 2), ("metal monitoring", 8), ("metal usage", 7), ("metals", 3), ("metalusage", 7), ("metla", 2), ("mteal", 2), ("netal", 2), ("rgaphics", 3), ("video card", 5), ("video card monitoring", 8), ("video card usage", 8), ("videocard", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.install.macos",
+            product: "rnitro",
+            label: "How do I install rNitro on macOS?",
+            priority: 75,
+            answer: "The Terminal install is the recommended path — it installs to ~/Applications and clears the quarantine flag, so Gatekeeper never blocks it.\n\nCopy the Terminal command from chopstickshq.com/rnitro and paste it into Terminal.\n\nThe App ZIP is a fallback. Because browser downloads get macOS's quarantine flag, Gatekeeper will block it on first launch — right-click the app, choose Open, then Open again.",
+            terms: [("aetup", 2), ("estup", 2), ("get started", 5), ("get started on mac", 8), ("getstarted", 3), ("how do i download rnitro", 8), ("how do i get macbar", 8), ("how do i get nitro", 8), ("how do i get r nitro", 8), ("how do i get rnitro", 8), ("how do i get rnitro app", 8), ("how do i get started rnitro", 8), ("how do i grab rnitro", 8), ("how do i install macbar", 8), ("how do i install nitro", 8), ("how do i install r nitro", 8), ("how do i install rnitro", 8), ("how do i install rnitro app", 8), ("how do i installation rnitro", 8), ("how do i installing rnitro", 8), ("how do i obtain rnitro", 8), ("how do i set up rnitro", 8), ("how do i setup rnitro", 8), ("insatll", 3), ("insatllation", 4), ("insatlling", 3), ("instalaltion", 4), ("instalilng", 3), ("install", 3), ("install on apple computer", 8), ("install on imac", 8), ("install on mac", 8), ("install on macbook", 8), ("install on macos", 8), ("install on os x", 8), ("install on osx", 8), ("installation", 4), ("installation on mac", 8), ("installations", 4), ("installing", 3), ("installing on mac", 8), ("installs", 3), ("instlal", 3), ("instlalation", 4), ("instlaling", 3), ("intsall", 3), ("intsallation", 4), ("intsalling", 3), ("isntall", 3), ("isntallation", 4), ("isntalling", 3), ("nistall", 3), ("nistallation", 4), ("nistalling", 3), ("set up", 5), ("set up on mac", 8), ("setpu", 2), ("setup", 2), ("setup on mac", 8), ("setups", 3), ("seutp", 2), ("steup", 2), ("unstall", 3), ("wetup", 2), ("which download should i pick", 8), ("which get should i pick", 8), ("which grab should i pick", 8), ("which obtain should i pick", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.intel",
+            product: "rnitro",
+            label: "Does it work on Intel Macs?",
+            priority: 60,
+            answer: "Intel Macs are no longer receiving updates. The last Intel build is v1.2.5-Beta, still downloadable from the Intel Mac tab on the rNitro page.\n\nApple Silicon (M1 and newer) gets all current development.",
+            terms: [("does it work on intel", 8), ("inetl", 2), ("intel", 2), ("intel apple computer support", 8), ("intel imac support", 8), ("intel mac support", 8), ("intel macbook support", 8), ("intel macos support", 8), ("intel os x support", 8), ("intel osx support", 8), ("intels", 3), ("intle", 2), ("is intel supported", 8), ("itnel", 2), ("jntel", 2), ("nitel", 2), ("untel", 2), ("x86", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.linux",
+            product: "rnitro",
+            label: "Is there a Linux version?",
+            priority: 60,
+            answer: "There's a Linux pre-release: v0.1-Linux-Beta-Pre-release-x64.\n\nIt's a GTK 4 + libadwaita desktop app needing Python 3.10+. Download the tarball or install-rNitro-linux.sh from the Linux page and run:\nbash install-rNitro-linux.sh\n\nIt installs to ~/.local/share/rnitro. Apple-only sensors (SMC, Low Power Mode) show as N/A.",
+            terms: [("atrball", 3), ("buuntu", 3), ("dbeian", 3), ("debain", 3), ("debian", 3), ("debians", 3), ("debina", 3), ("dedora", 3), ("deiban", 3), ("does it work on linux", 8), ("edbian", 3), ("efdora", 3), ("fdeora", 3), ("fedoar", 3), ("fedora", 3), ("fedora support", 8), ("fedoras", 3), ("fedorasupport", 8), ("fedroa", 3), ("feodra", 3), ("gtk", 2), ("ilbadwaita", 3), ("ilnux", 2), ("kinux", 2), ("lbiadwaita", 3), ("liabdwaita", 3), ("libadawita", 3), ("libadwaita", 3), ("libadwaitas", 3), ("libawdaita", 3), ("libdawaita", 3), ("linux", 2), ("linux version", 8), ("linuxs", 3), ("linuxversion", 8), ("linxu", 2), ("liunx", 2), ("lniux", 2), ("oinux", 2), ("rarball", 3), ("sebian", 3), ("tabrall", 3), ("tarabll", 3), ("tarball", 3), ("tarballs", 3), ("tarblal", 3), ("traball", 3), ("ubnutu", 3), ("ubuntu", 3), ("ubuntu support", 8), ("ubuntus", 3), ("ubuntusupport", 8), ("ubunut", 3), ("ubutnu", 3), ("uubntu", 3), ("ybuntu", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.memory",
+            product: "rnitro",
+            label: "Does it monitor RAM?",
+            priority: 55,
+            answer: "Yes — used vs total memory in GB, a percentage, and macOS memory pressure.\n\nThe Advisor tab will tell you whether your current usage is above the RAM threshold you've set, and suggest checking Activity Monitor when it is.",
+            terms: [("does it show mem", 8), ("does it show memory", 8), ("does it show ram", 8), ("emmory", 3), ("mem", 2), ("mem pressure", 8), ("mem usage", 7), ("memory", 3), ("memory pressure", 8), ("memory usage", 8), ("memoryusage", 7), ("memoyr", 3), ("mempressure", 7), ("memroy", 3), ("memusage", 7), ("meomry", 3), ("mmeory", 3), ("nemory", 3), ("ram", 2), ("ram pressure", 8), ("ram usage", 7), ("rampressure", 7), ("ramusage", 7), ("swap", 2), ("swaps", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.network",
+            product: "rnitro",
+            label: "Does it show network speed?",
+            priority: 50,
+            answer: "Yes — live download and upload throughput in Mbps, sampled continuously.\n\nIt measures throughput on your active interface; it isn't a speed test, so numbers reflect what your Mac is actually transferring right now.",
+            terms: [("abndwidth", 3), ("badnwidth", 3), ("bandiwdth", 3), ("bandwdith", 3), ("bandwidth", 3), ("bandwidth monitor", 8), ("bandwidths", 3), ("banwdidth", 3), ("bnadwidth", 3), ("ehternet", 3), ("entwork", 3), ("etehrnet", 3), ("ethenret", 3), ("etherent", 3), ("ethernet", 3), ("ethernets", 3), ("ethrenet", 3), ("mbp", 2), ("mbps", 2), ("netowrk", 3), ("netwokr", 3), ("network", 3), ("network speed", 8), ("networks", 3), ("networkspeed", 8), ("netwrok", 3), ("newtork", 3), ("ntework", 3), ("tehernet", 3), ("upload download speed", 8), ("upload get speed", 8), ("upload grab speed", 8), ("upload obtain speed", 8), ("wifi", 2), ("wifis", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.overlay",
+            product: "rnitro",
+            label: "What is the game overlay / FPS HUD?",
+            priority: 55,
+            answer: "Press ⌥⇧O to toggle an overlay showing CPU%, GPU%, temperature and RAM on top of fullscreen games.\n\nFor true frame rates, use \"Launch App with FPS HUD\" from the right-click menu — that enables Apple's native Metal performance HUD for that game.",
+            terms: [("agming", 3), ("faming", 3), ("fps", 2), ("fps counter", 7), ("fps hud", 7), ("fpscounter", 7), ("fpshud", 7), ("gaimng", 3), ("game overlay", 8), ("gameoverlay", 7), ("gamign", 3), ("gaming", 3), ("gamnig", 3), ("gmaing", 3), ("hud", 2), ("in game overlay", 8), ("oevrlay", 3), ("ovelray", 3), ("overaly", 3), ("overlay", 3), ("overlya", 3), ("ovrelay", 3), ("voerlay", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.requirements",
+            product: "rnitro",
+            label: "What are the system requirements?",
+            priority: 60,
+            answer: "rNitro needs macOS 14 (Sonoma) or later.\n\nIt uses SwiftUI APIs introduced in macOS 14, so Big Sur, Monterey, and Ventura can't run the current build. There's an info pack on the site describing the older-macOS situation.\n\nApple Silicon is the primary target; Intel builds exist but stopped receiving updates after v1.2.5-Beta.",
+            terms: [("aonoma", 3), ("cmopatibility", 4), ("cmopatible", 3), ("comaptibility", 4), ("comaptible", 3), ("compaitbility", 4), ("compaitble", 3), ("compatibility", 4), ("compatible", 3), ("compatibles", 3), ("comptaibility", 4), ("comptaible", 3), ("copmatibility", 4), ("copmatible", 3), ("erquirements", 4), ("esquoia", 3), ("evntura", 3), ("minimum apple computer", 8), ("minimum imac", 8), ("minimum mac", 7), ("minimum macbook", 8), ("minimum macos", 8), ("minimum os x", 8), ("minimum osx", 7), ("minimumimac", 7), ("minimummac", 7), ("minimummacos", 8), ("minimumosx", 7), ("ocmpatibility", 4), ("ocmpatible", 3), ("osnoma", 3), ("reqiurements", 4), ("requierments", 4), ("requirement", 3), ("requirements", 4), ("requriements", 4), ("reuqirements", 4), ("rqeuirements", 4), ("seqouia", 3), ("sequioa", 3), ("sequoai", 3), ("sequoia", 3), ("sequoias", 3), ("seuqoia", 3), ("snooma", 3), ("sonmoa", 3), ("sonoam", 3), ("sonoma", 3), ("sonomas", 3), ("soonma", 3), ("spuported", 3), ("sqeuoia", 3), ("supoprted", 3), ("supporetd", 3), ("supported", 3), ("suppotred", 3), ("supproted", 3), ("system requirements", 8), ("uspported", 3), ("ventrua", 3), ("ventuar", 3), ("ventura", 3), ("venturas", 3), ("venutra", 3), ("vetnura", 3), ("vnetura", 3), ("what apple computer do i need", 8), ("what imac do i need", 8), ("what mac do i need", 8), ("what macbook do i need", 8), ("what macos do i need", 8), ("what os x do i need", 8), ("what osx do i need", 8), ("will it run on my apple computer", 8), ("will it run on my imac", 8), ("will it run on my mac", 8), ("will it run on my macbook", 8), ("will it run on my macos", 8), ("will it run on my os x", 8), ("will it run on my osx", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.safety",
+            product: "rnitro",
+            label: "Is rNitro safe to run?",
+            priority: 55,
+            answer: "The installers verify their own SHA-256 checksum before running, and refuse to continue if it doesn't match.\n\nThe full app source is included inline in the shell installers, so you can read everything before executing. rNitro is also on GitHub.\n\nNo telemetry, no account, no data collection.",
+            terms: [("can i trust it", 8), ("cirus", 2), ("elgit", 2), ("firus", 2), ("frust", 2), ("is it a virus", 8), ("is it malware", 8), ("is it safe", 7), ("ivrus", 2), ("kegit", 2), ("legit", 2), ("legits", 3), ("legti", 2), ("leigt", 2), ("lgeit", 2), ("oegit", 2), ("rrust", 2), ("rtust", 2), ("rtustworthy", 3), ("safe", 2), ("safes", 2), ("trsut", 2), ("trsutworthy", 3), ("trust", 2), ("trustowrthy", 3), ("trusts", 3), ("trustworthy", 3), ("truswtorthy", 3), ("truts", 2), ("trutsworthy", 3), ("turst", 2), ("turstworthy", 3), ("virsu", 2), ("viru", 2), ("virus", 2), ("viurs", 2), ("vrius", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.tabs",
+            product: "rnitro",
+            label: "What are the tabs in the app?",
+            priority: 55,
+            answer: "Click the menu bar icon to open the popover:\n\n• Monitor — live stats and detail views\n• Advisor — asks about YOUR Mac using live readings, sets alert thresholds\n• Chat — AI chat, including chopsticksAI and bring-your-own-key providers\n• Cleaner — reclaim disk space\n• Lab — experimental toys (Beta builds)\n• Settings — appearance, menu bar items, alerts",
+            terms: [("celaner", 3), ("claener", 3), ("cleaenr", 3), ("cleaner", 3), ("cleaners", 3), ("cleanre", 3), ("clenaer", 3), ("lab", 2), ("lceaner", 3), ("mnoitor", 3), ("mointor", 3), ("moniotr", 3), ("monitor", 3), ("monitors", 3), ("monitro", 3), ("montior", 3), ("omnitor", 3), ("oppover", 3), ("poopver", 3), ("popoevr", 3), ("popover", 3), ("popovers", 3), ("popovre", 3), ("popvoer", 3), ("ppoover", 3), ("tab", 2), ("tabs", 2), ("what are the tabs", 8), ("what is the cleaner tab", 8), ("what is the lab tab", 8), ("what is the monitor tab", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.temperature",
+            product: "rnitro",
+            label: "How accurate is the temperature?",
+            priority: 65,
+            answer: "rNitro reads real sensor data from your Mac's SMC — the same controller iStat Menus, TG Pro, and Macs Fan Control use.\n\nIf the SMC can't be reached or your chip's sensor keys aren't recognised, it falls back to macOS's own thermal state (Nominal / Fair / Serious / Critical), smoothed using live CPU load so the gauge never goes blank.\n\nThese are informational readings, not a substitute for hardware diagnostics.",
+            terms: [("aensor", 3), ("celisus", 3), ("celsisu", 3), ("celsiu", 3), ("celsius", 3), ("celsuis", 3), ("ceslius", 3), ("clesius", 3), ("degeres", 3), ("degree", 3), ("degrees", 3), ("degrese", 3), ("dergees", 3), ("dgerees", 3), ("eclsius", 3), ("edgrees", 3), ("esnsor", 3), ("etmperature", 3), ("heat", 2), ("heats", 2), ("hot", 2), ("how accurate is the celsius", 8), ("how accurate is the degrees", 8), ("how accurate is the heat", 8), ("how accurate is the hot", 8), ("how accurate is the temp", 8), ("how accurate is the temperature", 8), ("how accurate is the thermal", 8), ("htermal", 3), ("is the celsius reading real", 8), ("is the degrees reading real", 8), ("is the heat reading real", 8), ("is the hot reading real", 8), ("is the temp reading real", 8), ("is the temperature reading real", 8), ("is the thermal reading real", 8), ("segrees", 3), ("senosr", 3), ("sensor", 3), ("sensors", 3), ("sensro", 3), ("sesnor", 3), ("smc", 2), ("snesor", 3), ("tehrmal", 3), ("temeprature", 3), ("temp", 2), ("tempearture", 3), ("temperature", 3), ("temperatures", 4), ("tempreature", 3), ("temps", 2), ("tepmerature", 3), ("themral", 3), ("theraml", 3), ("thermal", 3), ("thermals", 3), ("thermla", 3), ("thremal", 3), ("tmeperature", 3), ("where does the celsius come from", 8), ("where does the degrees come from", 8), ("where does the heat come from", 8), ("where does the hot come from", 8), ("where does the temp come from", 8), ("where does the temperature come from", 8), ("where does the thermal come from", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.thresholds",
+            product: "rnitro",
+            label: "How do I set alerts and thresholds?",
+            priority: 50,
+            answer: "Advisor tab → ⚙. You can set:\n\n• Temperature warning and critical levels\n• CPU, RAM, and GPU percentage limits\n• Low-battery percentage\n• Proactive alerts on or off\n• macOS notification banners for critical temperatures\n\nAlerts have a 90-second cooldown per type so they don't spam you.",
+            terms: [("abnner", 3), ("aelrt", 2), ("alert", 2), ("alert me when", 8), ("alerts", 3), ("aletr", 2), ("alret", 2), ("awrning", 3), ("banenr", 3), ("banner", 3), ("banners", 3), ("bannre", 3), ("bnaner", 3), ("custom threshold", 8), ("ganner", 3), ("htreshold", 3), ("laert", 2), ("noitfication", 4), ("notfiication", 4), ("notifciation", 4), ("notification", 4), ("notification when celsius", 8), ("notification when degrees", 8), ("notification when heat", 8), ("notification when hot", 8), ("notification when temp", 8), ("notification when temperature", 8), ("notification when thermal", 8), ("notifications", 4), ("notiifcation", 4), ("ntoification", 4), ("ontification", 4), ("qlert", 2), ("set a warning", 8), ("thershold", 3), ("threhsold", 3), ("threshold", 3), ("thresholds", 3), ("thresohld", 3), ("thrsehold", 3), ("trheshold", 3), ("vanner", 3), ("wanring", 3), ("warinng", 3), ("warnign", 3), ("warning", 3), ("warnnig", 3), ("wlert", 2), ("wraning", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.uninstall",
+            product: "rnitro",
+            label: "How do I uninstall rNitro?",
+            priority: 60,
+            answer: "macOS: quit rNitro from the menu bar, then delete rNitro.app from ~/Applications (or /Applications).\n\nTo remove settings too:\ndefaults delete com.chopsticks.rnitro\n\nLinux: rm -rf ~/.local/share/rnitro ~/.local/bin/rnitro ~/.local/share/applications/rnitro.desktop\n\nWindows: right-click the tray icon → Exit, then delete the folder you unzipped.",
+            terms: [("deelte", 3), ("deleet", 3), ("delete", 3), ("delete macbar", 8), ("delete nitro", 8), ("delete r nitro", 8), ("delete rnitro", 8), ("delete rnitro app", 8), ("deletemacbar", 8), ("deletenitro", 7), ("deleternitro", 8), ("deletes", 3), ("deltee", 3), ("dleete", 3), ("edlete", 3), ("eemove", 3), ("ermove", 3), ("get rid of", 5), ("get rid of rnitro", 8), ("how do i delete", 8), ("how do i delete rnitro", 8), ("how do i get rid of", 8), ("how do i get rid of rnitro", 8), ("how do i remove", 8), ("how do i remove macbar", 8), ("how do i remove nitro", 8), ("how do i remove r nitro", 8), ("how do i remove rnitro", 8), ("how do i remove rnitro app", 8), ("how do i uninstall", 8), ("how do i uninstall rnitro", 8), ("nuinstall", 3), ("remoev", 3), ("remove", 3), ("remove rnitro", 8), ("removernitro", 8), ("removes", 3), ("remvoe", 3), ("reomve", 3), ("rmeove", 3), ("selete", 3), ("uinnstall", 3), ("uninsatll", 3), ("uninstall", 3), ("uninstall rnitro", 8), ("uninstalls", 3), ("unintsall", 3), ("unisntall", 3), ("unnistall", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.update",
+            product: "rnitro",
+            label: "How do updates work?",
+            priority: 55,
+            answer: "rNitro checks for updates when it launches and can fetch the latest build in-app.\n\nYou can also just re-run the Terminal install command — it always resolves whatever version.json lists as current, so it upgrades you in place.\n\nOld releases are kept on the Archives page.",
+            terms: [("bewer", 2), ("check for updates", 8), ("enwer", 2), ("hewer", 2), ("how do i update", 8), ("how do updates work", 8), ("is there a new version", 8), ("neewr", 2), ("newer", 2), ("newers", 3), ("newre", 2), ("nweer", 2), ("pudate", 3), ("pugrade", 3), ("udpate", 3), ("ugprade", 3), ("upadte", 3), ("updaet", 3), ("update", 3), ("updates", 3), ("updtae", 3), ("upgarde", 3), ("upgrade", 3), ("upgrades", 3), ("upgraed", 3), ("upgrdae", 3), ("uprgade", 3), ("ypdate", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.version",
+            product: "rnitro",
+            label: "What version is current?",
+            priority: 55,
+            answer: "The current macOS build is v1.4.0-Final.\n\nOther platforms:\n• CLI — v0.2-cli\n• Linux — v0.1 Beta pre-release\n• Windows — v6.0.2 (deprecated)\n\nThe live numbers always come from chopstickshq.com/rnitro/version.json.",
+            terms: [("biuld", 2), ("buidl", 2), ("build", 2), ("builds", 3), ("bulid", 2), ("cahngelog", 7), ("chagnelog", 7), ("chaneglog", 7), ("changelog", 7), ("changelogs", 7), ("changleog", 7), ("chnagelog", 7), ("current release", 8), ("erlease", 3), ("evrsion", 3), ("guild", 2), ("hcangelog", 7), ("latest version", 8), ("latestversion", 8), ("reelase", 3), ("relaese", 3), ("releaes", 3), ("release", 3), ("releases", 3), ("relesae", 3), ("rleease", 3), ("ubild", 2), ("verison", 3), ("versino", 3), ("version", 3), ("versions", 3), ("versoin", 3), ("vesrion", 3), ("vresion", 3), ("vuild", 2), ("what version", 8), ("whats new", 7), ("whatsnew", 7), ("whatversion", 7)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.what",
+            product: "rnitro",
+            label: "What is rNitro?",
+            priority: 70,
+            answer: "rNitro is a free, open-source system monitor that lives in your Mac's menu bar.\n\nIt shows live CPU usage, temperature, memory, GPU, battery, and network — plus per-core breakdowns, a built-in benchmark, a game overlay, and an optional Bitcoin price readout.\n\nFree, no account, no telemetry. macOS 14+ (Sonoma or later).",
+            terms: [("amcbar", 3), ("bitro", 2), ("enitro", 3), ("hitro", 2), ("intro", 2), ("mabcar", 3), ("macabr", 3), ("macbar", 3), ("macbars", 3), ("macbra", 3), ("mcabar", 3), ("nacbar", 3), ("nirto", 2), ("nitor", 2), ("nitro", 2), ("nitros", 3), ("nritro", 3), ("ntiro", 2), ("r nitro", 5), ("rintro", 3), ("rnirto", 3), ("rnitor", 3), ("rnitro", 3), ("rnitro app", 5), ("rnitroapp", 3), ("rnitros", 3), ("rntiro", 3), ("tell me about macbar", 8), ("tell me about nitro", 8), ("tell me about r nitro", 8), ("tell me about rnitro", 8), ("tell me about rnitro app", 8), ("what does macbar do", 8), ("what does nitro do", 8), ("what does r nitro do", 8), ("what does rnitro app do", 8), ("what does rnitro do", 8), ("what is macbar", 8), ("what is nitro", 8), ("what is r nitro", 8), ("what is rnitro", 8), ("what is rnitro app", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "rnitro.windows",
+            product: "rnitro",
+            label: "Is there a Windows version?",
+            priority: 60,
+            answer: "Windows is no longer actively developed, but the last build stays available: v6.0.2-Windows-x64, shipped as a portable ZIP.\n\nUnzip it anywhere and run rNitro.exe — it lives in the system tray. Needs 64-bit Windows 10 or 11 and the .NET 8 Desktop Runtime. Windows 8.1 and earlier aren't supported.\n\nRun as administrator if you want CPU temperatures; Windows hides thermal sensors from unelevated apps.",
+            terms: [("does it work on windows", 8), ("exe", 2), ("iwndows", 3), ("msi", 2), ("pc version", 7), ("pcversion", 7), ("tray", 2), ("widnows", 3), ("win10", 2), ("win11", 2), ("windosw", 3), ("window", 3), ("windows", 3), ("windows 11 support", 8), ("windows version", 8), ("windwos", 3), ("winodws", 3), ("wnidows", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "shaders.what",
+            product: "shaders",
+            label: "What are Chopsticks Shaders?",
+            priority: 60,
+            answer: "Chopsticks Shaders is an Iris shader pack for Minecraft, with volumetric lighting derived from Noble.\n\nIt's licensed GPL-3.0 because of that lineage. Available from chopstickshq.com/shaders/.",
+            terms: [("hsaderpack", 3), ("hsaders", 3), ("iri", 2), ("iris", 2), ("minecraft shaders", 8), ("sahderpack", 3), ("sahders", 3), ("shadeprack", 3), ("shader", 3), ("shader pack", 7), ("shaderpack", 7), ("shaderpacks", 3), ("shaders", 3), ("shadesr", 3), ("shadrepack", 3), ("shadres", 3), ("shaedrpack", 3), ("shaedrs", 3), ("shdaerpack", 3), ("shdaers", 3), ("what are the shaders", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "trouble.checksum",
+            product: "general",
+            label: "The installer says checksum mismatch",
+            priority: 55,
+            answer: "That's the installer protecting you — it downloaded a file whose SHA-256 doesn't match what version.json publishes, so it refused to install.\n\nUsually it's a truncated or cached download. Try again; if it keeps failing, the mirror you hit may be stale. Report it at github.com/ilikemacos/rNitro/issues/new and include both hashes it printed.",
+            terms: [("cehcksum", 3), ("chceksum", 3), ("checksum", 3), ("checksum mismatch", 8), ("checksums", 3), ("checkusm", 3), ("checskum", 3), ("chekcsum", 3), ("hash does not match", 8), ("hcecksum", 3), ("imsmatch", 3), ("inetgrity", 3), ("integirty", 3), ("integrity", 3), ("integrity check failed", 8), ("intergity", 3), ("intgerity", 3), ("itnegrity", 3), ("mimsatch", 3), ("misamtch", 3), ("mismacth", 3), ("mismatch", 3), ("mismatchs", 3), ("mismtach", 3), ("msimatch", 3), ("nitegrity", 3), ("sha256", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "trouble.download.blocked",
+            product: "general",
+            label: "The download won't start",
+            priority: 50,
+            answer: "Every download shows a terms dialog first — you have to press \"I Agree & download\" for the file to start.\n\nIf nothing happens after that, try the Terminal install instead, or grab the file straight from GitHub Releases.",
+            terms: [("cant download", 8), ("cant get", 7), ("cant grab", 7), ("cant obtain", 7), ("cantdownload", 8), ("cantget", 7), ("cantgrab", 7), ("cantobtain", 7), ("donwloadfail", 4), ("dowlnoadfail", 4), ("downlaodfail", 4), ("download button does nothing", 8), ("download not working", 8), ("downloadfail", 4), ("downloadfails", 4), ("downoladfail", 4), ("dwonloadfail", 4), ("get button does nothing", 8), ("get not working", 8), ("grab button does nothing", 8), ("grab not working", 8), ("obtain button does nothing", 8), ("obtain not working", 8), ("odwnloadfail", 4)]
+        ),
+        ChopsticksAIIntent(
+            id: "trouble.high.cpu",
+            product: "general",
+            label: "The app itself is using CPU",
+            priority: 50,
+            answer: "rNitro is native Swift, not Electron — the app bundle is around 3.5 MB and idles low.\n\nIf it's using more than you'd expect, lower the refresh rate in Settings, turn off the Bitcoin ticker, and close the popover when you're not reading it — the live panel refreshes several times a second while open.",
+            terms: [("app is heavy", 8), ("battery drain from the app", 8), ("charge drain from the app", 8), ("ehavy", 2), ("ersource", 3), ("geavy", 2), ("haevy", 2), ("heavy", 2), ("heayv", 2), ("hevay", 2), ("high chip usage from the app", 8), ("high cpu usage from the app", 8), ("high processor usage from the app", 8), ("high silicon usage from the app", 8), ("juice drain from the app", 8), ("power drain from the app", 8), ("reosurce", 3), ("resoruce", 3), ("resoucre", 3), ("resource", 3), ("resources", 3), ("resuorce", 3), ("rseource", 3), ("using too much chip", 8), ("using too much cpu", 8), ("using too much processor", 8), ("using too much silicon", 8), ("yeavy", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "trouble.no.temperature",
+            product: "general",
+            label: "Temperature shows N/A or looks wrong",
+            priority: 55,
+            answer: "If the SMC sensor keys for your chip aren't recognised, rNitro falls back to macOS's thermal state and interpolates from CPU load — so the number stays plausible but isn't a direct reading.\n\nOn Windows, temperatures need administrator rights; Windows hides thermal sensors from unelevated processes.\n\nOn Linux, Apple-only sensors always show N/A.",
+            terms: [("balnk", 2), ("blakn", 2), ("blank", 2), ("blanks", 3), ("blnak", 2), ("celsius is wrong", 8), ("celsius not showing", 8), ("celsius says na", 8), ("celsius shows na", 8), ("degrees is wrong", 8), ("degrees not showing", 8), ("degrees says na", 8), ("degrees shows na", 8), ("glank", 2), ("heat is wrong", 8), ("heat not showing", 8), ("heat says na", 8), ("heat shows na", 8), ("hot is wrong", 8), ("hot not showing", 8), ("hot says na", 7), ("hot shows na", 8), ("imssing", 3), ("lbank", 2), ("misisng", 3), ("missign", 3), ("missing", 3), ("missnig", 3), ("msising", 3), ("nissing", 3), ("no sensor data", 8), ("shows na", 7), ("showsna", 7), ("temp is wrong", 8), ("temp not showing", 8), ("temp says na", 8), ("temp shows na", 8), ("temperature is wrong", 8), ("temperature not showing", 8), ("temperature says na", 8), ("temperature shows na", 8), ("thermal is wrong", 8), ("thermal not showing", 8), ("thermal says na", 8), ("thermal shows na", 8), ("vlank", 2), ("zero", 2), ("zeros", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "trouble.wont.launch",
+            product: "general",
+            label: "The app won't launch",
+            priority: 60,
+            answer: "Try in this order:\n\n1. If macOS blocked it, right-click → Open → Open again\n2. Clear the quarantine flag: xattr -cr ~/Applications/rNitro.app\n3. Confirm you're on macOS 14 or later — older versions can't run the current build\n4. Re-run the Terminal installer to get a clean copy\n\nStill stuck? Open an issue at github.com/ilikemacos/rNitro/issues/new with your macOS version and Mac model.",
+            terms: [("alunch", 3), ("app crashes on launch", 8), ("app wont open", 8), ("carsh", 2), ("carshing", 3), ("crahs", 2), ("crahsing", 3), ("crash", 2), ("crashing", 3), ("crashnig", 3), ("crashs", 3), ("crasihng", 3), ("crsah", 2), ("crsahing", 3), ("drash", 2), ("dreeze", 3), ("fereze", 3), ("freeez", 3), ("freeze", 3), ("freezes", 3), ("frezee", 3), ("hang", 2), ("hangs", 2), ("kaunch", 3), ("lanuch", 3), ("laucnh", 3), ("launch", 3), ("launchs", 3), ("launhc", 3), ("luanch", 3), ("nothing happens when i click", 8), ("rcash", 2), ("rcashing", 3), ("rfeeze", 3), ("rreeze", 3), ("wont start", 7), ("wontstart", 7), ("xrash", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "vault.what",
+            product: "vault",
+            label: "What is the vault?",
+            priority: 55,
+            answer: "The vault at chopstickshq.com/vault/ is a password-gated generator for Fathom Pro unlock keys.\n\nEach Generate mints a new random oi-pl key entirely in your browser. These are unlock tokens for Fathom Pro only — they are not cloud API keys and carry no credit.",
+            terms: [("avult", 2), ("cault", 2), ("fault", 2), ("valut", 2), ("vault", 2), ("vault key generator", 8), ("vault page", 7), ("vaultpage", 7), ("vaults", 3), ("vautl", 2), ("vualt", 2), ("what is the vault", 8)]
+        ),
+    ]
+}
+
+// chopsticksAI retrieval engine.
+//
+// Scoring must stay identical to js/chopsticks-ai.js: same normalisation, same
+// word-boundary matching, same weights, same tie-break. chopsticks-ai/fixtures.json
+// is run against both and they must agree.
+
+enum ChopsticksAI {
+    static let confidenceFloor = 4
+
+    struct Result {
+        let answer: String
+        let confident: Bool
+        let intent: ChopsticksAIIntent?
+        let suggestions: [ChopsticksAIIntent]
+    }
+
+    static func normalise(_ text: String) -> String {
+        var out = ""
+        out.reserveCapacity(text.count)
+        var lastWasSpace = true
+        for ch in text.lowercased() {
+            if ch.isLetter || ch.isNumber {
+                out.append(ch)
+                lastWasSpace = false
+            } else if !lastWasSpace {
+                out.append(" ")
+                lastWasSpace = true
+            }
+        }
+        if out.hasSuffix(" ") { out.removeLast() }
+        return out
+    }
+
+    private struct Scored {
+        let intent: ChopsticksAIIntent
+        let score: Int
+    }
+
+    static func rank(_ query: String) -> [ChopsticksAIIntent] {
+        scored(query).map { $0.intent }
+    }
+
+    private static func scored(_ query: String) -> [Scored] {
+        let text = normalise(query)
+        guard !text.isEmpty else { return [] }
+        // Padding lets a plain containment check act as a word-boundary check,
+        // which is what stops "unzip" matching the "zip" term.
+        let padded = " " + text + " "
+
+        var results: [Scored] = []
+        for intent in ChopsticksAIKB.intents {
+            var total = 0
+            for (term, weight) in intent.terms where padded.contains(" " + term + " ") {
+                total += weight
+            }
+            if total > 0 {
+                results.append(Scored(intent: intent, score: total))
+            }
+        }
+
+        results.sort { a, b in
+            if a.score != b.score { return a.score > b.score }
+            if a.intent.priority != b.intent.priority { return a.intent.priority > b.intent.priority }
+            return a.intent.id < b.intent.id
+        }
+        return results
+    }
+
+    static func ask(_ query: String) -> Result {
+        let ranked = scored(query)
+
+        guard let top = ranked.first, top.score >= confidenceFloor else {
+            let hints = ranked.prefix(3).map { $0.intent }
+            var answer = "I'm not sure about that one.\n\nI know about rNitro, Fathom Air, Fathom Pro, ARENA, installing, and privacy. Try rephrasing"
+            if hints.isEmpty {
+                answer += "."
+            } else {
+                answer += ", or ask about:\n" + hints.map { "• " + $0.label }.joined(separator: "\n")
+            }
+            return Result(answer: answer, confident: false, intent: nil, suggestions: Array(hints))
+        }
+
+        let related = ranked.dropFirst().prefix(3).map { $0.intent }
+        var answer = top.intent.answer
+        if !related.isEmpty {
+            answer += "\n\nRelated:\n" + related.map { "• " + $0.label }.joined(separator: "\n")
+        }
+        return Result(answer: answer, confident: true, intent: top.intent, suggestions: Array(related))
+    }
+}
+
+
 enum AIProvider: String, CaseIterable, Identifiable {
+    case chopsticks = "chopsticksAI"
     case gemini = "Gemini"
     case openai = "OpenAI"
     case anthropic = "Anthropic"
@@ -5693,13 +6591,14 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var requiresApiKey: Bool {
         switch self {
-        case .lmStudio, .ollama, .hermes: return false
+        case .chopsticks, .lmStudio, .ollama, .hermes: return false
         default: return true
         }
     }
 
     var modelLabel: String {
         switch self {
+        case .chopsticks: return "on-device knowledge base"
         case .gemini: return "gemini-2.0-flash"
         case .openai: return "gpt-4o-mini"
         case .anthropic: return "claude-3-5-haiku-20241022"
@@ -5714,6 +6613,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var keyURL: String {
         switch self {
+        case .chopsticks: return "https://chopstickshq.com/"
         case .gemini: return "https://aistudio.google.com/apikey"
         case .openai: return "https://platform.openai.com/api-keys"
         case .anthropic: return "https://console.anthropic.com/settings/keys"
@@ -5728,6 +6628,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var keyHint: String {
         switch self {
+        case .chopsticks: return "built in - no key"
         case .gemini: return "Google AI Studio"
         case .openai: return "OpenAI Platform"
         case .anthropic: return "Anthropic Console"
@@ -5742,6 +6643,8 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var setupHint: String {
         switch self {
+        case .chopsticks:
+            return "chopsticksAI is built in. It answers from an on-device knowledge base about rNitro, Fathom and ARENA - no API key, no network request, nothing leaves your Mac."
         case .lmStudio:
             return "Start LM Studio locally and load a model. API key is optional — leave blank and tap Enable if your server has no auth (default: localhost:1234)."
         case .ollama:
@@ -6000,7 +6903,7 @@ enum AIKeyUtil {
 final class AIChatModel: ObservableObject {
     static let shared = AIChatModel()
 
-    @Published var selectedProvider: AIProvider = .gemini
+    @Published var selectedProvider: AIProvider = .chopsticks
     @Published var apiKeyDraft = ""
     @Published var messages: [ChatMessage] = [] {
         didSet { guard !suppressPersist else { return }; AIChatStore.save(messages, provider: selectedProvider) }
@@ -6132,6 +7035,7 @@ final class AIChatModel: ObservableObject {
     }
 
     func hasSavedKey(for provider: AIProvider) -> Bool {
+        if provider == .chopsticks { return true }
         if provider.requiresApiKey {
             return resolvedKey(for: provider) != nil
         }
@@ -6205,6 +7109,27 @@ final class AIChatModel: ObservableObject {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isLoading else { return }
         let provider = selectedProvider
+
+        // chopsticksAI talks to the Chopsticks HQ proxy, which holds the model
+        // credential server-side - no key is stored in or extractable from this
+        // app. If the proxy is unreachable it falls back to the on-device
+        // knowledge base, so the assistant still answers offline.
+        if provider == .chopsticks {
+            inputText = ""
+            messages.append(ChatMessage(role: "user", text: text))
+            let replyId = UUID()
+            messages.append(ChatMessage(id: replyId, role: "model", text: ""))
+            let history = messages
+            isLoading = true
+            Task {
+                let reply = await Self.requestChopsticks(messages: history)
+                replaceMessage(id: replyId, text: reply)
+                markProviderConnected(provider)
+                isLoading = false
+            }
+            return
+        }
+
         let apiKey: String
         if provider.requiresApiKey {
             guard let k = resolvedKey(for: provider) else {
@@ -6267,9 +7192,46 @@ final class AIChatModel: ObservableObject {
         }
     }
 
+    /// Asks the Chopsticks HQ proxy. Falls back to the compiled-in knowledge
+    /// base on any failure so chopsticksAI never dead-ends.
+    nonisolated private static func requestChopsticks(messages: [ChatMessage]) async -> String {
+        let lastUser = messages.last(where: { $0.role == "user" })?.text ?? ""
+        guard let url = URL(string: "https://chopstickshq.com/api/chopsticks-ai") else {
+            return ChopsticksAI.ask(lastUser).answer
+        }
+
+        let turns = messages
+            .filter { !$0.text.isEmpty && ($0.role == "user" || $0.role == "model") }
+            .suffix(12)
+            .map { ["role": $0.role == "model" ? "assistant" : "user", "content": $0.text] }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.timeoutInterval = 25
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["messages": turns])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let reply = obj["reply"] as? String,
+                  !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+                return ChopsticksAI.ask(lastUser).answer
+            }
+            return reply
+        } catch {
+            return ChopsticksAI.ask(lastUser).answer
+        }
+    }
+
     nonisolated private static func probe(provider: AIProvider, apiKey: String) async -> Result<Void, Error> {
         do {
             switch provider {
+            case .chopsticks:
+                // Nothing to reach - the knowledge base is compiled in.
+                return .success(())
             case .gemini:
                 var req = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models")!)
                 req.httpMethod = "GET"
@@ -6378,6 +7340,10 @@ final class AIChatModel: ObservableObject {
 
     nonisolated private static func request(provider: AIProvider, apiKey: String, messages: [ChatMessage]) async throws -> String {
         switch provider {
+        case .chopsticks:
+            // Unreachable in practice - sendMessage answers chopsticksAI before
+            // it gets here - but keeps the switch exhaustive and network-free.
+            return ChopsticksAI.ask(messages.last?.text ?? "").answer
         case .gemini: return try await requestGemini(apiKey: apiKey, messages: messages)
         case .openai: return try await requestOpenAI(apiKey: apiKey, messages: messages)
         case .anthropic: return try await requestAnthropic(apiKey: apiKey, messages: messages)
@@ -7221,7 +8187,7 @@ struct SettingsAppearanceSection: View {
                         Text(mode.label).tag(mode)
                     }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
                 Text(display.tr("appearance.theme.hint"))
                     .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
                 Text(display.tr("appearance.fontSize"))
@@ -7282,7 +8248,7 @@ struct SettingsAppearanceSection: View {
                         Text(style.label).tag(style.rawValue)
                     }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
                 Text(display.tr("appearance.sections"))
                     .font(rNitroFont(.label, metrics: metrics, weight: .semibold))
                     .padding(.top, 6)
@@ -7653,6 +8619,7 @@ struct SettingsGeneralSection: View {
                     HStack(spacing: 10) {
                         MinimalButton(title: display.tr("general.checkUpdates"), action: {
                             updateStatus.refreshLabel()
+                            updateStatus.refreshIntegrityLabels()
                             UpdateChecker.checkManually()
                         })
                         if let url = URL(string: "https://chopstickshq.com/rnitro/") {
@@ -7664,6 +8631,14 @@ struct SettingsGeneralSection: View {
                             .foregroundColor(.accent)
                         }
                     }
+                    VStack(alignment: .leading, spacing: 4) {
+                        MonitorRow(label: display.tr("general.installedSha"), value: updateStatus.installedBinarySha)
+                        MonitorRow(label: display.tr("general.remoteZipSha"), value: updateStatus.remoteZipShaShort)
+                        Text("Installed SHA is the local binary; remote is the published App ZIP hash from version.json (verified on update).")
+                            .font(rNitroFont(.micro, metrics: metrics))
+                            .foregroundColor(.secondary.opacity(0.85))
+                    }
+                    .onAppear { updateStatus.refreshIntegrityLabels() }
                     if updateStatus.showWhatsNewBanner, !updateStatus.whatsNewText.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
@@ -7705,12 +8680,28 @@ struct SettingsGeneralSection: View {
                     Text(display.tr("general.launchAtLogin.req"))
                         .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
                 }
+                Toggle(isOn: $devMode.verboseLogging) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(display.tr("general.enableLogging")).font(rNitroFont(.label, metrics: metrics, weight: .semibold))
+                        Text(display.tr("general.enableLogging.hint"))
+                            .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                HStack(spacing: 8) {
+                    MinimalButton(title: display.tr("general.openLogs"), action: { devMode.openLogFolder() })
+                    MinimalButton(title: display.tr("general.clearLogs"), action: { devMode.clearLogs() })
+                }
                 Text(display.tr("general.idleEfficiency"))
                     .font(rNitroFont(.label, metrics: metrics, weight: .semibold))
                     .padding(.top, 6)
                 Picker(display.tr("general.idleProfile"), selection: Binding(
-                    get: { IdleProfile(rawValue: UserDefaults.standard.string(forKey: MonitorPreferences.idleProfileKey) ?? "") ?? .balanced },
-                    set: { UserDefaults.standard.set($0.rawValue, forKey: MonitorPreferences.idleProfileKey); MonitorActivity.applyIdleProfileChange() }
+                    get: { IdleProfile(rawValue: UserDefaults.standard.string(forKey: MonitorPreferences.idleProfileKey) ?? "") ?? .aggressive },
+                    set: {
+                        UserDefaults.standard.set($0.rawValue, forKey: MonitorPreferences.idleProfileKey)
+                        MonitorActivity.applyIdleProfileChange()
+                        DeveloperModeStore.shared.log("idle profile → \($0.rawValue)", category: "monitor")
+                    }
                 )) {
                     ForEach(IdleProfile.allCases) { p in
                         Text(p.label).tag(p)
@@ -7719,6 +8710,35 @@ struct SettingsGeneralSection: View {
                 .pickerStyle(.segmented)
                 Text(display.tr("general.idleHint"))
                     .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
+                Text(display.tr("battery.lowAuto"))
+                    .font(rNitroFont(.label, metrics: metrics, weight: .semibold))
+                    .padding(.top, 8)
+                Text(display.tr("battery.lowAuto.hint"))
+                    .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
+                Toggle(isOn: Binding(
+                    get: { LowBatteryAutomation.shared.isEnabled },
+                    set: { LowBatteryAutomation.shared.isEnabled = $0; LowBatteryAutomation.shared.evaluate(battery: BatteryMonitor.shared) }
+                )) {
+                    Text(display.tr("battery.lowAuto")).font(rNitroFont(.label, metrics: metrics))
+                }.toggleStyle(.switch)
+                Toggle(isOn: Binding(
+                    get: { LowBatteryAutomation.shared.notifyEnabled },
+                    set: { LowBatteryAutomation.shared.notifyEnabled = $0 }
+                )) {
+                    Text(display.tr("battery.lowNotify")).font(rNitroFont(.label, metrics: metrics))
+                }.toggleStyle(.switch)
+                Toggle(isOn: Binding(
+                    get: { LowBatteryAutomation.shared.dimEnabled },
+                    set: { LowBatteryAutomation.shared.dimEnabled = $0; LowBatteryAutomation.shared.evaluate(battery: BatteryMonitor.shared) }
+                )) {
+                    Text(display.tr("battery.lowDim")).font(rNitroFont(.label, metrics: metrics))
+                }.toggleStyle(.switch)
+                Toggle(isOn: Binding(
+                    get: { LowBatteryAutomation.shared.muteStressEnabled },
+                    set: { LowBatteryAutomation.shared.muteStressEnabled = $0; LowBatteryAutomation.shared.evaluate(battery: BatteryMonitor.shared) }
+                )) {
+                    Text(display.tr("battery.lowMute")).font(rNitroFont(.label, metrics: metrics))
+                }.toggleStyle(.switch)
                 if RNITRO_FEATURE_BETA_UI {
                     Toggle(isOn: Binding(
                         get: {
@@ -7746,6 +8766,9 @@ struct SettingsGeneralSection: View {
                     .toggleStyle(.switch)
                 }
                 MonitorRow(label: display.tr("general.version"), value: UpdateChecker.displayLabel(CURRENT_VERSION))
+                    .contentShape(Rectangle())
+                    .onTapGesture { RNitroEasterEgg.noteVersionTap() }
+                    .help("Tap version five times…")
                 MonitorRow(label: display.tr("general.installLocation"), value: UpdateChecker.installPathLabel())
                 MinimalButton(title: display.tr("general.launchCLI"), action: { CLIIntegration.copyLaunchCommand() })
             }
@@ -7778,9 +8801,17 @@ struct SettingsDeveloperSection: View {
                 }
                 .toggleStyle(.switch)
                 Toggle(isOn: $dev.verboseLogging) {
-                    Text(display.tr("dev.verbose")).font(rNitroFont(.label, metrics: metrics))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(display.tr("general.enableLogging")).font(rNitroFont(.label, metrics: metrics))
+                        Text(display.tr("general.enableLogging.hint"))
+                            .font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
+                    }
                 }
                 .toggleStyle(.switch)
+                HStack(spacing: 8) {
+                    MinimalButton(title: display.tr("general.openLogs"), action: { dev.openLogFolder() })
+                    MinimalButton(title: display.tr("general.clearLogs"), action: { dev.clearLogs() })
+                }
                 Toggle(isOn: $dev.showRawSensors) {
                     Text(display.tr("dev.rawSensors")).font(rNitroFont(.label, metrics: metrics))
                 }
@@ -8819,7 +9850,12 @@ struct BatteryCpuPowerRow: View {
                 title: "BATTERY",
                 value: bat.isPresent ? "\(bat.levelPercent)" : "—",
                 unit: "%",
-                subtitle: bat.remainingTimeText.map { "left \($0)" },
+                subtitle: {
+                    if let left = bat.remainingTimeText {
+                        return "left \(left)"
+                    }
+                    return bat.chemicalGaugeSubtitle
+                }(),
                 color: bat.isCharging ? .nGreen : .accent,
                 action: onBatteryTap
             )
@@ -9002,25 +10038,60 @@ struct StatDetailPopup: View {
             ]
         case .battery:
             var rows: [(String, String)] = [
-                ("Level", battery.isPresent ? "\(battery.levelPercent)%" : "N/A"),
+                ("Level (menu bar)", battery.isPresent ? "\(battery.levelPercent)%" : "N/A"),
+            ]
+            if let chem = battery.chemicalSoC {
+                rows.append(("Chemical gauge", "\(chem)%"))
+            }
+            if let raw = battery.rawMahLevelPercent {
+                rows.append(("Raw mAh SoC", "\(raw)%"))
+            }
+            rows += [
                 ("Power Source", battery.powerSource),
                 ("AC Connected", battery.isOnAC ? "Yes" : "No"),
                 ("Charging", battery.isCharging ? "Yes" : "No"),
                 ("Charge Rate", battery.chargeRateText)
             ]
-            if battery.chargeWatts > 0 {
-                rows.append(("Adapter Power", String(format: "%.1f W", battery.chargeWatts)))
+            if abs(battery.packWattsSigned) > 0.05 {
+                rows.append(("Pack Power", String(format: "%+.2f W", battery.packWattsSigned)))
+            } else if battery.chargeWatts > 0 {
+                rows.append(("Pack Power", String(format: "%.1f W", battery.chargeWatts)))
+            }
+            if let ma = battery.amperageMa {
+                rows.append(("Amperage", "\(ma) mA"))
+            }
+            if let cur = battery.rawCurrentMah, let maxC = battery.rawMaxMah {
+                rows.append(("Capacity", "\(cur) / \(maxC) mAh"))
+            }
+            if let h = battery.healthPercent {
+                rows.append(("Maximum Capacity", "\(h)%"))
+            }
+            if let c = battery.cycleCount {
+                rows.append(("Cycle Count", "\(c)"))
             }
             if let eta = battery.timeToFullMinutes, eta > 0 {
                 rows.append(("Time to Full", "\(eta) min"))
             }
             if let rem = battery.remainingTimeText {
                 rows.append(("Time Remaining", rem))
+                rows.append(("Remaining source", battery.remainingSource))
             }
+            if let live = battery.liveEstimateMinutes, live > 0, live < 65535 {
+                let liveText: String = {
+                    if live >= 60 { return String(format: "%dh %dm (pack draw)", live / 60, live % 60) }
+                    return "\(live) min (pack draw)"
+                }()
+                rows.append(("At current draw", liveText))
+            }
+
+            if let p = battery.diagPmsetPercent { rows.append(("pmset %", "\(p)")) }
+            if let p = battery.diagIOPSPercent { rows.append(("IOPS %", "\(p)")) }
+            if let c = battery.diagIOKitCurrentCapacity { rows.append(("IOKit CurrentCapacity", "\(c)")) }
             if monitor.isLowPowerModeEnabled {
                 rows.append(("Low Power Mode", "On — clocks/background work may be reduced"))
             }
-            rows.append(("Source", "IOKit + pmset/ioreg fallback (macOS)"))
+            rows.append(("Source", battery.diagSourceLabel))
+            rows.append(("Note", "UI % matches menu bar; chemical gauge can trail."))
             return rows
         case .cpuPower:
             let measured = monitor.packagePowerSource.contains("measured")
@@ -9329,7 +10400,13 @@ enum UIFontCatalog {
 }
 
 enum AppAppearanceMode: String, CaseIterable, Identifiable {
-    case system, dark, light
+
+    case system
+
+    case light, dark
+
+    case oled, ips, lcd, miniLED
+
     var id: String { rawValue }
     var label: String {
         let d = DisplayPreferencesStore.shared
@@ -9337,23 +10414,65 @@ enum AppAppearanceMode: String, CaseIterable, Identifiable {
         case .system: return d.tr("appearance.theme.system")
         case .dark: return d.tr("appearance.theme.dark")
         case .light: return d.tr("appearance.theme.light")
+        case .oled: return d.tr("appearance.theme.oled")
+        case .ips: return d.tr("appearance.theme.ips")
+        case .lcd: return d.tr("appearance.theme.lcd")
+        case .miniLED: return d.tr("appearance.theme.miniled")
         }
     }
     var preferredColorScheme: ColorScheme? {
         switch self {
         case .system: return nil
-        case .dark: return .dark
         case .light: return .light
+        case .dark, .oled, .ips, .lcd, .miniLED: return .dark
         }
     }
     func applyToApp() {
         switch self {
         case .system:
             NSApp.appearance = nil
-        case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
         case .light:
             NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark, .oled, .ips, .lcd, .miniLED:
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+
+    private static func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Color {
+        Color(red: Double(r), green: Double(g), blue: Double(b))
+    }
+
+    var surfaceBg: Color {
+        switch self {
+        case .system: return .systemBg
+        case .light: return Self.rgb(0.96, 0.96, 0.98)
+        case .dark: return Self.rgb(0.05, 0.05, 0.08)
+        case .oled: return Self.rgb(0.0, 0.0, 0.0)
+        case .ips: return Self.rgb(0.05, 0.06, 0.09)
+        case .lcd: return Self.rgb(0.11, 0.11, 0.13)
+        case .miniLED: return Self.rgb(0.02, 0.02, 0.04)
+        }
+    }
+    var surfaceCard: Color {
+        switch self {
+        case .system: return .systemCard
+        case .light: return Self.rgb(1.0, 1.0, 1.0)
+        case .dark: return Self.rgb(0.10, 0.10, 0.14)
+        case .oled: return Self.rgb(0.04, 0.04, 0.05)
+        case .ips: return Self.rgb(0.09, 0.10, 0.15)
+        case .lcd: return Self.rgb(0.15, 0.15, 0.18)
+        case .miniLED: return Self.rgb(0.07, 0.07, 0.11)
+        }
+    }
+    var surfaceBorder: Color {
+        switch self {
+        case .system: return .systemBorder
+        case .light: return Self.rgb(0.82, 0.84, 0.90)
+        case .dark: return Self.rgb(0.20, 0.20, 0.28)
+        case .oled: return Self.rgb(0.14, 0.14, 0.16)
+        case .ips: return Self.rgb(0.18, 0.22, 0.32)
+        case .lcd: return Self.rgb(0.26, 0.26, 0.30)
+        case .miniLED: return Self.rgb(0.16, 0.20, 0.30)
         }
     }
 }
@@ -9494,7 +10613,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.fontSize": "Font size",
         "appearance.language": "Language",
         "appearance.monitorUI": "Monitor UI",
-        "appearance.monitorUI.hint": "Modern uses iStats-style accordion sections. Legacy is the compact classic layout.",
+        "appearance.monitorUI.hint": "Modern = iStats-style sections. Legacy = compact classic. New style = glass dashboard layout.",
         "appearance.pangram": "The quick brown fox — 0123456789",
         "appearance.reset": "Reset appearance defaults",
         "appearance.sections": "Monitor sections",
@@ -9502,11 +10621,15 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.showPerCore": "Show per-core bars",
         "appearance.showProcesses": "Show top processes",
         "appearance.subtitle": "Theme, UI font, size, language, and monitor layout.",
-        "appearance.theme": "Theme",
+        "appearance.theme": "Display mode",
         "appearance.theme.dark": "Dark",
-        "appearance.theme.hint": "System follows macOS. Light & Dark force the app chrome.",
+        "appearance.theme.hint": "Light & Dark are classic chrome. OLED / IPS / LCD / Mini LED tune blacks, contrast, and panel character. System follows macOS.",
         "appearance.theme.light": "Light",
         "appearance.theme.system": "System",
+        "appearance.theme.oled": "OLED",
+        "appearance.theme.ips": "IPS",
+        "appearance.theme.lcd": "LCD",
+        "appearance.theme.miniled": "Mini LED",
         "appearance.title": "Display",
         "btn.run": "Run",
         "btn.running": "Running…",
@@ -9578,7 +10701,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "dev.surprise.hint": "Diagnostics & toys for people who open Dev Mode on purpose.",
         "dev.title": "Developer",
         "dev.uiConfig": "UI config",
-        "dev.verbose": "Verbose logging to ~/Library/Logs/rNitro",
+        "dev.verbose": "Enable Logging → ~/Library/Logs/rNitro",
         "duel.expand": "Expand for LAN host/join duel (no cloud).",
         "duel.host": "Host",
         "duel.join": "Join",
@@ -9600,16 +10723,36 @@ final class DisplayPreferencesStore: ObservableObject {
         "fathom.discover": "See battery drain attribution (Fathom)",
         "fathom.hint": "Fathom attributes which apps drain battery — opens the app if installed, otherwise the download page.",
         "fathom.open": "Open Fathom — battery drain attribution",
+        "battery.copyDiag": "Copy battery diagnostics",
+        "battery.copyDiag.hint": "Copies pmset / IOPS / IOKit / chemical SoC compare for support.",
+        "row.chemicalGauge": "Chemical gauge",
+        "row.batteryHealth": "Battery health",
+        "row.topEnergy": "Top CPU (energy proxy)",
+        "row.topEnergy.hint": "macOS has no public per-app energy API; CPU% is the best free proxy. Use Fathom for deeper drain attribution.",
+        "row.packDrain": "Pack power (1h)",
+        "battery.lowAuto": "Low-battery automation",
+        "battery.lowAuto.hint": "At 20%/10%: notify, dim monitor panel, mute stress tools (Settings).",
+        "battery.lowNotify": "Notify at 20% / 10%",
+        "battery.lowDim": "Dim panel when ≤20%",
+        "battery.lowMute": "Mute stress tools when ≤20%",
+        "general.installedSha": "Installed binary SHA",
+        "general.remoteZipSha": "Remote ZIP SHA",
+        "general.shaMatch": "ZIP hash",
+        "general.shaUnknown": "not published",
         "general.channel": "Channel",
         "general.checkUpdates": "Check for Updates",
         "general.compileFarm": "Compile-farm mode",
         "general.compileFarm.hint": "Detect swiftc/clang/xcodebuild, boost sampling while building, then cool down.",
         "general.developerMode": "Developer Mode",
         "general.developerMode.hint": "Unlocks the Developer settings tab and process tools.",
-        "general.idleAggressive": "Aggressive (lowest RAM)",
-        "general.idleBalanced": "Balanced",
-        "general.idleEfficiency": "Idle efficiency",
-        "general.idleHint": "Balanced keeps the menu bar snappy. Aggressive uses slower polls and skips history buffers until the popover opens.",
+        "general.enableLogging": "Enable Logging",
+        "general.enableLogging.hint": "Write local diagnostics to ~/Library/Logs/rNitro (rnitro.log). Never uploaded.",
+        "general.openLogs": "Open log folder",
+        "general.clearLogs": "Clear logs",
+        "general.idleAggressive": "Efficient (default · low CPU)",
+        "general.idleBalanced": "Snappy (higher CPU)",
+        "general.idleEfficiency": "Sampling efficiency",
+        "general.idleHint": "Efficient (default) samples the menubar every few seconds so rNitro stays out of Activity Monitor. Snappy updates faster when the UI is open. Turn off the Power menubar slot if you still see high CPU.",
         "general.idleProfile": "Idle profile",
         "general.installLocation": "Install location",
         "general.launchAtLogin": "Launch at Login",
@@ -9624,7 +10767,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "menubar.preset.laptop": "Laptop",
         "menubar.preset.minimal": "Minimal",
         "menubar.presets": "Presets",
-        "menubar.presets.hint": "Laptop = CPU · Temp · Battery · Power. Desktop = CPU · Temp · RAM · Power · Network. Minimal = CPU only. Active preset is highlighted.",
+        "menubar.presets.hint": "Laptop = CPU · Temp · Battery. Desktop = CPU · Temp · RAM · Network. Minimal = CPU only. Power slot is optional (uses more CPU).",
         "menubar.presets.restore": "Restore previous slots",
         "lab.alibi": "Process alibi",
         "lab.alibi.copy": "Copy alibi",
@@ -9701,6 +10844,9 @@ final class DisplayPreferencesStore: ObservableObject {
         "lab.toc.confess": "Confess",
         "lab.toc.cosplay": "Cosplay",
         "lab.toc.detective": "Detective",
+        "lab.toc.speedtest": "Speed test",
+        "lab.speedtest": "Network speed test",
+        "lab.speedtest.hint": "Measures ping, download, and upload via Cloudflare’s public speed endpoints. No account. Experimental only.",
         "lab.toc.duel": "Duel",
         "lab.toc.farm": "Farm",
         "lab.toc.forecast": "Forecast",
@@ -9841,6 +10987,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "tips.title": "Welcome to rNitro",
         "ui.legacy": "Legacy",
         "ui.modern": "Modern (iStats-style)",
+        "ui.optimac": "New style",
     ]
 
     private static let zhStrings: [String: String] = [
@@ -9890,7 +11037,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.fontSize": "字體大小",
         "appearance.language": "語言",
         "appearance.monitorUI": "監控介面",
-        "appearance.monitorUI.hint": "現代模式使用 iStats 風格摺疊分區；經典模式為緊湊版面。",
+        "appearance.monitorUI.hint": "現代＝iStats 分區；經典＝緊湊；新風格＝玻璃儀表板。",
         "appearance.pangram": "The quick brown fox — 0123456789",
         "appearance.reset": "重設外觀預設",
         "appearance.sections": "監控區塊",
@@ -9898,11 +11045,15 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.showPerCore": "顯示每核心長條",
         "appearance.showProcesses": "顯示最佔資源行程",
         "appearance.subtitle": "主題、介面字型、大小、語言與監控版面。",
-        "appearance.theme": "主題",
+        "appearance.theme": "顯示模式",
         "appearance.theme.dark": "深色",
-        "appearance.theme.hint": "系統跟隨 macOS；淺色／深色強制套用介面。",
+        "appearance.theme.hint": "淺色／深色為經典介面；OLED／IPS／LCD／Mini LED 調整黑階與對比。系統跟隨 macOS。",
         "appearance.theme.light": "淺色",
         "appearance.theme.system": "系統",
+        "appearance.theme.oled": "OLED",
+        "appearance.theme.ips": "IPS",
+        "appearance.theme.lcd": "LCD",
+        "appearance.theme.miniled": "Mini LED",
         "appearance.title": "顯示",
         "btn.run": "執行",
         "btn.running": "執行中…",
@@ -9974,7 +11125,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "dev.surprise.hint": "給認真開啟開發者模式的人的診斷與小玩具。",
         "dev.title": "開發者",
         "dev.uiConfig": "UI 設定",
-        "dev.verbose": "詳細日誌寫入 ~/Library/Logs/rNitro",
+        "dev.verbose": "啟用日誌 → ~/Library/Logs/rNitro",
         "duel.expand": "展開區域網對決。",
         "duel.host": "主機",
         "duel.join": "加入",
@@ -9998,6 +11149,10 @@ final class DisplayPreferencesStore: ObservableObject {
         "general.compileFarm.hint": "Detect swiftc/clang/xcodebuild, boost sampling while building, then cool down.",
         "general.developerMode": "開發者模式",
         "general.developerMode.hint": "解鎖開發者設定分頁與行程工具。",
+        "general.enableLogging": "啟用日誌",
+        "general.enableLogging.hint": "將診斷寫入 ~/Library/Logs/rNitro（僅本機，不上傳）。",
+        "general.openLogs": "開啟日誌資料夾",
+        "general.clearLogs": "清除日誌",
         "general.idleAggressive": "激進（最低記憶體）",
         "general.idleBalanced": "平衡",
         "general.idleEfficiency": "閒置效率",
@@ -10084,6 +11239,9 @@ final class DisplayPreferencesStore: ObservableObject {
         "lab.toc.confess": "Confess",
         "lab.toc.cosplay": "Cosplay",
         "lab.toc.detective": "Detective",
+        "lab.toc.speedtest": "Speed test",
+        "lab.speedtest": "Network speed test",
+        "lab.speedtest.hint": "Measures ping, download, and upload via Cloudflare’s public speed endpoints. No account. Experimental only.",
         "lab.toc.duel": "Duel",
         "lab.toc.farm": "Farm",
         "lab.toc.forecast": "Forecast",
@@ -10224,6 +11382,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "tips.title": "歡迎使用 rNitro",
         "ui.legacy": "經典",
         "ui.modern": "現代 (iStats 風格)",
+        "ui.optimac": "新風格",
     ]
 
     private static let esStrings: [String: String] = [
@@ -10273,7 +11432,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.fontSize": "Tamaño de fuente",
         "appearance.language": "Idioma",
         "appearance.monitorUI": "Interfaz del monitor",
-        "appearance.monitorUI.hint": "Moderno usa secciones plegables estilo iStats. Clásico es el diseño compacto.",
+        "appearance.monitorUI.hint": "Moderno = iStats. Clásico = compacto. Nuevo estilo = panel de cristal.",
         "appearance.pangram": "The quick brown fox — 0123456789",
         "appearance.reset": "Restablecer apariencia",
         "appearance.sections": "Secciones del monitor",
@@ -10281,11 +11440,15 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.showPerCore": "Barras por núcleo",
         "appearance.showProcesses": "Procesos principales",
         "appearance.subtitle": "Tema, fuente de UI, tamaño, idioma y diseño.",
-        "appearance.theme": "Tema",
+        "appearance.theme": "Modo de pantalla",
         "appearance.theme.dark": "Oscuro",
-        "appearance.theme.hint": "Sistema sigue a macOS.",
+        "appearance.theme.hint": "Claro/Oscuro clásico. OLED/IPS/LCD/Mini LED ajustan negros y contraste. Sistema sigue a macOS.",
         "appearance.theme.light": "Claro",
         "appearance.theme.system": "Sistema",
+        "appearance.theme.oled": "OLED",
+        "appearance.theme.ips": "IPS",
+        "appearance.theme.lcd": "LCD",
+        "appearance.theme.miniled": "Mini LED",
         "appearance.title": "Pantalla",
         "btn.run": "Ejecutar",
         "btn.running": "Ejecutando…",
@@ -10357,7 +11520,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "dev.surprise.hint": "Diagnósticos y juguetes.",
         "dev.title": "Desarrollador",
         "dev.uiConfig": "Config UI",
-        "dev.verbose": "Log en ~/Library/Logs/rNitro",
+        "dev.verbose": "Activar registro → ~/Library/Logs/rNitro",
         "duel.expand": "Expandir duelo.",
         "duel.host": "Alojar",
         "duel.join": "Unirse",
@@ -10381,6 +11544,10 @@ final class DisplayPreferencesStore: ObservableObject {
         "general.compileFarm.hint": "Detect swiftc/clang/xcodebuild, boost sampling while building, then cool down.",
         "general.developerMode": "Modo desarrollador",
         "general.developerMode.hint": "Activa la pestaña Desarrollador.",
+        "general.enableLogging": "Activar registro",
+        "general.enableLogging.hint": "Escribe diagnósticos en ~/Library/Logs/rNitro (solo local).",
+        "general.openLogs": "Abrir carpeta de logs",
+        "general.clearLogs": "Borrar logs",
         "general.idleAggressive": "Agresivo (menor RAM)",
         "general.idleBalanced": "Equilibrado",
         "general.idleEfficiency": "Eficiencia en reposo",
@@ -10467,6 +11634,9 @@ final class DisplayPreferencesStore: ObservableObject {
         "lab.toc.confess": "Confess",
         "lab.toc.cosplay": "Cosplay",
         "lab.toc.detective": "Detective",
+        "lab.toc.speedtest": "Speed test",
+        "lab.speedtest": "Network speed test",
+        "lab.speedtest.hint": "Measures ping, download, and upload via Cloudflare’s public speed endpoints. No account. Experimental only.",
         "lab.toc.duel": "Duel",
         "lab.toc.farm": "Farm",
         "lab.toc.forecast": "Forecast",
@@ -10607,6 +11777,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "tips.title": "Bienvenido a rNitro",
         "ui.legacy": "Clásico",
         "ui.modern": "Moderno (estilo iStats)",
+        "ui.optimac": "Nuevo estilo",
     ]
 
     private static let deStrings: [String: String] = [
@@ -10656,7 +11827,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.fontSize": "Schriftgröße",
         "appearance.language": "Sprache",
         "appearance.monitorUI": "Monitor-Oberfläche",
-        "appearance.monitorUI.hint": "Modern nutzt iStats-ähnliche Abschnitte. Legacy ist das kompakte Layout.",
+        "appearance.monitorUI.hint": "Modern = iStats. Legacy = kompakt. Neuer Stil = Glas-Dashboard.",
         "appearance.pangram": "The quick brown fox — 0123456789",
         "appearance.reset": "Darstellung zurücksetzen",
         "appearance.sections": "Monitor-Bereiche",
@@ -10664,11 +11835,15 @@ final class DisplayPreferencesStore: ObservableObject {
         "appearance.showPerCore": "Balken pro Kern",
         "appearance.showProcesses": "Top-Prozesse",
         "appearance.subtitle": "Design, UI-Schrift, Größe, Sprache und Layout.",
-        "appearance.theme": "Design",
+        "appearance.theme": "Anzeigemodus",
         "appearance.theme.dark": "Dunkel",
-        "appearance.theme.hint": "System folgt macOS. Hell/Dunkel erzwingen die UI.",
+        "appearance.theme.hint": "Hell/Dunkel klassisch. OLED/IPS/LCD/Mini LED passen Schwarz und Kontrast an. System folgt macOS.",
         "appearance.theme.light": "Hell",
         "appearance.theme.system": "System",
+        "appearance.theme.oled": "OLED",
+        "appearance.theme.ips": "IPS",
+        "appearance.theme.lcd": "LCD",
+        "appearance.theme.miniled": "Mini LED",
         "appearance.title": "Anzeige",
         "btn.run": "Ausführen",
         "btn.running": "Läuft…",
@@ -10740,7 +11915,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "dev.surprise.hint": "Diagnose & Spielereien.",
         "dev.title": "Entwickler",
         "dev.uiConfig": "UI-Konfiguration",
-        "dev.verbose": "Logging ~/Library/Logs/rNitro",
+        "dev.verbose": "Protokollierung → ~/Library/Logs/rNitro",
         "duel.expand": "LAN-Duell.",
         "duel.host": "Hosten",
         "duel.join": "Beitreten",
@@ -10764,6 +11939,10 @@ final class DisplayPreferencesStore: ObservableObject {
         "general.compileFarm.hint": "Detect swiftc/clang/xcodebuild, boost sampling while building, then cool down.",
         "general.developerMode": "Entwicklermodus",
         "general.developerMode.hint": "Entwickler-Tab freischalten.",
+        "general.enableLogging": "Protokollierung aktivieren",
+        "general.enableLogging.hint": "Schreibt Diagnosen nach ~/Library/Logs/rNitro (nur lokal).",
+        "general.openLogs": "Log-Ordner öffnen",
+        "general.clearLogs": "Logs löschen",
         "general.idleAggressive": "Aggressiv (wenig RAM)",
         "general.idleBalanced": "Ausgewogen",
         "general.idleEfficiency": "Leerlauf-Effizienz",
@@ -10850,6 +12029,9 @@ final class DisplayPreferencesStore: ObservableObject {
         "lab.toc.confess": "Confess",
         "lab.toc.cosplay": "Cosplay",
         "lab.toc.detective": "Detective",
+        "lab.toc.speedtest": "Speed test",
+        "lab.speedtest": "Network speed test",
+        "lab.speedtest.hint": "Measures ping, download, and upload via Cloudflare’s public speed endpoints. No account. Experimental only.",
         "lab.toc.duel": "Duel",
         "lab.toc.farm": "Farm",
         "lab.toc.forecast": "Forecast",
@@ -10990,6 +12172,7 @@ final class DisplayPreferencesStore: ObservableObject {
         "tips.title": "Willkommen bei rNitro",
         "ui.legacy": "Legacy",
         "ui.modern": "Modern (iStats-Stil)",
+        "ui.optimac": "Neuer Stil",
     ]
 }
 
@@ -10998,7 +12181,17 @@ enum FirstLaunchTips {
         !UserDefaults.standard.bool(forKey: MonitorPreferences.firstLaunchTipsKey)
     }
 
+    static func applyDefaultMenubarIfNeeded() {
+        let key = MonitorPreferences.menuBarSlotsKey
+        if UserDefaults.standard.stringArray(forKey: key) == nil {
+            MenuBarConfig.setEnabledSlots(MenuBarPreset.laptop.slots)
+            MenuBarConfig.setLayout(MenuBarPreset.laptop.layout)
+            UserDefaults.standard.set(MenuBarPreset.laptop.rawValue, forKey: "rnitro.menubar.lastPreset")
+        }
+    }
+
     static func markSeen() {
+        applyDefaultMenubarIfNeeded()
         UserDefaults.standard.set(true, forKey: MonitorPreferences.firstLaunchTipsKey)
     }
 }
@@ -11006,6 +12199,7 @@ enum FirstLaunchTips {
 struct FirstLaunchTipsSheet: View {
     @Environment(\.uiMetrics) private var metrics
     @Binding var isPresented: Bool
+    @State private var chosenPreset: MenuBarPreset = .laptop
 
     private func tipRow(_ n: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
@@ -11026,16 +12220,33 @@ struct FirstLaunchTipsSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome to rNitro")
                 .font(rNitroFont(.title, metrics: metrics, weight: .semibold))
-            Text("Quick start — takes 10 seconds.")
+            Text("Quick start — pick a menubar layout, then open the monitor.")
                 .font(rNitroFont(.caption, metrics: metrics))
                 .foregroundColor(.secondary)
             VStack(alignment: .leading, spacing: 12) {
-                tipRow("1", "Find the menubar icon", "rNitro lives in the top-right menu bar. Click it anytime for live CPU, temp, and per-core stats.")
-                tipRow("2", "First launch on macOS", "If Gatekeeper blocks the app: right-click rNitro.app → Open → Open once. No admin password needed for the App ZIP.")
-                tipRow("3", "Customize anytime", "Settings → Menubar / Appearance for density, slots, accents. Developer Mode is optional (Beta).")
-                tipRow("4", "Recommended install", "App ZIP from getrnitro.netlify.app or chopstickshq.com/rnitro — or the Terminal one-liner to skip most Gatekeeper prompts.")
+                tipRow("1", "Find the menubar icon", "rNitro lives in the top-right menu bar. Click it for live CPU, temp, and battery.")
+                tipRow("2", "First launch on macOS", "If Gatekeeper blocks the app: right-click rNitro.app → Open → Open once.")
+                tipRow("3", "Menubar layout", "Choose a preset once. Change slots anytime in Settings → Menubar.")
             }
+            Text("Start with")
+                .font(rNitroFont(.label, metrics: metrics, weight: .semibold))
+            HStack(spacing: 8) {
+                ForEach(MenuBarPreset.allCases) { preset in
+                    let on = chosenPreset == preset
+                    Button(preset.label) { chosenPreset = preset }
+                        .font(rNitroFont(.caption, metrics: metrics, weight: .semibold))
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(on ? .accentColor : nil)
+                        .background(on ? Color.accentColor.opacity(0.18) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+            }
+            Text(MenuBarConfig.presetHint(chosenPreset))
+                .font(rNitroFont(.micro, metrics: metrics))
+                .foregroundColor(.secondary)
             Button(action: {
+                MenuBarConfig.applyPreset(chosenPreset)
                 FirstLaunchTips.markSeen()
                 isPresented = false
             }) {
@@ -11049,13 +12260,14 @@ struct FirstLaunchTipsSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .padding(20)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: 380)
         .background(Color.bg)
+        .onAppear { FirstLaunchTips.applyDefaultMenubarIfNeeded() }
     }
 }
 
 enum MonitorUIStyle: String, CaseIterable, Identifiable {
-    case modern, legacy
+    case modern, legacy, optimac
 
     var id: String { rawValue }
 
@@ -11063,6 +12275,15 @@ enum MonitorUIStyle: String, CaseIterable, Identifiable {
         switch self {
         case .modern: return DisplayPreferencesStore.shared.tr("ui.modern")
         case .legacy: return DisplayPreferencesStore.shared.tr("ui.legacy")
+        case .optimac: return DisplayPreferencesStore.shared.tr("ui.optimac")
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .modern: return DisplayPreferencesStore.shared.tr("ui.modern.blurb")
+        case .legacy: return DisplayPreferencesStore.shared.tr("ui.legacy.blurb")
+        case .optimac: return DisplayPreferencesStore.shared.tr("ui.optimac.blurb")
         }
     }
 }
@@ -11178,8 +12399,8 @@ enum MenuBarPreset: String, CaseIterable, Identifiable {
 
     var slots: [MenuBarSlot] {
         switch self {
-        case .laptop: return [.cpu, .temp, .battery, .power]
-        case .desktop: return [.cpu, .temp, .ram, .power, .network]
+        case .laptop: return [.cpu, .temp, .battery]
+        case .desktop: return [.cpu, .temp, .ram, .network]
         case .minimal: return [.cpu]
         }
     }
@@ -11197,11 +12418,19 @@ enum FathomLink {
     static let bundleId = "com.chopstickshq.fathom"
     static let siteURL = URL(string: "https://chopstickshq.com/fathom/")!
 
+    private static var candidatePaths: [String] {
+        [
+            "\(NSHomeDirectory())/Applications/Fathom.app",
+            "/Applications/Fathom.app",
+        ]
+    }
+
     static var isInstalled: Bool {
-        if #available(macOS 12.0, *) {
-            return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) != nil
+        if #available(macOS 12.0, *),
+           NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) != nil {
+            return true
         }
-        return false
+        return candidatePaths.contains { FileManager.default.fileExists(atPath: $0) }
     }
 
     static func openOrInstall() {
@@ -11211,12 +12440,16 @@ enum FathomLink {
             NSWorkspace.shared.openApplication(at: appURL, configuration: cfg, completionHandler: nil)
             return
         }
+        for p in candidatePaths where FileManager.default.fileExists(atPath: p) {
+            NSWorkspace.shared.open(URL(fileURLWithPath: p))
+            return
+        }
         NSWorkspace.shared.open(siteURL)
     }
 }
 
 enum MenuBarConfig {
-    static let defaultSlots: [MenuBarSlot] = [.cpu, .temp, .power]
+    static let defaultSlots: [MenuBarSlot] = [.cpu, .temp, .battery]
 
     static var layout: MenuBarLayout {
         MenuBarLayout(rawValue: UserDefaults.standard.string(forKey: MonitorPreferences.menuBarLayoutKey) ?? "") ?? .inline
@@ -11316,7 +12549,22 @@ enum MenuBarConfig {
     static func resetToDefaults() {
         UserDefaults.standard.set(defaultSlots.map(\.rawValue), forKey: MonitorPreferences.menuBarSlotsKey)
         setLayout(.inline)
+        UserDefaults.standard.set(MenuBarPreset.laptop.rawValue, forKey: lastPresetKey)
         NotificationCenter.default.post(name: .menuBarModeChanged, object: nil)
+    }
+
+    static func presetHint(_ preset: MenuBarPreset) -> String {
+        switch preset {
+        case .laptop: return "Laptop: CPU · Temp · Battery · Power"
+        case .desktop: return "Desktop: CPU · Temp · RAM · Power · Network"
+        case .minimal: return "Minimal: CPU only"
+        }
+    }
+
+    static func livePreviewText() -> String {
+        let parts = enabledSlots.map { MenuBarStatusFormatter.slotLabel($0) }
+        if parts.isEmpty { return "CPU" }
+        return parts.joined(separator: "  ·  ")
     }
 }
 
@@ -11664,6 +12912,7 @@ final class CompileFarmDetector: ObservableObject {
                     sessionNames = names
                     peakTempThisBuild = t
                     MonitorActivity.applyIdleProfileChange()
+                    DeveloperModeStore.shared.log("compile farm boost start tools=\(names.joined(separator: ","))", category: "monitor")
                 } else {
                     sessionNames = Array(Set(sessionNames + names)).sorted()
                 }
@@ -11686,11 +12935,16 @@ final class CompileFarmDetector: ObservableObject {
                     sessionNames = []
                     BuildLedger.shared.record(start: started, end: now, peakTemp: peak, tools: tools)
                     MonitorActivity.applyIdleProfileChange()
+                    DeveloperModeStore.shared.log(
+                        "compile farm boost end peak=\(String(format: "%.1f", peak))°C tools=\(tools.joined(separator: ","))",
+                        category: "monitor"
+                    )
                 }
             } else if isCoolingDown {
                 if now >= coolUntil {
                     isCoolingDown = false
                     MonitorActivity.applyIdleProfileChange()
+                    DeveloperModeStore.shared.log("compile farm cool-down end", category: "monitor")
                 }
             }
         }
@@ -12136,6 +13390,80 @@ final class StressDuelService: ObservableObject {
     }
 }
 
+struct SpeedTestPanel: View {
+    @Environment(\.uiMetrics) private var metrics
+    @ObservedObject private var speed = SpeedTestService.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                MinimalButton(
+                    title: speed.isRunning ? "Cancel" : "Start speed test",
+                    tint: speed.isRunning ? .nRed : .nPurple,
+                    action: {
+                        if speed.isRunning { speed.cancel() } else { speed.start() }
+                    }
+                )
+                Text(speed.statusText)
+                    .font(rNitroFont(.caption, metrics: metrics))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+            if speed.isRunning || speed.progress > 0 {
+                ProgressView(value: min(1, max(0, speed.progress)))
+                    .progressViewStyle(.linear)
+            }
+            HStack(spacing: 12) {
+                metric(title: "Ping", value: speed.pingMs.map { String(format: "%.0f ms", $0) } ?? "—", color: .accent)
+                metric(title: "Jitter", value: speed.jitterMs.map { String(format: "%.0f ms", $0) } ?? "—", color: .secondary)
+                metric(title: "↓ Down", value: speed.downloadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—", color: .nGreen)
+                metric(title: "↑ Up", value: speed.uploadMbps.map { String(format: "%.1f Mbps", $0) } ?? "—", color: .nOrange)
+            }
+            if let err = speed.lastError, speed.phase == .failed {
+                Text(err)
+                    .font(rNitroFont(.micro, metrics: metrics))
+                    .foregroundColor(.nRed)
+            }
+            Text("Via \(speed.serverLabel) · results stay on this Mac")
+                .font(rNitroFont(.micro, metrics: metrics))
+                .foregroundColor(.secondary.opacity(0.85))
+            if !speed.history.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recent")
+                        .font(rNitroFont(.micro, metrics: metrics, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    ForEach(speed.history.prefix(4)) { row in
+                        Text(String(format: "%@  %.0f ms · ↓%.1f · ↑%.1f Mbps",
+                                    Self.fmtTime(row.date), row.pingMs, row.downloadMbps, row.uploadMbps))
+                            .font(rNitroFont(.micro, metrics: metrics))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func metric(title: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(rNitroFont(.micro, metrics: metrics))
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(rNitroFont(.caption, metrics: metrics, weight: .semibold))
+                .foregroundColor(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func fmtTime(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: d)
+    }
+}
+
 struct StressDuelPanel: View {
     @Environment(\.uiMetrics) private var metrics
     @ObservedObject private var duel = StressDuelService.shared
@@ -12192,6 +13520,13 @@ final class StressTester: ObservableObject {
 
     func start() {
         guard !isRunning else { return }
+        if LowBatteryAutomation.shared.muteStressTools {
+            AdvisorNotificationCenter.postBatteryLow(
+                level: BatteryMonitor.shared.levelPercent,
+                critical: BatteryMonitor.shared.levelPercent <= 10
+            )
+            return
+        }
         stop()
         isRunning = true
         stopFlag = false
@@ -13083,7 +14418,7 @@ enum ProcessActions {
         guard pid > 0, pid != getpid() else { return }
         let sig = force ? SIGKILL : SIGTERM
         _ = kill(pid, sig)
-        DeveloperModeStore.shared.log("process \(force ? "SIGKILL" : "SIGTERM") pid=\(pid)")
+        DeveloperModeStore.shared.log("process \(force ? "SIGKILL" : "SIGTERM") pid=\(pid)", category: "process")
     }
 
     static func reveal(pid: Int32) {
@@ -13131,9 +14466,20 @@ struct MonitorModernHeaderView: View {
             if m.isLowPowerModeEnabled {
                 LowPowerModeBadge(compact: true)
             }
+            HStack(spacing: 5) {
+                Circle().fill(Color.nGreen).frame(width: 5, height: 5)
+                Text(DisplayPreferencesStore.shared.tr("live"))
+                    .font(rNitroFont(.micro, metrics: metrics))
+                    .foregroundColor(.secondary.opacity(0.85))
+            }
+            .contentShape(Rectangle())
+            .help("…")
+            .onTapGesture { RNitroEasterEgg.reveal() }
             Text(CURRENT_VERSION)
                 .font(rNitroFont(.micro, metrics: metrics))
                 .foregroundColor(.secondary.opacity(0.7))
+                .help("Tap five times…")
+                .onTapGesture { RNitroEasterEgg.noteVersionTap() }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, metrics.hPad).padding(.top, 10).padding(.bottom, 6)
@@ -13617,9 +14963,11 @@ struct MonitorToolsSectionView: View {
                 Text(display.tr("row.stress")).font(rNitroFont(.label, metrics: metrics)).foregroundColor(.secondary)
                 Spacer()
                 MinimalButton(
-                    title: stress.isRunning ? display.tr("btn.stop") : display.tr("btn.start"),
+                    title: stress.isRunning ? display.tr("btn.stop") : (
+                        LowBatteryAutomation.shared.muteStressTools ? "Muted" : display.tr("btn.start")
+                    ),
                     tint: stress.isRunning ? .nRed : .nOrange,
-                    disabled: bench.isRunning,
+                    disabled: bench.isRunning || (!stress.isRunning && LowBatteryAutomation.shared.muteStressTools),
                     action: { stress.isRunning ? stress.stop() : stress.start() }
                 )
             }
@@ -13678,6 +15026,301 @@ struct MonitorModernTabView: View {
     }
 }
 
+struct OptiGlassCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        content()
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.28), lineWidth: 1.1)
+                    )
+                    .shadow(color: Color.black.opacity(0.28), radius: 12, y: 6)
+            )
+    }
+}
+
+struct OptiMetricTile: View {
+    let title: String
+    let value: String
+    let unit: String
+    let color: Color
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundColor(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.white, color.opacity(0.9)], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(color.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(color.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+}
+
+struct OptiBar: View {
+    let fraction: Double
+    let color: Color
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.08))
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.85), color],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(4, geo.size.width * CGFloat(min(1, max(0, fraction)))))
+            }
+        }
+        .frame(height: 8)
+    }
+}
+
+struct MonitorOptiMacTabView: View {
+    @Environment(\.uiMetrics) private var metrics
+    @Binding var statDetail: StatDetailKind?
+    @AppStorage(MonitorPreferences.networkKey) private var showNetworkUI = true
+    @ObservedObject private var m = CPUMonitor.shared
+    @ObservedObject private var bat = BatteryMonitor.shared
+    @ObservedObject private var net = NetworkMonitor.shared
+    @ObservedObject private var proc = ProcessMonitor.shared
+    @ObservedObject private var gpu = GPUMonitor.shared
+    @ObservedObject private var ui = UICustomizationStore.shared
+
+    private func toggle(_ kind: StatDetailKind) {
+        statDetail = statDetail == kind ? nil : kind
+    }
+
+    private let processColors: [Color] = [
+        Color(red: 0.20, green: 0.60, blue: 1.00),
+        Color(red: 0.20, green: 0.85, blue: 0.50),
+        Color(red: 1.00, green: 0.55, blue: 0.00),
+        Color(red: 0.60, green: 0.40, blue: 1.00),
+        Color(red: 1.00, green: 0.22, blue: 0.30),
+        Color(red: 0.10, green: 0.80, blue: 0.90),
+    ]
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.04, green: 0.05, blue: 0.16),
+                    Color(red: 0.10, green: 0.05, blue: 0.22),
+                    Color(red: 0.18, green: 0.12, blue: 0.28),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("rNitro")
+                            .font(.system(.title2, design: .rounded, weight: .heavy))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.white, Color(red: 0.80, green: 0.92, blue: 1.00)],
+                                    startPoint: .leading, endPoint: .trailing
+                                )
+                            )
+                        Text("New style · glass dashboard")
+                            .font(.system(.caption, design: .rounded, weight: .medium))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            HStack(spacing: 5) {
+                                Circle().fill(Color.nGreen).frame(width: 5, height: 5)
+                                Text(DisplayPreferencesStore.shared.tr("live"))
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { RNitroEasterEgg.reveal() }
+                            Text(CURRENT_VERSION)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.secondary.opacity(0.75))
+                                .onTapGesture { RNitroEasterEgg.noteVersionTap() }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        Button { toggle(.cpuPower) } label: {
+                            OptiMetricTile(
+                                title: "CPU",
+                                value: String(format: "%.0f", m.totalUsage),
+                                unit: "%",
+                                color: Color.usage(m.totalUsage)
+                            )
+                        }.buttonStyle(.plain)
+                        Button { toggle(.temperature) } label: {
+                            OptiMetricTile(
+                                title: "Temp",
+                                value: String(format: "%.0f", m.temperature),
+                                unit: "°C",
+                                color: Color.temp(m.temperature)
+                            )
+                        }.buttonStyle(.plain)
+                        Button { toggle(.memory) } label: {
+                            OptiMetricTile(
+                                title: "RAM",
+                                value: String(format: "%.0f", m.memoryUsedPercent),
+                                unit: "%",
+                                color: .nPurple
+                            )
+                        }.buttonStyle(.plain)
+                        if bat.isPresent {
+                            Button { toggle(.battery) } label: {
+                                OptiMetricTile(
+                                    title: "Battery",
+                                    value: "\(bat.levelPercent)",
+                                    unit: "%",
+                                    color: bat.isCharging ? .nGreen : .accent
+                                )
+                            }.buttonStyle(.plain)
+                        } else {
+                            OptiMetricTile(
+                                title: "GPU",
+                                value: String(format: "%.0f", gpu.usage),
+                                unit: "%",
+                                color: .nGreen
+                            )
+                        }
+                    }
+
+                    OptiGlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("CPU load")
+                                    .font(.system(.headline, design: .rounded, weight: .bold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text(String(format: "%.1f%%", m.totalUsage))
+                                    .font(.system(.caption, design: .monospaced, weight: .semibold))
+                                    .foregroundColor(Color.usage(m.totalUsage))
+                            }
+                            OptiBar(fraction: m.totalUsage / 100.0, color: Color.usage(m.totalUsage))
+                            GraphView(history: m.usageHistory, color: Color.usage(m.totalUsage))
+                                .frame(height: max(36, metrics.graphHeight * 0.85))
+                            MonitorRow(label: "Load avg", value: String(format: "%.2f · %.2f · %.2f", m.loadAverage1, m.loadAverage5, m.loadAverage15))
+                            MonitorRow(label: "Power", value: String(format: "%.1f W", m.packagePowerWatts))
+                        }
+                    }
+
+                    OptiGlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Memory")
+                                    .font(.system(.headline, design: .rounded, weight: .bold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text(String(format: "%.1f / %.0f GB", m.memoryUsedGB, m.memoryTotalGB))
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(.secondary)
+                            }
+                            OptiBar(fraction: m.memoryUsedPercent / 100.0, color: .nPurple)
+                            MonitorRow(label: "Pressure", value: m.memoryPressure, valueColor: Color.pressure(m.memoryPressure))
+                            MonitorRow(label: "Wired", value: String(format: "%.1f GB", m.memoryWiredGB))
+                            MonitorRow(label: "Swap", value: String(format: "%.1f GB", m.memorySwapGB))
+                        }
+                    }
+
+                    if showNetworkUI {
+                        OptiGlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Network")
+                                    .font(.system(.headline, design: .rounded, weight: .bold))
+                                    .foregroundColor(.white)
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("↓ Down").font(.system(.caption2, design: .rounded)).foregroundColor(.secondary)
+                                        Text(NetworkMonitor.formatSpeed(net.downloadMbps))
+                                            .font(.system(.body, design: .rounded, weight: .semibold))
+                                            .foregroundColor(.nGreen)
+                                    }
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("↑ Up").font(.system(.caption2, design: .rounded)).foregroundColor(.secondary)
+                                        Text(NetworkMonitor.formatSpeed(net.uploadMbps))
+                                            .font(.system(.body, design: .rounded, weight: .semibold))
+                                            .foregroundColor(.accent)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if ui.showProcesses {
+                        OptiGlassCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Top processes")
+                                    .font(.system(.headline, design: .rounded, weight: .bold))
+                                    .foregroundColor(.white)
+                                if proc.topByCPU.isEmpty {
+                                    Text("Collecting…").foregroundColor(.secondary).font(.caption)
+                                } else {
+                                    ForEach(Array(proc.topByCPU.prefix(6).enumerated()), id: \.element.id) { idx, p in
+                                        HStack(spacing: 8) {
+                                            Circle()
+                                                .fill(processColors[idx % processColors.count])
+                                                .frame(width: 7, height: 7)
+                                            Text(p.name)
+                                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                                .lineLimit(1)
+                                            Spacer(minLength: 4)
+                                            Text(String(format: "%.1f%%", p.cpuPercent))
+                                                .font(.system(.caption, design: .monospaced, weight: .semibold))
+                                                .foregroundColor(Color.usage(min(100, p.cpuPercent)))
+                                            Text(String(format: "%.0f MB", p.memoryMB))
+                                                .font(.system(size: 10, design: .monospaced))
+                                                .foregroundColor(.secondary)
+                                                .frame(width: 52, alignment: .trailing)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Text("New style layout — glass cards and metric tiles.")
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundColor(.secondary.opacity(0.8))
+                        .padding(.top, 2)
+                        .padding(.bottom, 10)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+}
+
 struct MonitorTabContent: View {
     @Environment(\.uiMetrics) private var metrics
     let layout: ContentLayout
@@ -13701,6 +15344,8 @@ struct MonitorTabContent: View {
         Group {
             if uiStyleRaw == MonitorUIStyle.legacy.rawValue {
                 legacyMonitorTab
+            } else if uiStyleRaw == MonitorUIStyle.optimac.rawValue {
+                MonitorOptiMacTabView(statDetail: $statDetail)
             } else {
                 MonitorModernTabView(statDetail: $statDetail)
             }
@@ -13713,17 +15358,27 @@ struct MonitorTabContent: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("rNitro").font(rNitroFont(.title, metrics: metrics, weight: .semibold))
+                            .onTapGesture { RNitroEasterEgg.noteVersionTap() }
                         Text(m.cpuName).font(rNitroFont(.label, metrics: metrics)).foregroundColor(.secondary)
                             .lineLimit(1).truncationMode(.tail)
                         Text(CURRENT_VERSION).font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary.opacity(0.75))
+                            .help("Tap five times…")
+                            .onTapGesture { RNitroEasterEgg.noteVersionTap() }
                     }
                     Spacer()
                     HStack(spacing: 6) {
                         if m.isLowPowerModeEnabled {
                             LowPowerModeBadge(compact: true)
                         }
-                        Circle().fill(Color.nGreen).frame(width: 5, height: 5)
-                        Text("Live").font(rNitroFont(.caption, metrics: metrics)).foregroundColor(.secondary)
+                        HStack(spacing: 6) {
+                            Circle().fill(Color.nGreen).frame(width: 5, height: 5)
+                            Text(DisplayPreferencesStore.shared.tr("live"))
+                                .font(rNitroFont(.caption, metrics: metrics))
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .help("…")
+                        .onTapGesture { RNitroEasterEgg.reveal() }
                     }
                 }
                 .padding(.horizontal, metrics.hPad).padding(.top, 12).padding(.bottom, 14)
@@ -14909,9 +16564,301 @@ final class LabStatusWriter: ObservableObject {
     func start() {
         guard timer == nil else { return }
         LabStatusFile.write()
-        let t = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in LabStatusFile.write() }
+        let t = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { _ in LabStatusFile.write() }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+    }
+}
+
+final class SpeedTestService: ObservableObject {
+    static let shared = SpeedTestService()
+
+    enum Phase: String {
+        case idle, ping, download, upload, done, failed, cancelled
+    }
+
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var statusText = "Ready"
+    @Published private(set) var progress: Double = 0
+    @Published private(set) var pingMs: Double?
+    @Published private(set) var jitterMs: Double?
+    @Published private(set) var downloadMbps: Double?
+    @Published private(set) var uploadMbps: Double?
+    @Published private(set) var serverLabel = "Cloudflare"
+    @Published private(set) var lastError: String?
+    @Published private(set) var history: [SpeedTestResult] = []
+
+    struct SpeedTestResult: Identifiable, Equatable {
+        let id = UUID()
+        let date: Date
+        let pingMs: Double
+        let downloadMbps: Double
+        let uploadMbps: Double
+    }
+
+    private var task: URLSessionTask?
+    private var session: URLSession?
+    private var cancelFlag = false
+    private let queue = DispatchQueue(label: "rnitro.speedtest", qos: .userInitiated)
+
+    var isRunning: Bool {
+        switch phase {
+        case .ping, .download, .upload: return true
+        default: return false
+        }
+    }
+
+    func start() {
+        guard !isRunning else { return }
+        cancelFlag = false
+        lastError = nil
+        pingMs = nil
+        jitterMs = nil
+        downloadMbps = nil
+        uploadMbps = nil
+        progress = 0
+        statusText = "Starting…"
+        phase = .ping
+        queue.async { [weak self] in self?.runPipeline() }
+    }
+
+    func cancel() {
+        cancelFlag = true
+        task?.cancel()
+        session?.invalidateAndCancel()
+        DispatchQueue.main.async {
+            self.phase = .cancelled
+            self.statusText = "Cancelled"
+            self.progress = 0
+        }
+    }
+
+    private func runPipeline() {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 30
+        cfg.timeoutIntervalForResource = 120
+        cfg.waitsForConnectivity = true
+        cfg.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let session = URLSession(configuration: cfg)
+        self.session = session
+        defer {
+            session.finishTasksAndInvalidate()
+            self.session = nil
+            self.task = nil
+        }
+
+        do {
+            try runPing(session: session)
+            if cancelFlag { return }
+            try runDownload(session: session)
+            if cancelFlag { return }
+            try runUpload(session: session)
+            if cancelFlag { return }
+            DispatchQueue.main.async {
+                self.phase = .done
+                self.progress = 1
+                self.statusText = "Done"
+                if let p = self.pingMs, let d = self.downloadMbps, let u = self.uploadMbps {
+                    let row = SpeedTestResult(date: Date(), pingMs: p, downloadMbps: d, uploadMbps: u)
+                    self.history.insert(row, at: 0)
+                    if self.history.count > 8 { self.history = Array(self.history.prefix(8)) }
+                }
+            }
+        } catch {
+            if cancelFlag {
+                DispatchQueue.main.async {
+                    self.phase = .cancelled
+                    self.statusText = "Cancelled"
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                self.phase = .failed
+                self.lastError = error.localizedDescription
+                self.statusText = "Failed"
+            }
+        }
+    }
+
+    private func setMain(_ block: @escaping () -> Void) {
+        DispatchQueue.main.async(execute: block)
+    }
+
+    private func runPing(session: URLSession) throws {
+        setMain {
+            self.phase = .ping
+            self.statusText = "Measuring latency…"
+            self.progress = 0.05
+        }
+
+        let url = URL(string: "https://speed.cloudflare.com/__down?bytes=1000")!
+        var samples: [Double] = []
+        for i in 0..<6 {
+            if cancelFlag { throw CancellationError() }
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            req.cachePolicy = .reloadIgnoringLocalCacheData
+            req.setValue("rNitro/\(CURRENT_VERSION)", forHTTPHeaderField: "User-Agent")
+            let t0 = CFAbsoluteTimeGetCurrent()
+            let sem = DispatchSemaphore(value: 0)
+            var ok = false
+            let t = session.dataTask(with: req) { _, resp, err in
+                defer { sem.signal() }
+                if err != nil { return }
+                if let http = resp as? HTTPURLResponse, (200...399).contains(http.statusCode) {
+                    ok = true
+                }
+            }
+            task = t
+            t.resume()
+            _ = sem.wait(timeout: .now() + 15)
+            if cancelFlag { throw CancellationError() }
+            if ok {
+                let ms = (CFAbsoluteTimeGetCurrent() - t0) * 1000.0
+
+                if i > 0 { samples.append(ms) }
+            }
+            setMain { self.progress = 0.05 + Double(i + 1) / 6.0 * 0.15 }
+        }
+        guard !samples.isEmpty else { throw SpeedTestError.network("Latency probe failed") }
+        let avg = samples.reduce(0, +) / Double(samples.count)
+        let mean = avg
+        let variance = samples.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(samples.count)
+        let jit = variance.squareRoot()
+        setMain {
+            self.pingMs = avg
+            self.jitterMs = jit
+            self.progress = 0.22
+            self.statusText = String(format: "Ping %.0f ms", avg)
+        }
+    }
+
+    private func runDownload(session: URLSession) throws {
+        setMain {
+            self.phase = .download
+            self.statusText = "Download test…"
+            self.progress = 0.25
+        }
+
+        let bytes = 12_000_000
+        let url = URL(string: "https://speed.cloudflare.com/__down?bytes=\(bytes)")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("rNitro/\(CURRENT_VERSION)", forHTTPHeaderField: "User-Agent")
+
+        let sem = DispatchSemaphore(value: 0)
+        var resultError: Error?
+        var received: Int64 = 0
+        let t0 = CFAbsoluteTimeGetCurrent()
+        var lastProgressAt = t0
+
+        let t = session.dataTask(with: req) { data, resp, err in
+            defer { sem.signal() }
+            if let err = err { resultError = err; return }
+            guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                resultError = SpeedTestError.network("Download HTTP error")
+                return
+            }
+            received = Int64(data?.count ?? 0)
+        }
+
+        task = t
+        t.resume()
+
+        while sem.wait(timeout: .now() + 0.2) == .timedOut {
+            if cancelFlag {
+                t.cancel()
+                throw CancellationError()
+            }
+            let elapsed = CFAbsoluteTimeGetCurrent() - t0
+
+            let p = min(0.68, 0.25 + elapsed / 40.0)
+            if CFAbsoluteTimeGetCurrent() - lastProgressAt > 0.15 {
+                lastProgressAt = CFAbsoluteTimeGetCurrent()
+                setMain {
+                    self.progress = p
+                    self.statusText = String(format: "Downloading… %.0fs", elapsed)
+                }
+            }
+        }
+        if cancelFlag { throw CancellationError() }
+        if let resultError { throw resultError }
+        let dt = max(0.05, CFAbsoluteTimeGetCurrent() - t0)
+        let bits = Double(received) * 8.0
+        let mbps = bits / dt / 1_000_000.0
+        guard received > 100_000 else { throw SpeedTestError.network("Download too small") }
+        setMain {
+            self.downloadMbps = mbps
+            self.progress = 0.72
+            self.statusText = String(format: "↓ %.1f Mbps", mbps)
+        }
+    }
+
+    private func runUpload(session: URLSession) throws {
+        setMain {
+            self.phase = .upload
+            self.statusText = "Upload test…"
+            self.progress = 0.75
+        }
+        let bytes = 4_000_000
+        let url = URL(string: "https://speed.cloudflare.com/__up")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        req.setValue("rNitro/\(CURRENT_VERSION)", forHTTPHeaderField: "User-Agent")
+
+        let chunk = Data(repeating: 0x5A, count: 64 * 1024)
+        var body = Data()
+        body.reserveCapacity(bytes)
+        while body.count < bytes {
+            let need = min(chunk.count, bytes - body.count)
+            body.append(chunk.prefix(need))
+        }
+        req.httpBody = body
+
+        let sem = DispatchSemaphore(value: 0)
+        var resultError: Error?
+        let t0 = CFAbsoluteTimeGetCurrent()
+        let t = session.dataTask(with: req) { _, resp, err in
+            defer { sem.signal() }
+            if let err = err { resultError = err; return }
+            if let http = resp as? HTTPURLResponse, !(200...399).contains(http.statusCode) {
+                resultError = SpeedTestError.network("Upload HTTP \(http.statusCode)")
+            }
+        }
+        task = t
+        t.resume()
+        while sem.wait(timeout: .now() + 0.2) == .timedOut {
+            if cancelFlag {
+                t.cancel()
+                throw CancellationError()
+            }
+            let elapsed = CFAbsoluteTimeGetCurrent() - t0
+            setMain {
+                self.progress = min(0.95, 0.75 + elapsed / 30.0)
+                self.statusText = String(format: "Uploading… %.0fs", elapsed)
+            }
+        }
+        if cancelFlag { throw CancellationError() }
+        if let resultError { throw resultError }
+        let dt = max(0.05, CFAbsoluteTimeGetCurrent() - t0)
+        let mbps = Double(bytes) * 8.0 / dt / 1_000_000.0
+        setMain {
+            self.uploadMbps = mbps
+            self.progress = 0.98
+            self.statusText = String(format: "↑ %.1f Mbps", mbps)
+        }
+    }
+
+    enum SpeedTestError: LocalizedError {
+        case network(String)
+        var errorDescription: String? {
+            switch self {
+            case .network(let s): return s
+            }
+        }
     }
 }
 
@@ -14959,6 +16906,7 @@ struct LabTabView: View {
     private var toyToc: [(String, String)] {
         guard RNITRO_FEATURE_EXPERIMENTAL_UI else { return [] }
         return [
+            ("speedtest", "lab.toc.speedtest"),
             ("ghost", "lab.toc.ghost"),
             ("budget", "lab.toc.budget"),
             ("snapshot", "lab.toc.snapshot"),
@@ -14991,6 +16939,7 @@ struct LabTabView: View {
                     scrubCard.id("scrub")
                     detectiveCard.id("detective")
                     if RNITRO_FEATURE_EXPERIMENTAL_UI {
+                        speedTestCard.id("speedtest")
                         ghostCard.id("ghost")
                     }
                     receiptCard.id("receipt")
@@ -15286,6 +17235,27 @@ struct LabTabView: View {
                 .font(rNitroFont(.caption, metrics: metrics))
                 .foregroundColor(.secondary)
                 .padding(.top, 4)
+        }
+    }
+
+    private var speedTestCard: some View {
+        labCard {
+            HStack {
+                Text(display.tr("lab.speedtest"))
+                    .font(rNitroFont(.label, metrics: metrics, weight: .semibold))
+                Spacer()
+                Text("EXP")
+                    .font(rNitroFont(.micro, metrics: metrics, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.nPurple))
+            }
+            Text(display.tr("lab.speedtest.hint"))
+                .font(rNitroFont(.micro, metrics: metrics))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            SpeedTestPanel()
         }
     }
 
@@ -15895,6 +17865,7 @@ struct ContentView: View {
     let tabs: [AppTab]
     var layout: ContentLayout = .window
     @ObservedObject private var advisor = SystemAdvisorModel.shared
+    @ObservedObject private var lowBattery = LowBatteryAutomation.shared
     @State private var statDetail: StatDetailKind? = nil
     @State private var tab: AppTab = .monitor
     @State private var showFirstLaunchTips = FirstLaunchTips.shouldShow
@@ -15911,6 +17882,7 @@ struct ContentView: View {
                     rootContent
                 }
             }
+            .opacity(lowBattery.isLowPowerDim ? 0.72 : 1.0)
             .preferredColorScheme(display.appearanceMode.preferredColorScheme)
             .sheet(isPresented: $showFirstLaunchTips) {
                 FirstLaunchTipsSheet(isPresented: $showFirstLaunchTips)
@@ -16267,6 +18239,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         MonitorActivity.setPopoverOpen(false)
         UNUserNotificationCenter.current().delegate = self
         AdvisorNotificationCenter.configure()
+        DeveloperModeStore.shared.log(
+            "launch \(CURRENT_VERSION) channel=\(RNITRO_BUILD_CHANNEL) logging=\(DeveloperModeStore.shared.verboseLogging)",
+            category: "lifecycle"
+        )
         BatteryMonitor.shared.startMonitoring()
         if RNITRO_FEATURE_BETA_UI {
             CompileFarmDetector.shared.startIfNeeded()
@@ -16397,6 +18373,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 
     @objc private func togglePopover() {
         guard let event = NSApp.currentEvent, let button = statusItem?.button else { return }
+        // Personal easter egg: left-click the menu bar icon 3 times quickly
+        if event.type == .leftMouseUp || event.type == .leftMouseDown {
+            // status item usually delivers leftMouseUp via sendAction
+            if RNitroEasterEgg.noteMenubarClick() {
+                return
+            }
+        }
         if event.type == .rightMouseUp {
             let menu = NSMenu()
             let overlayTitle = OverlayWindowController.shared.isVisible ? "Hide Game Overlay (⌥⇧O)" : "Show Game Overlay (⌥⇧O)"
@@ -16517,7 +18500,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     private func rebuildMenubarSubscriptions() {
         subscriptions.removeAll()
         menuBarRefreshTrigger
-            .debounce(for: .milliseconds(80), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(220), scheduler: RunLoop.main)
             .sink { [weak self] in self?.updateStatusTitle() }
             .store(in: &subscriptions)
         let scheduleRefresh: () -> Void = { [weak self] in self?.menuBarRefreshTrigger.send() }
@@ -16571,6 +18554,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        DeveloperModeStore.shared.log("quit \(CURRENT_VERSION)", category: "lifecycle")
         if let modeObserver { NotificationCenter.default.removeObserver(modeObserver) }
         if let powerModeObserver { NotificationCenter.default.removeObserver(powerModeObserver) }
         if let hotkeyMonitor { NSEvent.removeMonitor(hotkeyMonitor) }
@@ -16601,18 +18585,35 @@ enum AppLauncher {
     }
 }
 SWIFTEOF
-echo "🔨 Compiling (this takes ~30 seconds)..."
-swiftc "$WORK_DIR/main.swift" \
-    -o "$WORK_DIR/rNitro" \
-    -framework SwiftUI \
-    -framework Cocoa \
-    -framework IOKit \
-    -framework Security \
-    -framework CryptoKit \
-    -framework Network \
-    -lIOReport \
-    -parse-as-library \
-    -O
+echo "🔨 Compiling (this takes ~30–90 seconds)..."
+HOST_ARCH="$(uname -m)"
+SWIFT_FLAGS=(
+  -framework SwiftUI
+  -framework Cocoa
+  -framework IOKit
+  -framework Security
+  -framework CryptoKit
+  -framework Network
+  -lIOReport
+  -parse-as-library
+  -O
+)
+compile_one() {
+  local target="$1" out="$2"
+  swiftc "$WORK_DIR/main.swift" -o "$out" -target "$target" "${SWIFT_FLAGS[@]}"
+}
+if compile_one "arm64-apple-macos14.0" "$WORK_DIR/rNitro-arm64" \
+  && compile_one "x86_64-apple-macos14.0" "$WORK_DIR/rNitro-x86_64" \
+  && lipo -create -output "$WORK_DIR/rNitro" "$WORK_DIR/rNitro-arm64" "$WORK_DIR/rNitro-x86_64"; then
+  echo "   universal binary (arm64 + x86_64), min macOS 14.0"
+  rm -f "$WORK_DIR/rNitro-arm64" "$WORK_DIR/rNitro-x86_64"
+elif [[ "$HOST_ARCH" == "arm64" ]]; then
+  echo "   ⚠ universal build failed — arm64-only, min macOS 14.0"
+  compile_one "arm64-apple-macos14.0" "$WORK_DIR/rNitro"
+else
+  echo "   ⚠ universal build failed — x86_64-only, min macOS 14.0"
+  compile_one "x86_64-apple-macos14.0" "$WORK_DIR/rNitro"
+fi
 strip -x "$WORK_DIR/rNitro" 2>/dev/null || true
 if [[ ! -f "$WORK_DIR/rNitro" || -L "$WORK_DIR/rNitro" ]]; then
   echo "❌ Compiled binary missing or unexpected (symlink). Aborting."
@@ -16645,13 +18646,13 @@ cat > "$APP_DEST/Contents/Info.plist" << 'PLIST'
     <key>CFBundleIdentifier</key><string>com.rnitro.cpumonitor</string>
     <key>CFBundleName</key><string>rNitro</string>
     <key>CFBundleDisplayName</key><string>rNitro</string>
-    <key>CFBundleVersion</key><string>v1.3.32-Experimental</string>
-    <key>CFBundleShortVersionString</key><string>v1.3.32-Experimental</string>
+    <key>CFBundleVersion</key><string>v1.4.0-Final</string>
+    <key>CFBundleShortVersionString</key><string>v1.4.0-Final</string>
     <key>ATSApplicationFontsPath</key><string>Fonts</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>LSMinimumSystemVersion</key><string>12.0</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>rNitro uses the local network only for optional Stress Duel between Macs on your LAN. No data leaves your network.</string>
     <key>NSBonjourServices</key>

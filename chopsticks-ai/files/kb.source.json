@@ -387,7 +387,7 @@
         "release",
         "build"
       ],
-      "answer": "The current macOS build is v1.3.32-Experimental.\n\nOther platforms:\n• CLI — v0.2-cli\n• Linux — v0.1 Beta pre-release\n• Windows — v6.0.2 (deprecated)\n\nThe live numbers always come from chopstickshq.com/rnitro/version.json."
+      "answer": "The current macOS build is v1.4.0-Final.\n\nOther platforms:\n• CLI — v0.2-cli\n• Linux — v0.1 Beta pre-release\n• Windows — v6.0.2 (deprecated)\n\nThe live numbers always come from chopstickshq.com/rnitro/version.json."
     },
     {
       "id": "rnitro.requirements",

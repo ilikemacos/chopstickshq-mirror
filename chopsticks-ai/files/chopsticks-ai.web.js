@@ -145,9 +145,9 @@
     'What is chopsticksAI?',
     'How do I install rNitro?',
     'macOS says it can’t be opened',
-    'What is Fathom Pro?',
     'How do I unlock Fathom Pro?',
-    'Is it free?'
+    'Explain how SSDs work',
+    'Write me a haiku about Mondays'
   ];
 
   var CSS =
@@ -248,9 +248,9 @@
     if (!started) {
       started = true;
       addMsg('bot',
-        "Hi, I'm chopsticksAI — the Chopsticks HQ assistant.\n\n" +
-        'I run entirely in your browser, so nothing you type is sent anywhere. ' +
-        'Ask me about any of the apps, or tap a question below.');
+        "Hi, I'm chopsticksAI.\n\n" +
+        'Ask me anything — general questions, code, writing, or anything about the ' +
+        'Chopsticks apps. Nothing you type is stored. Tap a question below to start.');
       showChips(STARTERS);
     }
     input.focus();
@@ -280,7 +280,7 @@
     var form = el('form', 'cai-form');
     input = el('input', 'cai-input');
     input.type = 'text';
-    input.placeholder = 'Ask about any Chopsticks app…';
+    input.placeholder = 'Ask me anything…';
     input.setAttribute('aria-label', 'Ask chopsticksAI');
     var send = el('button', 'cai-send', 'Ask');
     send.type = 'submit';
