@@ -1,0 +1,33 @@
+import { handler } from "../../api/_lib/chopsticks-ai.js";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function onRequest(context) {
+  const { request, env } = context;
+
+  if (typeof process !== "undefined" && process.env) {
+    if (env.OPENROUTER_API_KEY) process.env.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
+    if (env.CHOPSTICKS_AI_MODEL) process.env.CHOPSTICKS_AI_MODEL = env.CHOPSTICKS_AI_MODEL;
+  }
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+
+  const body = request.method === "POST" ? await request.text() : "";
+
+  const result = await handler({
+    httpMethod: request.method,
+    headers: Object.fromEntries(request.headers),
+    body,
+  });
+
+  return new Response(result.body, {
+    status: result.statusCode,
+    headers: { ...CORS, ...(result.headers || {}) },
+  });
+}
