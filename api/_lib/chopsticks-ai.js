@@ -30,8 +30,8 @@ const TIERS = {
     // Long generations are token-rate bound, and a 55B-active model cannot emit
     // ~1.5k tokens inside the serverless window. Fewer active parameters first.
     longModels: [
-      "nvidia/nemotron-3-super-120b-a12b:free",
       "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     context: 48000,
   },
