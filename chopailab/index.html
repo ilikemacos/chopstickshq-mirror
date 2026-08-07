@@ -358,7 +358,7 @@
       body: JSON.stringify({
         messages: history.slice(-12),
         mode: 'agent',
-        maxTokens: 2000
+        maxTokens: 1500
       })
     })
       .then(function (r) { return r.json(); })
