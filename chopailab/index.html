@@ -231,7 +231,8 @@
   function saveSession() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        v: 1, at: Date.now(), tier: tierSel.value, usage: usage,
+        v: 1, at: Date.now(), tier: tierSel.value,
+        usage: usageEl ? usageEl.textContent : '',
         history: history.slice(-40)
       }));
     } catch (e) {}
@@ -516,7 +517,7 @@
 
   document.getElementById('reset').addEventListener('click', function () {
     history = [];
-    usage = '';
+    if (usageEl) usageEl.textContent = '';
     clearSession();
     log.innerHTML = '';
     log.appendChild(intro);
@@ -529,7 +530,7 @@
     var saved = loadSession();
     if (!saved) return;
     history = saved.history;
-    usage = saved.usage || '';
+    if (usageEl && saved.usage) usageEl.textContent = saved.usage;
     if (saved.tier === 'super' || saved.tier === 'ultra') tierSel.value = saved.tier;
     intro.remove();
 

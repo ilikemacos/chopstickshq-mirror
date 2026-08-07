@@ -181,9 +181,54 @@
     '.cai-input:focus{outline:none;border-color:var(--muted,#8b8b9a)}' +
     '.cai-send{background:var(--text,#f2f2f5);color:var(--bg,#0a0a0c);border:none;border-radius:9px;' +
     'padding:0 14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}' +
+    '.cai-usage{font-family:var(--mono,"JetBrains Mono",monospace);font-size:9px;letter-spacing:.06em;' +
+    'color:var(--muted,#8b8b9a);margin-top:5px;line-height:1.45;text-align:right}' +
+    '.cai-panel.compact{width:min(320px,calc(100vw - 32px));max-height:min(420px,calc(100vh - 110px))}' +
+    '.cai-panel.compact .cai-head{padding:10px 12px}.cai-panel.compact .cai-title{font-size:13px}' +
+    '.cai-panel.compact .cai-sub{font-size:9px}.cai-panel.compact .cai-msg{font-size:12px;padding:7px 10px}' +
+    '.cai-panel.compact .cai-log{padding:10px 12px;gap:7px}.cai-panel.compact .cai-chips{display:none}' +
+    '.cai-launcher.compact{width:44px;height:44px;font-size:17px;bottom:16px;left:16px}' +
     '@media (max-width:520px){.cai-panel{left:12px;bottom:78px}.cai-launcher{left:12px;bottom:14px}}';
 
-  var panel, log, input, started = false;
+  var panel, log, input, usageEl, started = false, compact = false;
+
+  function fmt(n) {
+    if (!isFinite(n)) return '?';
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(Math.round(n));
+  }
+
+  try {
+    compact = localStorage.getItem('chq.aiCompact') === '1';
+  } catch (e) {}
+
+  function setCompact(on) {
+    compact = !!on;
+    if (panel) panel.classList.toggle('compact', compact);
+    var launcher = document.querySelector('.cai-launcher');
+    if (launcher) launcher.classList.toggle('compact', compact);
+    try { localStorage.setItem('chq.aiCompact', compact ? '1' : '0'); } catch (e) {}
+  }
+
+  function showUsage(d) {
+    if (!usageEl) return;
+    var parts = [];
+    if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
+      parts.push('Ctx ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
+    }
+    if (d && d.budget && typeof d.budget.used === 'number') {
+      parts.push('Allow ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
+    }
+    usageEl.textContent = parts.join(' · ');
+  }
+
+  function handleSlash(text) {
+    var cmd = text.trim().toLowerCase();
+    if (cmd === '/compact' || cmd === '/compact on') { setCompact(true); return true; }
+    if (cmd === '/compact off') { setCompact(false); return true; }
+    return false;
+  }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -228,12 +273,17 @@
   }
 
   function liveFailed(d) {
-    return !d || !d.reply || (d.mode && d.mode !== 'live');
+    return !d || !d.reply || (d.mode && d.mode !== 'live' && d.mode !== 'offline');
   }
 
   function submit(text) {
     text = (text || '').trim();
     if (!text || busy) return;
+    if (handleSlash(text)) {
+      input.value = '';
+      addMsg('bot', compact ? 'Compact mode on.' : 'Compact mode off.');
+      return;
+    }
     addMsg('user', text);
     input.value = '';
     showChips(null);
@@ -249,6 +299,7 @@
           thinking.textContent = d && d.reply
             ? d.reply
             : "I couldn't reach the model just now — try again in a moment.";
+          showUsage(d);
         }
       })
       .catch(function () {
@@ -293,7 +344,9 @@
 
     var head = el('div', 'cai-head');
     head.appendChild(el('div', 'cai-title', 'chopsticksAI'));
-    head.appendChild(el('div', 'cai-sub', 'On-device · no key · no tracking'));
+    head.appendChild(el('div', 'cai-sub', 'Live · no key · /compact'));
+    usageEl = el('div', 'cai-usage');
+    head.appendChild(usageEl);
     panel.appendChild(head);
 
     log = el('div', 'cai-log');
@@ -326,6 +379,7 @@
 
     document.body.appendChild(launcher);
     document.body.appendChild(panel);
+    setCompact(compact);
   }
 
   if (document.readyState === 'loading') {
