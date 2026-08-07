@@ -86,10 +86,14 @@ const GROUNDING_INTENTS = 6;
 
 // Free-tier budget: once TOKEN_BUDGET is spent the endpoint stops calling the
 // model for COOLDOWN_MS, so a burst of traffic cannot burn the whole allowance
-// and leave the assistant dead for everyone.
+// and leave the assistant dead for everyone. When Supabase is configured the
+// counter is durable across serverless cold starts; otherwise it falls back to
+// a per-instance in-memory counter.
 const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000);
 const COOLDOWN_MS = Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000);
+const SB_TIMEOUT_MS = 5000;
 const budget = { used: 0, windowStart: Date.now(), cooldownUntil: 0 };
+let budgetMode = "memory";
 
 // Simple in-memory throttle. Serverless instances are short-lived so this is a
 // speed bump against casual abuse, not a guarantee; it costs nothing and stops
@@ -118,7 +122,7 @@ function fitContext(system, turns, contextTokens) {
   return [system, ...kept];
 }
 
-function budgetState(now) {
+function memoryBudgetState(now) {
   if (budget.cooldownUntil && now < budget.cooldownUntil) {
     return { blocked: true, retryInMs: budget.cooldownUntil - now };
   }
@@ -130,9 +134,112 @@ function budgetState(now) {
   return { blocked: false };
 }
 
-function spend(tokens, now) {
+function memorySpend(tokens, now) {
   budget.used += tokens;
   if (budget.used >= TOKEN_BUDGET) budget.cooldownUntil = now + COOLDOWN_MS;
+}
+
+function supabaseConfigured() {
+  return Boolean(env("SUPABASE_URL") && env("SUPABASE_ANON_KEY"));
+}
+
+async function sb(path, init = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), SB_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${env("SUPABASE_URL")}/rest/v1/${path}`, {
+      ...init,
+      signal: ctrl.signal,
+      headers: {
+        apikey: env("SUPABASE_ANON_KEY"),
+        authorization: `Bearer ${env("SUPABASE_ANON_KEY")}`,
+        "content-type": "application/json",
+        ...(init.headers || {}),
+      },
+    });
+    const text = await res.text();
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = text;
+    }
+    return { ok: res.ok, status: res.status, body };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function budgetPeek(now) {
+  if (!supabaseConfigured()) {
+    budgetMode = "memory";
+    const state = memoryBudgetState(now);
+    return { ...state, used: budget.used, mode: "memory" };
+  }
+  try {
+    const res = await sb("rpc/chopsticks_ai_budget_peek", {
+      method: "POST",
+      body: JSON.stringify({ p_limit: TOKEN_BUDGET, p_cooldown_ms: COOLDOWN_MS }),
+    });
+    if (!res.ok || !res.body || typeof res.body !== "object") {
+      budgetMode = "memory";
+      const state = memoryBudgetState(now);
+      return { ...state, used: budget.used, mode: "memory" };
+    }
+    budgetMode = "supabase";
+    budget.used = Number(res.body.used) || 0;
+    if (res.body.blocked) {
+      return {
+        blocked: true,
+        retryInMs: Number(res.body.retry_in_ms) || 0,
+        used: budget.used,
+        mode: "supabase",
+      };
+    }
+    return { blocked: false, used: budget.used, mode: "supabase" };
+  } catch {
+    budgetMode = "memory";
+    const state = memoryBudgetState(now);
+    return { ...state, used: budget.used, mode: "memory" };
+  }
+}
+
+async function budgetSpend(tokens, now) {
+  const spent = Math.max(0, Math.min(50000, Math.round(Number(tokens) || 0)));
+  if (!supabaseConfigured()) {
+    budgetMode = "memory";
+    memorySpend(spent, now);
+    return { used: budget.used, mode: "memory" };
+  }
+  try {
+    const res = await sb("rpc/chopsticks_ai_budget_spend", {
+      method: "POST",
+      body: JSON.stringify({
+        p_tokens: spent,
+        p_limit: TOKEN_BUDGET,
+        p_cooldown_ms: COOLDOWN_MS,
+      }),
+    });
+    if (!res.ok || !res.body || typeof res.body !== "object") {
+      memorySpend(spent, now);
+      return { used: budget.used, mode: "memory" };
+    }
+    budget.used = Number(res.body.used) || budget.used;
+    budgetMode = "supabase";
+    if (res.body.blocked) budget.cooldownUntil = now + COOLDOWN_MS;
+    return { used: budget.used, mode: "supabase" };
+  } catch {
+    memorySpend(spent, now);
+    return { used: budget.used, mode: "memory" };
+  }
+}
+
+function budgetState(now) {
+  return memoryBudgetState(now);
+}
+
+function spend(tokens, now) {
+  memorySpend(tokens, now);
 }
 
 const env = (name) =>
@@ -461,7 +568,7 @@ async function handler(event) {
   if (!lastUser) return json(400, { error: "no user message" });
 
   const now = Date.now();
-  const state = budgetState(now);
+  const state = await budgetPeek(now);
   if (state.blocked) {
     const mins = Math.ceil(state.retryInMs / 60000);
     return json(200, {
@@ -581,7 +688,7 @@ async function handler(event) {
       }
     }
 
-    spend(spent, now);
+    const spentResult = await budgetSpend(spent, now);
 
     if (!reply) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
@@ -594,7 +701,8 @@ async function handler(event) {
       tier: tier.label,
       context: contextFor(tier),
       searched: Boolean(web),
-      budget: { used: budget.used, limit: TOKEN_BUDGET },
+      budget: { used: spentResult.used, limit: TOKEN_BUDGET },
+      budgetMode: spentResult.mode,
     });
   } catch (e) {
     const aborted = e && e.name === "AbortError";
@@ -612,5 +720,6 @@ async function handler(event) {
 module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   wantsSearch, webSearch, selfFacts,
-  _budget: budget, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
+  budgetPeek, budgetSpend, budgetState, spend,
+  _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };

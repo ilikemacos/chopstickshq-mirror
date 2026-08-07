@@ -12,6 +12,8 @@ export async function onRequest(context) {
   if (typeof process !== "undefined" && process.env) {
     if (env.OPENROUTER_API_KEY) process.env.OPENROUTER_API_KEY = env.OPENROUTER_API_KEY;
     if (env.CHOPSTICKS_AI_MODEL) process.env.CHOPSTICKS_AI_MODEL = env.CHOPSTICKS_AI_MODEL;
+    if (env.SUPABASE_URL) process.env.SUPABASE_URL = env.SUPABASE_URL;
+    if (env.SUPABASE_ANON_KEY) process.env.SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
   }
 
   if (request.method === "OPTIONS") {
