@@ -164,6 +164,11 @@
   html.compact .bubble { font-size: .88rem; }
   html.compact nav { min-height: 2.75rem; }
   html.compact .inner { padding-top: .75rem; }
+  .resumed {
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: 999px;
+    padding: .4rem .8rem; margin-bottom: 1.25rem; display: inline-block;
+  }
   .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
   @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 </style>
@@ -217,8 +222,31 @@
   'use strict';
 
   var API = '/api/chopsticks-ai';
+  var STORE = 'chq.lab.session';
   var history = [];
   var busy = false;
+
+  // Sessions survive reloads and revisits. Kept in localStorage only - nothing
+  // is sent anywhere, and "New chat" wipes it.
+  function saveSession() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        v: 1, at: Date.now(), tier: tierSel.value, usage: usage,
+        history: history.slice(-40)
+      }));
+    } catch (e) {}
+  }
+  function loadSession() {
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      return (d && d.v === 1 && Array.isArray(d.history) && d.history.length) ? d : null;
+    } catch (e) { return null; }
+  }
+  function clearSession() {
+    try { localStorage.removeItem(STORE); } catch (e) {}
+  }
 
   var stage = document.getElementById('stage');
   var log = document.getElementById('log');
@@ -465,6 +493,7 @@
         var msg = offline(text);
         history.push({ role: 'assistant', content: msg });
         thinking.replaceChild(renderAssistant(msg), thinking.lastChild);
+        saveSession();
       })
       .then(function () {
         busy = false;
@@ -485,10 +514,39 @@
 
   document.getElementById('reset').addEventListener('click', function () {
     history = [];
+    usage = '';
+    clearSession();
     log.innerHTML = '';
     log.appendChild(intro);
+    showTier();
     input.focus();
   });
+
+  // Restore a previous session, if there is one.
+  (function restore() {
+    var saved = loadSession();
+    if (!saved) return;
+    history = saved.history;
+    usage = saved.usage || '';
+    if (saved.tier === 'super' || saved.tier === 'ultra') tierSel.value = saved.tier;
+    intro.remove();
+
+    var when = new Date(saved.at);
+    var note = document.createElement('div');
+    note.className = 'resumed';
+    note.textContent = 'Resumed your session from ' +
+      when.toLocaleDateString() + ' ' +
+      when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+      ' — ' + history.length + ' messages. New chat starts fresh.';
+    log.appendChild(note);
+
+    history.forEach(function (m) {
+      addTurn(m.role === 'user' ? 'user' : 'bot',
+        m.role === 'user' ? plain(m.content) : renderAssistant(m.content));
+    });
+    showTier();
+    stage.scrollTop = stage.scrollHeight;
+  })();
 
   document.getElementById('export').addEventListener('click', function () {
     if (!history.length) return;

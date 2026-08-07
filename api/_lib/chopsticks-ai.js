@@ -719,7 +719,6 @@ async function handler(event) {
         });
       }
       return json(200, {
-        diag: { status: lastStatus, detail: String(lastDetail).slice(0, 200) },
         reply:
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
