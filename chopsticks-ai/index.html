@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chopsticksAI — built on NVIDIA Nemotron 3 Super · Chopsticks HQ</title>
+<meta name="description" content="chopsticksAI is the Chopsticks HQ assistant, built on NVIDIA Nemotron 3 Super and grounded in a knowledge base of every Chopsticks app. Full source, open.">
+<link rel="canonical" href="https://chopstickshq.com/chopsticks-ai/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Chopsticks HQ">
+<meta property="og:title" content="chopsticksAI — built on NVIDIA Nemotron 3 Super">
+<meta property="og:description" content="The Chopsticks HQ assistant: Nemotron 3 Super, grounded in a 2,285-term knowledge base. Full source available.">
+<meta property="og:url" content="https://chopstickshq.com/chopsticks-ai/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,0.72); --nav-border: rgba(255,255,255,0.08);
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius: .75rem;
+    --shadow: 0 4px 24px -4px rgba(0,0,0,.45);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,0.85); --nav-border: rgba(0,0,0,0.08);
+    --shadow: 0 4px 20px -6px rgba(0,0,0,.12);
+  }
+  html { color-scheme: dark; scroll-behavior: smooth; }
+  html[data-theme="light"] { color-scheme: light; }
+
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.05), transparent 55%);
+  }
+  .app { position: relative; z-index: 1; }
+  h1, h2, h3, .nav-logo { font-family: var(--display); letter-spacing: -.03em; font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+  code, .mono { font-family: var(--mono); }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 20px; min-height: 4rem; background: var(--nav-bg);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--nav-border);
+  }
+  .nav-logo { font-size: .95rem; white-space: nowrap; }
+  .nav-logo span { color: var(--muted); font-weight: 400; }
+  .nav-mid { display: none; gap: .35rem; align-items: center; }
+  @media (min-width: 760px) { .nav-mid { display: flex; } }
+  .nav-link {
+    font-size: .8125rem; font-weight: 500; color: var(--muted);
+    padding: .45rem .9rem; border-radius: 999px; border: 1px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(127,127,127,.12); }
+  .theme-toggle {
+    display: inline-flex; align-items: center; height: 2.1rem; padding: 0 .75rem;
+    border-radius: 999px; border: 1px solid var(--border); background: transparent;
+    color: var(--text); cursor: pointer; font-size: .75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,.12); }
+
+  .wrap { width: min(52rem, calc(100% - 2rem)); margin-inline: auto; }
+  main { padding: 6.5rem 0 3rem; }
+
+  .kicker {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: .8rem;
+  }
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 3.2rem); font-weight: 700;
+    letter-spacing: -.04em; line-height: 1.05; margin-bottom: 1rem;
+  }
+  .lead { color: var(--muted); font-size: 1.08rem; line-height: 1.7; max-width: 42rem; }
+  .lead strong { color: var(--text); font-weight: 600; }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0 2.5rem; }
+  .badge {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .06em;
+    padding: .4rem .8rem; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); background: rgba(127,127,127,.05);
+  }
+  .badge strong { color: var(--text); font-weight: 500; }
+
+  section { margin-bottom: 2.5rem; }
+  section > h2 {
+    font-family: var(--mono); font-size: .7rem; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1rem;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.4rem 1.5rem; box-shadow: var(--shadow);
+    margin-bottom: .75rem;
+  }
+  .card h3 { font-size: 1.02rem; margin-bottom: .5rem; }
+  .card p { color: var(--muted); font-size: .93rem; }
+  .card p + p { margin-top: .6rem; }
+  .card strong { color: var(--text); font-weight: 600; }
+
+  .grid { display: grid; gap: .75rem; }
+  @media (min-width: 700px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+
+  .flow {
+    font-family: var(--mono); font-size: .78rem; line-height: 2;
+    color: var(--muted); white-space: pre; overflow-x: auto;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.3rem;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid var(--border); }
+  th {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+  }
+  td { color: var(--muted); vertical-align: top; }
+  td strong { color: var(--text); font-weight: 600; }
+  .files-wrap { overflow-x: auto; }
+  .fname { font-family: var(--mono); font-size: .82rem; color: var(--text); white-space: nowrap; }
+  .fsize { font-family: var(--mono); font-size: .78rem; white-space: nowrap; }
+  .flink {
+    font-family: var(--mono); font-size: .74rem; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: .25rem .65rem;
+    display: inline-block; white-space: nowrap;
+  }
+  .flink:hover { color: var(--text); border-color: var(--muted); }
+
+  .footer {
+    margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+    font-family: var(--mono); font-size: .74rem; color: var(--muted); line-height: 2.2;
+  }
+  .footer a { margin-right: 1rem; }
+  .footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <a class="nav-logo" href="/">Chopsticks HQ <span>· chopsticksAI</span></a>
+    <div class="nav-mid">
+      <a class="nav-link" href="/">HQ</a>
+      <a class="nav-link" href="/rnitro/">rNitro</a>
+      <a class="nav-link" href="/fathom/">Fathom Air</a>
+      <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
+      <a class="nav-link" href="/about/">About</a>
+    </div>
+    <button type="button" class="theme-toggle" data-theme-toggle>&#9680; Theme</button>
+  </nav>
+
+  <main>
+    <div class="wrap">
+      <div class="kicker">Assistant · On every page · In rNitro</div>
+      <h1>chopsticksAI</h1>
+      <p class="lead">
+        The Chopsticks HQ assistant. Built on <strong>NVIDIA Nemotron 3 Super</strong>,
+        grounded in a knowledge base covering every Chopsticks app, and reachable
+        from any page on this site as well as inside rNitro's Chat tab.
+      </p>
+
+      <div class="badge-row">
+        <span class="badge">Model <strong>nvidia/nemotron-3-super-120b-a12b:free</strong></span>
+        <span class="badge">Context <strong>48K tokens</strong></span>
+        <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
+        <span class="badge">Your key <strong>never needed</strong></span>
+      </div>
+
+      <section>
+        <h2>What it runs on</h2>
+        <div class="card">
+          <h3>NVIDIA Nemotron 3 Super</h3>
+          <p>
+            Every answer is generated by <strong>Nemotron 3 Super</strong>
+            (<code>nvidia/nemotron-3-super-120b-a12b:free</code>), a 120B
+            mixture-of-experts model with 12B active parameters, served through
+            OpenRouter's free tier.
+          </p>
+          <p>
+            Requests run through a Chopsticks HQ endpoint that holds the API
+            credential server-side. Nothing is embedded in this page or in the
+            rNitro binary, and you never supply a key of your own.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Why it doesn't invent version numbers</h2>
+        <div class="card">
+          <p>
+            A language model asked "what version is rNitro?" will happily invent a
+            plausible answer. chopsticksAI doesn't, because the model never answers
+            from memory alone.
+          </p>
+          <p>
+            Each question is first scored against a knowledge base of
+            <strong>60 curated topics</strong>, expanded into
+            <strong>2,285 matchable terms</strong> covering synonyms, plurals and
+            common misspellings. The best-matching entries are injected into the
+            prompt as authoritative reference material, and the model is instructed
+            to prefer them over its own assumptions.
+          </p>
+          <p>
+            Matching is done on <strong>word boundaries</strong> rather than raw
+            substrings — so "unzip the file" doesn't trigger the ZIP download topic,
+            and "hardcore gaming" doesn't trigger the CPU-cores topic.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>How a question travels</h2>
+        <div class="flow">you ask a question
+   ↓
+retrieval      score against 2,285 terms, take the 6 best topics
+   ↓
+grounding      inject those facts as reference material
+   ↓
+Nemotron 3 Super via the Chopsticks HQ proxy   (key stays server-side)
+   ↓
+answer         conversational, with real version numbers
+
+if the proxy is unreachable
+   ↓
+fallback       the same knowledge base answers offline, on-device</div>
+      </section>
+
+      <section>
+        <h2>Built in</h2>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>No API key</h3>
+            <p>You never paste a credential. The key lives as a server secret, so it is never shipped to a browser or extractable from the app.</p>
+          </div>
+          <div class="card">
+            <h3>Works offline</h3>
+            <p>If the model can't be reached, the on-device knowledge base answers instead of erroring. The assistant degrades rather than dies.</p>
+          </div>
+          <div class="card">
+            <h3>Nothing stored</h3>
+            <p>No accounts, no chat logs, no analytics on what you ask. Consistent with every other Chopsticks app.</p>
+          </div>
+          <div class="card">
+            <h3>Budgeted</h3>
+            <p>A 750,000-token allowance with a 3-hour cooldown, plus per-visitor rate limiting, so a traffic spike can't exhaust the free tier.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>All the files</h2>
+        <div class="card" style="padding-bottom:.6rem">
+          <p style="margin-bottom:1rem">
+            The complete source. The knowledge base is written once in
+            <code>kb.source.json</code> and compiled by <code>build-kb.py</code> into
+            three targets — web, server and Swift — so the website and the app can
+            never drift apart.
+          </p>
+          <div class="files-wrap">
+            <table>
+              <thead>
+                <tr><th>File</th><th>What it is</th><th>Size</th><th></th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fname">kb.source.json</td>
+                  <td><strong>The knowledge base.</strong> 60 curated topics, hand-written. The one file to edit.</td>
+                  <td class="fsize">42 KB</td>
+                  <td><a class="flink" href="files/kb.source.json">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">build-kb.py</td>
+                  <td><strong>The compiler.</strong> Expands terms into synonyms, plurals and typos, then emits all three targets. Fails the build on ambiguous keywords.</td>
+                  <td class="fsize">10 KB</td>
+                  <td><a class="flink" href="files/build-kb.py">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">chopsticks-ai.server.js</td>
+                  <td><strong>The proxy.</strong> Holds the credential, retrieves grounding, calls Nemotron, enforces the budget and rate limits.</td>
+                  <td class="fsize">11 KB</td>
+                  <td><a class="flink" href="files/chopsticks-ai.server.js">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">chopsticks-ai.web.js</td>
+                  <td><strong>The web client.</strong> The widget on every page, plus the offline engine used when the proxy is unreachable.</td>
+                  <td class="fsize">11 KB</td>
+                  <td><a class="flink" href="files/chopsticks-ai.web.js">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">chopsticks-ai-kb.js</td>
+                  <td>Generated knowledge base for the browser.</td>
+                  <td class="fsize">63 KB</td>
+                  <td><a class="flink" href="files/chopsticks-ai-kb.js">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">ChopsticksAIEngine.swift</td>
+                  <td><strong>The Swift engine.</strong> Scoring identical to the JavaScript one, shipped inside rNitro.</td>
+                  <td class="fsize">3 KB</td>
+                  <td><a class="flink" href="files/ChopsticksAIEngine.swift">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">ChopsticksAIKB.swift</td>
+                  <td>Generated knowledge base for the app.</td>
+                  <td class="fsize">74 KB</td>
+                  <td><a class="flink" href="files/ChopsticksAIKB.swift">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">fixtures.json</td>
+                  <td><strong>The tests.</strong> 69 question/answer pairs, including questions that must <em>not</em> match.</td>
+                  <td class="fsize">5 KB</td>
+                  <td><a class="flink" href="files/fixtures.json">view</a></td>
+                </tr>
+                <tr>
+                  <td class="fname">run-fixtures.mjs</td>
+                  <td>Test runner. Both engines must resolve all 69 identically.</td>
+                  <td class="fsize">2 KB</td>
+                  <td><a class="flink" href="files/run-fixtures.mjs">view</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Try it</h2>
+        <div class="card">
+          <p>
+            Tap the <strong>◉</strong> button in the bottom-left corner of any page
+            on this site. Inside rNitro, open the menu bar icon and pick the
+            <strong>Chat</strong> tab — chopsticksAI is the default provider and
+            needs no setup.
+          </p>
+        </div>
+      </section>
+
+      <div class="footer">
+        <div>&copy; ChopsticksHQ 2026</div>
+        <div>
+          <a href="/">HQ</a>
+          <a href="/rnitro/">rNitro</a>
+          <a href="/fathom/">Fathom Air</a>
+          <a href="/fathom-pro/">Fathom Pro</a>
+          <a href="/about/">About</a>
+          <a href="/disclaimer/">Disclaimer</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/js/theme.js"></script>
+  <script src="/js/chopsticks-ai-kb.js" defer></script>
+  <script src="/js/chopsticks-ai.js" defer></script>
+</body>
+</html>
