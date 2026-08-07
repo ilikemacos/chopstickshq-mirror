@@ -174,7 +174,7 @@ function retrieve(query, limit = GROUNDING_INTENTS) {
 // adds no cost. Results are injected as context; the model still writes the
 // answer.
 const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
-const SEARCH_TIMEOUT_MS = 4000;
+const SEARCH_TIMEOUT_MS = 5000;
 
 // Questions the knowledge base already covers should not trigger a lookup, and
 // neither should chit-chat. These are the cues that a question wants facts
@@ -226,17 +226,28 @@ async function webSearch(query) {
     }
 
     if (!found.length) {
-      const term = query.replace(/[?.!]/g, "").trim().split(/\s+/).slice(-4).join(" ");
-      const wiki = await fetchJson(
-        "https://en.wikipedia.org/api/rest_v1/page/summary/" +
-          encodeURIComponent(term.replace(/\s+/g, "_")), c.signal
+      // Ask Wikipedia which article matches the question, rather than guessing a
+      // title from the wording - "current president of france" is not a page,
+      // but its search resolves it to "President of France".
+      const hit = await fetchJson(
+        "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json" +
+          "&origin=*&srlimit=1&srsearch=" + encodeURIComponent(query), c.signal
       ).catch(() => null);
-      if (wiki && wiki.extract) {
-        found.push({
-          title: wiki.title,
-          text: wiki.extract,
-          src: (wiki.content_urls && wiki.content_urls.desktop && wiki.content_urls.desktop.page) || "wikipedia.org",
-        });
+      const title = hit && hit.query && hit.query.search && hit.query.search[0]
+        && hit.query.search[0].title;
+
+      if (title) {
+        const wiki = await fetchJson(
+          "https://en.wikipedia.org/api/rest_v1/page/summary/" +
+            encodeURIComponent(title.replace(/\s+/g, "_")), c.signal
+        ).catch(() => null);
+        if (wiki && wiki.extract) {
+          found.push({
+            title: wiki.title,
+            text: wiki.extract,
+            src: (wiki.content_urls && wiki.content_urls.desktop && wiki.content_urls.desktop.page) || "wikipedia.org",
+          });
+        }
       }
     }
   } catch (e) {
