@@ -17,9 +17,31 @@
 // between releases and a wrong one 404s every request, so check before editing.
 // Tried in order: if the first is rate-limited or erroring, the next takes over.
 // Both are zero-cost tiers, so failover never introduces spend.
-const MODELS = (process.env.CHOPSTICKS_AI_MODEL ||
-  "nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free")
-  .split(",").map((m) => m.trim()).filter(Boolean);
+// Selectable tiers. Clients send a tier NAME, never a model id - accepting an
+// arbitrary model from the browser would let anyone run a paid model on our key.
+const TIERS = {
+  ultra: {
+    label: "Ultra",
+    models: [
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
+    context: 48000,
+  },
+  super: {
+    label: "Super",
+    models: [
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
+    context: 24000,
+  },
+};
+const DEFAULT_TIER = "ultra";
+const tierOf = (name) => TIERS[String(name || "").toLowerCase()] || TIERS[DEFAULT_TIER];
+
+const MODELS = TIERS[DEFAULT_TIER].models;
 const MODEL = MODELS[0];
 
 // Two models collaborate on each answer: Nemotron Ultra drafts, Gemma
@@ -52,6 +74,7 @@ const draftBudgetMs = (replyTokens, msLeft) =>
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
+const contextFor = (tier) => Math.min(MAX_CONTEXT_TOKENS, tier.context);
 const MAX_REPLY_TOKENS = 400;
 // The /chopailab agent generates files and code, which needs far more room than
 // the sidebar widget. Callers may request more, within a hard ceiling.
@@ -82,8 +105,8 @@ const messageTokens = (m) => estimateTokens(m.content) + 4;
 
 /** Drops the oldest turns until system prompt + history fits the window. The
  *  system prompt is never trimmed - it carries the grounding facts. */
-function fitContext(system, turns) {
-  const budgetTokens = MAX_CONTEXT_TOKENS - MAX_REPLY_TOKENS - messageTokens(system);
+function fitContext(system, turns, contextTokens) {
+  const budgetTokens = (contextTokens || MAX_CONTEXT_TOKENS) - MAX_REPLY_TOKENS - messageTokens(system);
   const kept = [];
   let used = 0;
   for (let i = turns.length - 1; i >= 0; i--) {
@@ -265,11 +288,13 @@ async function webSearch(query) {
 
 /** Facts chopsticksAI knows about itself. Built from the live config so the
  *  numbers can never drift from what the endpoint actually enforces. */
-function selfFacts() {
+function selfFacts(tier) {
+  const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
     `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
-    `- Context window: ${MAX_CONTEXT_TOKENS.toLocaleString()} tokens.`,
+    `- You run in two selectable tiers: Ultra (the default, largest context) and Super (lighter, smaller context, faster).`,
+    `- Current tier: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in the chopAI Lab agent); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
@@ -282,7 +307,7 @@ function selfFacts() {
   ].join("\n");
 }
 
-function systemPrompt(grounding, mode, web) {
+function systemPrompt(grounding, mode, web, tier) {
   // The agent at /chopailab produces files and code; the sidebar widget answers
   // conversationally. Same knowledge, different output contract.
   const agent = mode === "agent" ? [
@@ -314,7 +339,7 @@ function systemPrompt(grounding, mode, web) {
     "bar system monitor), Fathom Air (battery monitor), Fathom Pro (battery, weather and AI ",
     "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
     "reference material below is authoritative.\n\n",
-    selfFacts(),
+    selfFacts(tier),
     web ? "\n\nWEB SEARCH RESULTS (retrieved just now - use these for anything current, and cite the source domain when you rely on one):\n" + web : "",
     "\n\nREFERENCE MATERIAL:\n\n",
     facts,
@@ -456,13 +481,14 @@ async function handler(event) {
 
   // Search runs before the draft so results are in the prompt, and only when
   // the question actually looks like it needs the wider world.
+  const tier = tierOf(payload.tier);
   const web = wantsSearch(lastUser.content) ? await webSearch(lastUser.content) : "";
 
   const system = {
     role: "system",
-    content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode, web),
+    content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode, web, tier),
   };
-  const messages = fitContext(system, turns);
+  const messages = fitContext(system, turns, contextFor(tier));
 
   const deadline = now + TIMEOUT_MS;
   const withTimeout = (ms) => {
@@ -479,7 +505,7 @@ async function handler(event) {
     let lastStatus = 0;
     let lastDetail = "";
 
-    for (const candidate of MODELS) {
+    for (const candidate of tier.models) {
       const budgetMs = draftBudgetMs(replyTokens, deadline - Date.now());
       if (budgetMs <= 0) break;
       const g = withTimeout(budgetMs);
@@ -565,6 +591,8 @@ async function handler(event) {
       reply,
       mode: "live",
       model: "chopsticksAI v1.0",
+      tier: tier.label,
+      context: contextFor(tier),
       searched: Boolean(web),
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });

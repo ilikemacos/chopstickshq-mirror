@@ -63,6 +63,12 @@
     font-family: inherit; cursor: pointer; text-decoration: none; white-space: nowrap;
   }
   .nbtn:hover { background: rgba(127,127,127,.12); }
+  select.nbtn { appearance: none; padding-right: 1.5rem; background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  select.nbtn option { background: var(--card); color: var(--text); }
 
   .stage { flex: 1 1 auto; overflow-y: auto; }
   .inner { width: min(52rem, calc(100% - 2rem)); margin-inline: auto; padding: 1.75rem 0 2rem; }
@@ -154,6 +160,10 @@
 <nav>
   <a class="brand" href="/">Chopsticks HQ <span>· chopAI Lab</span></a>
   <div class="nav-right">
+    <select class="nbtn" id="tier" aria-label="Model tier" title="Ultra: largest context. Super: lighter and faster, smaller context.">
+      <option value="ultra">Ultra · 48K context</option>
+      <option value="super">Super · 24K context</option>
+    </select>
     <button type="button" class="nbtn" id="export">Export chat</button>
     <button type="button" class="nbtn" id="reset">New chat</button>
     <a class="nbtn" href="/chopsticks-ai/">About</a>
@@ -203,6 +213,29 @@
   var input = document.getElementById('input');
   var send = document.getElementById('send');
   var status = document.getElementById('status');
+  var tierSel = document.getElementById('tier');
+
+  try {
+    var savedTier = localStorage.getItem('chq.aiTier');
+    if (savedTier === 'super' || savedTier === 'ultra') tierSel.value = savedTier;
+  } catch (e) {}
+  var usage = '';
+  function fmt(n) {
+    if (!isFinite(n)) return '?';
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+    if (n >= 1000) return Math.round(n / 1000) + 'k';
+    return String(n);
+  }
+  function showTier() {
+    status.textContent = 'chopsticksAI v1.0 · ' +
+      (tierSel.value === 'super' ? 'Super · 24K context' : 'Ultra · 48K context') +
+      (usage ? ' · ' + usage : '');
+  }
+  tierSel.addEventListener('change', function () {
+    try { localStorage.setItem('chq.aiTier', tierSel.value); } catch (e) {}
+    showTier();
+  });
+  showTier();
 
   var SUGGESTIONS = [
     ['Write a Python script', 'that renames every file in a folder by date'],
@@ -358,6 +391,7 @@
       body: JSON.stringify({
         messages: history.slice(-12),
         mode: 'agent',
+        tier: tierSel.value,
         maxTokens: 1500
       })
     })
@@ -366,6 +400,10 @@
         if (!d || !d.reply) throw new Error('empty');
         history.push({ role: 'assistant', content: d.reply });
         thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
+        if (d.budget && typeof d.budget.used === 'number') {
+          usage = fmt(d.budget.used) + '/' + fmt(d.budget.limit) + ' tokens';
+        }
+        showTier();
       })
       .catch(function () {
         var msg = offline(text);
