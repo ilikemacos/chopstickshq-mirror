@@ -152,6 +152,18 @@
     font-family: var(--mono); font-size: .64rem; color: var(--muted);
     display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
   }
+  .usage {
+    font-family: var(--mono); font-size: .64rem; color: var(--muted);
+    text-align: right; line-height: 1.5;
+  }
+  html.compact .intro { padding: 1rem 0 .5rem; }
+  html.compact .intro h1 { font-size: 1.45rem; }
+  html.compact .intro p { display: none; }
+  html.compact .suggest { display: none; }
+  html.compact .turn { margin-bottom: .85rem; }
+  html.compact .bubble { font-size: .88rem; }
+  html.compact nav { min-height: 2.75rem; }
+  html.compact .inner { padding-top: .75rem; }
   .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
   @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
 </style>
@@ -188,9 +200,10 @@
 
 <div class="composer">
   <div class="hint">
-    <span>Enter to send · Shift+Enter for a new line</span>
+    <span>Enter to send · Shift+Enter for new line · <code>/compact</code> toggles compact UI</span>
     <span id="status">chopsticksAI v1.0</span>
   </div>
+  <div class="usage" id="usage" aria-live="polite"></div>
   <div class="composer-inner">
     <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
@@ -213,23 +226,54 @@
   var input = document.getElementById('input');
   var send = document.getElementById('send');
   var status = document.getElementById('status');
+  var usageEl = document.getElementById('usage');
   var tierSel = document.getElementById('tier');
+  var compact = false;
+
+  try {
+    compact = localStorage.getItem('chq.aiCompact') === '1';
+    if (compact) document.documentElement.classList.add('compact');
+  } catch (e) {}
+
+  function setCompact(on) {
+    compact = !!on;
+    document.documentElement.classList.toggle('compact', compact);
+    try { localStorage.setItem('chq.aiCompact', compact ? '1' : '0'); } catch (e) {}
+    showTier();
+  }
+
+  function handleSlash(text) {
+    var cmd = text.trim().toLowerCase();
+    if (cmd === '/compact' || cmd === '/compact on') { setCompact(true); return true; }
+    if (cmd === '/compact off') { setCompact(false); return true; }
+    return false;
+  }
 
   try {
     var savedTier = localStorage.getItem('chq.aiTier');
     if (savedTier === 'super' || savedTier === 'ultra') tierSel.value = savedTier;
   } catch (e) {}
-  var usage = '';
   function fmt(n) {
     if (!isFinite(n)) return '?';
     if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
-    if (n >= 1000) return Math.round(n / 1000) + 'k';
-    return String(n);
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(Math.round(n));
   }
   function showTier() {
     status.textContent = 'chopsticksAI v1.0 · ' +
       (tierSel.value === 'super' ? 'Super · 24K context' : 'Ultra · 48K context') +
-      (usage ? ' · ' + usage : '');
+      (compact ? ' · compact' : '');
+  }
+  function showUsage(d) {
+    if (!usageEl) return;
+    var parts = [];
+    if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
+      parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
+    }
+    if (d && d.budget && typeof d.budget.used === 'number') {
+      parts.push('Allowance ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
+    }
+    usageEl.textContent = parts.join(' · ');
   }
   tierSel.addEventListener('change', function () {
     try { localStorage.setItem('chq.aiTier', tierSel.value); } catch (e) {}
@@ -375,6 +419,11 @@
   function submit(text) {
     text = (text || '').trim();
     if (!text || busy) return;
+    if (handleSlash(text)) {
+      input.value = '';
+      addTurn('bot', plain(compact ? 'Compact mode on.' : 'Compact mode off.'));
+      return;
+    }
 
     addTurn('user', plain(text));
     input.value = '';
@@ -400,9 +449,7 @@
         if (!d || !d.reply) throw new Error('empty');
         history.push({ role: 'assistant', content: d.reply });
         thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
-        if (d.budget && typeof d.budget.used === 'number') {
-          usage = fmt(d.budget.used) + '/' + fmt(d.budget.limit) + ' tokens';
-        }
+        showUsage(d);
         showTier();
       })
       .catch(function () {

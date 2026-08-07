@@ -122,6 +122,19 @@ function fitContext(system, turns, contextTokens) {
   return [system, ...kept];
 }
 
+function measureMessages(messages) {
+  return messages.reduce((n, m) => n + messageTokens(m), 0);
+}
+
+function contextWindowUsage(messages, limit, turnsTotal) {
+  return {
+    used: measureMessages(messages),
+    limit,
+    turns: messages.filter((m) => m.role !== "system").length,
+    turnsTotal: turnsTotal ?? messages.filter((m) => m.role !== "system").length,
+  };
+}
+
 function memoryBudgetState(now) {
   if (budget.cooldownUntil && now < budget.cooldownUntil) {
     return { blocked: true, retryInMs: budget.cooldownUntil - now };
@@ -694,12 +707,14 @@ async function handler(event) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
     }
 
+    const ctxLimit = contextFor(tier);
     return json(200, {
       reply,
       mode: "live",
       model: "chopsticksAI v1.0",
       tier: tier.label,
-      context: contextFor(tier),
+      context: ctxLimit,
+      contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: Boolean(web),
       budget: { used: spentResult.used, limit: TOKEN_BUDGET },
       budgetMode: spentResult.mode,
@@ -719,6 +734,7 @@ async function handler(event) {
 
 module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
+  measureMessages, contextWindowUsage,
   wantsSearch, webSearch, selfFacts,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
