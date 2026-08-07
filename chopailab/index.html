@@ -7,7 +7,7 @@
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>chopAI Lab — the chopsticksAI web agent · Chopsticks HQ</title>
-<meta name="description" content="chopAI Lab is the chopsticksAI web agent: ask anything, generate complete files and code, and download them straight from the chat. Powered by NVIDIA Nemotron 3 Super with Google Gemma 4 26B review.">
+<meta name="description" content="chopAI Lab is the chopsticksAI web agent: ask anything, generate complete files and code, and download them straight from the chat.">
 <link rel="canonical" href="https://chopstickshq.com/chopailab/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
@@ -179,7 +179,7 @@
 <div class="composer">
   <div class="hint">
     <span>Enter to send · Shift+Enter for a new line</span>
-    <span id="status">Nemotron 3 Super · reviewed by Gemma 4 26B</span>
+    <span id="status">chopsticksAI v1.0</span>
   </div>
   <div class="composer-inner">
     <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
@@ -366,12 +366,6 @@
         if (!d || !d.reply) throw new Error('empty');
         history.push({ role: 'assistant', content: d.reply });
         thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
-        if (d.draftedBy) {
-          var by = d.draftedBy.split('/').pop().replace(':free', '');
-          status.textContent = d.refinedBy
-            ? by + ' · reviewed by ' + d.refinedBy.split('/').pop().replace(':free', '')
-            : by;
-        }
       })
       .catch(function () {
         var msg = offline(text);

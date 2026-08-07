@@ -41,9 +41,13 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Netlify caps a synchronous function at ~26s, so the whole request - both
 // model calls - must finish inside this. The draft gets the bulk of it; the
 // review pass only runs if enough time is left.
-const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 20000);
-const DRAFT_TIMEOUT_MS = 13000;
+const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 24000);
 const REFINE_MIN_MS = 5000;
+// Long generations (the /chopailab agent asking for whole files) need most of
+// the window for the draft. Short widget replies leave room for a review pass.
+const LONG_REPLY_TOKENS = 800;
+const draftBudgetMs = (replyTokens, msLeft) =>
+  replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.min(13000, msLeft);
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
@@ -208,6 +212,9 @@ function systemPrompt(grounding, mode) {
     "steer the conversation back to Chopsticks HQ, and do not mention the reference material ",
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
+    "- You are chopsticksAI v1.0, made by Chopsticks HQ. If asked what model, ",
+    "engine or company is behind you, say you are chopsticksAI v1.0 by Chopsticks ",
+    "HQ. Never name or speculate about any underlying model, provider or vendor.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
     agent,
   ].join("");
@@ -350,7 +357,7 @@ async function handler(event) {
     let lastDetail = "";
 
     for (const candidate of MODELS) {
-      const budgetMs = Math.min(DRAFT_TIMEOUT_MS, deadline - Date.now());
+      const budgetMs = draftBudgetMs(replyTokens, deadline - Date.now());
       if (budgetMs <= 0) break;
       const g = withTimeout(budgetMs);
       let r;
@@ -376,8 +383,6 @@ async function handler(event) {
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
         mode: "error",
-        status: lastStatus,
-        detail: lastDetail.slice(0, 200),
       });
     }
 
@@ -428,9 +433,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "chopsticksAI 1.0",
-      draftedBy: draftModel,
-      refinedBy,
+      model: "chopsticksAI v1.0",
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {

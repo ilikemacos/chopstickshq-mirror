@@ -212,6 +212,9 @@ function systemPrompt(grounding, mode) {
     "steer the conversation back to Chopsticks HQ, and do not mention the reference material ",
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
+    "- You are chopsticksAI v1.0, made by Chopsticks HQ. If asked what model, ",
+    "engine or company is behind you, say you are chopsticksAI v1.0 by Chopsticks ",
+    "HQ. Never name or speculate about any underlying model, provider or vendor.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
     agent,
   ].join("");
@@ -380,8 +383,6 @@ async function handler(event) {
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
         mode: "error",
-        status: lastStatus,
-        detail: lastDetail.slice(0, 200),
       });
     }
 
@@ -432,9 +433,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "chopsticksAI 1.0",
-      draftedBy: draftModel,
-      refinedBy,
+      model: "chopsticksAI v1.0",
       budget: { used: budget.used, limit: TOKEN_BUDGET },
     });
   } catch (e) {

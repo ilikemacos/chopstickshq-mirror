@@ -6,14 +6,14 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>chopsticksAI 1.0 — powered by NVIDIA Nemotron 3 Super · Chopsticks HQ</title>
-<meta name="description" content="chopsticksAI 1.0 is a general-purpose assistant powered by NVIDIA Nemotron 3 Super, grounded in a knowledge base of every Chopsticks app. Full source, open.">
+<title>chopsticksAI v1.0 — the Chopsticks HQ assistant</title>
+<meta name="description" content="chopsticksAI v1.0 is a general-purpose assistant grounded in a knowledge base of every Chopsticks app. Ask it anything. Full source, open.">
 <link rel="canonical" href="https://chopstickshq.com/chopsticks-ai/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
-<meta property="og:title" content="chopsticksAI 1.0 — powered by NVIDIA Nemotron 3 Super">
-<meta property="og:description" content="The Chopsticks HQ assistant: Nemotron 3 Super, grounded in a 2,285-term knowledge base. Full source available.">
+<meta property="og:title" content="chopsticksAI v1.0 — the Chopsticks HQ assistant">
+<meta property="og:description" content="The Chopsticks HQ assistant, grounded in a 2,285-term knowledge base. Full source available.">
 <meta property="og:url" content="https://chopstickshq.com/chopsticks-ai/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -174,15 +174,13 @@
       <h1>chopsticksAI</h1>
       <p class="lead">
         A general-purpose assistant that answers anything you ask &mdash; and the in-house
-        expert on every Chopsticks app. <strong>chopsticksAI 1.0</strong>, powered by
-        <strong>NVIDIA Nemotron 3 Super</strong>, reachable from any page here
+        expert on every Chopsticks app. <strong>chopsticksAI v1.0</strong>, reachable from any page here
         and inside rNitro's Chat tab.
       </p>
 
       <div class="badge-row">
-        <span class="badge">Model <strong>chopsticksAI 1.0</strong></span>
-        <span class="badge">Powered by <strong>NVIDIA Nemotron 3 Super</strong></span>
-        <span class="badge">Reviewed by <strong>Google Gemma 4 26B</strong></span>
+        <span class="badge">Version <strong>chopsticksAI v1.0</strong></span>
+        
         <span class="badge">Context <strong>48K tokens</strong></span>
         <span class="badge">Limit <strong>775K tokens · 3-hour cooldown</strong></span>
         <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
@@ -190,22 +188,18 @@
       </div>
 
       <section>
-        <h2>What it runs on</h2>
+        <h2>How it answers</h2>
         <div class="card">
-          <h3>chopsticksAI 1.0, powered by NVIDIA Nemotron 3 Super</h3>
+          <h3>chopsticksAI v1.0</h3>
           <p>
-            <strong>chopsticksAI 1.0</strong> is powered by
-            <strong>NVIDIA Nemotron 3 Super</strong>, a 120B mixture-of-experts
-            model with 12B active parameters, served through OpenRouter.</p>
+            <strong>chopsticksAI v1.0</strong> is the assistant built and run by
+            Chopsticks HQ. Every answer is generated on request and grounded in
+            the knowledge base below, so product details come from real reference
+            material rather than guesswork.</p>
           <p>
-            Two models collaborate on every answer. Nemotron writes the draft,
-            then <strong>Google Gemma 4 26B</strong> reviews and rewrites it &mdash;
-            tightening the wording and cutting repetition, without adding any
-            facts the draft did not already contain.</p>
-          <p>
-            If Nemotron is rate-limited, Gemma takes over drafting instead. If the
-            review pass fails, the draft is sent as-is. Both are zero-cost tiers,
-            so the second opinion adds quality rather than expense.
+            Two passes run behind the scenes: one writes the answer, a second
+            reviews and tightens it. Generated files and code skip the review so
+            they are never silently rewritten.
           </p>
           <p>
             Requests run through a Chopsticks HQ endpoint that holds the API
@@ -247,9 +241,9 @@ retrieval      score against 2,285 terms, take the 6 best topics
    ↓
 grounding      inject those facts as reference material
    ↓
-draft          NVIDIA Nemotron 3 Super writes the answer
+draft          chopsticksAI writes the answer
    ↓
-review         Google Gemma 4 26B tightens and corrects it
+review         a second pass tightens and corrects it
    ↓
 answer         conversational, with real version numbers
 
@@ -309,7 +303,7 @@ fallback       the same knowledge base answers offline, on-device</div>
                 </tr>
                 <tr>
                   <td class="fname">chopsticks-ai.server.js</td>
-                  <td><strong>The proxy.</strong> Holds the credential, retrieves grounding, calls Nemotron, enforces the budget and rate limits.</td>
+                  <td><strong>The proxy.</strong> Holds the credential, retrieves grounding, calls the model, enforces the budget and rate limits.</td>
                   <td class="fsize">11 KB</td>
                   <td><a class="flink" href="files/chopsticks-ai.server.js">view</a></td>
                 </tr>

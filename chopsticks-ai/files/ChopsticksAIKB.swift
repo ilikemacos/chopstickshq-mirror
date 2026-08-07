@@ -234,7 +234,7 @@ enum ChopsticksAIKB {
             product: "general",
             label: "What is chopsticksAI?",
             priority: 90,
-            answer: "I'm chopsticksAI — the assistant built by Chopsticks HQ.\n\nI'm not a cloud language model. I run entirely on your device from a knowledge base about the Chopsticks apps, so I need no API key, cost nothing to use, and never send your questions anywhere.\n\nAsk me about rNitro, Fathom Air, Fathom Pro, ARENA, installing, troubleshooting, or privacy.",
+            answer: "I'm chopsticksAI v1.0 — the assistant built by Chopsticks HQ.\n\nAsk me anything: general knowledge, code, writing, or anything about the Chopsticks apps. Product answers come from a maintained knowledge base, so version numbers and install commands are the real ones.\n\nNo account, no API key, and nothing you type is stored.",
             terms: [("are you an ai", 8), ("are you chatgpt", 8), ("chopsitcksai", 4), ("chopsticksai", 4), ("chopsticksais", 4), ("choptsicksai", 4), ("chospticksai", 4), ("chposticksai", 4), ("cohpsticksai", 4), ("hcopsticksai", 4), ("what are you", 8), ("what is chopsticksai", 8), ("who are you", 7)]
         ),
         ChopsticksAIIntent(
