@@ -38,7 +38,12 @@ const REFINE_SYSTEM = [
   "the review, or yourself as a reviewer - output only the final reply text.",
 ].join("");
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const TIMEOUT_MS = 25000;
+// Netlify caps a synchronous function at ~26s, so the whole request - both
+// model calls - must finish inside this. The draft gets the bulk of it; the
+// review pass only runs if enough time is left.
+const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 20000);
+const DRAFT_TIMEOUT_MS = 13000;
+const REFINE_MIN_MS = 5000;
 
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
@@ -307,8 +312,12 @@ async function handler(event) {
   const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns))) };
   const messages = fitContext(system, turns);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const deadline = now + TIMEOUT_MS;
+  const withTimeout = (ms) => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    return { signal: c.signal, done: () => clearTimeout(t) };
+  };
   try {
     // --- stage 1: draft -------------------------------------------------
     // Walk the model chain; a rate-limited or erroring model hands off to the
@@ -319,9 +328,17 @@ async function handler(event) {
     let lastDetail = "";
 
     for (const candidate of MODELS) {
-      const r = await callModel({
-        model: candidate, messages, key, signal: controller.signal,
-      });
+      const budgetMs = Math.min(DRAFT_TIMEOUT_MS, deadline - Date.now());
+      if (budgetMs <= 0) break;
+      const g = withTimeout(budgetMs);
+      let r;
+      try {
+        r = await callModel({ model: candidate, messages, key, signal: g.signal });
+      } catch (e) {
+        r = { ok: false, status: 0, detail: String(e && e.name) };
+      } finally {
+        g.done();
+      }
       if (r.ok && r.text) {
         draft = r;
         draftModel = candidate;
@@ -349,12 +366,14 @@ async function handler(event) {
     // --- stage 2: refine ------------------------------------------------
     // A second model reviews and rewrites the draft. Failure here is not fatal:
     // the draft is already a complete answer, so we return it unchanged.
-    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel) {
+    const timeLeft = deadline - Date.now();
+    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
+      const g = withTimeout(timeLeft - 500);
       const r = await callModel({
         model: REFINE_MODEL,
         key,
-        signal: controller.signal,
+        signal: g.signal,
         temperature: 0.2,
         messages: [
           { role: "system", content: REFINE_SYSTEM },
@@ -366,6 +385,7 @@ async function handler(event) {
           },
         ],
       });
+      g.done();
       if (r.ok && r.text) {
         reply = r.text;
         refinedBy = REFINE_MODEL;
@@ -396,7 +416,7 @@ async function handler(event) {
       mode: "error",
     });
   } finally {
-    clearTimeout(timer);
+    // per-call timers are cleared inline
   }
 }
 
