@@ -27,6 +27,12 @@ const TIERS = {
       "nvidia/nemotron-3-super-120b-a12b:free",
       "google/gemma-4-26b-a4b-it:free",
     ],
+    // Long generations are token-rate bound, and a 55B-active model cannot emit
+    // ~1.5k tokens inside the serverless window. Fewer active parameters first.
+    longModels: [
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
     context: 48000,
   },
   super: {
@@ -34,6 +40,10 @@ const TIERS = {
     models: [
       "nvidia/nemotron-3-super-120b-a12b:free",
       "google/gemma-4-26b-a4b-it:free",
+    ],
+    longModels: [
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     context: 24000,
   },
@@ -625,8 +635,18 @@ async function handler(event) {
     let lastStatus = 0;
     let lastDetail = "";
 
-    for (const candidate of tier.models) {
-      const budgetMs = draftBudgetMs(replyTokens, deadline - Date.now());
+    const chain = (replyTokens > LONG_REPLY_TOKENS && tier.longModels)
+      ? tier.longModels : tier.models;
+
+    for (let ci = 0; ci < chain.length; ci++) {
+      const candidate = chain[ci];
+      // Reserve time for the remaining candidates so a slow first model cannot
+      // consume the whole window and leave no chance to fall back.
+      const remaining = chain.length - ci;
+      const share = Math.floor((deadline - Date.now()) / remaining);
+      const budgetMs = remaining > 1
+        ? Math.max(7000, share)
+        : draftBudgetMs(replyTokens, deadline - Date.now());
       if (budgetMs <= 0) break;
       const g = withTimeout(budgetMs);
       let r;
