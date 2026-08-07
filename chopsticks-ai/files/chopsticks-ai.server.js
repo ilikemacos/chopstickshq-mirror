@@ -18,11 +18,11 @@
 // Tried in order: if the first is rate-limited or erroring, the next takes over.
 // Both are zero-cost tiers, so failover never introduces spend.
 const MODELS = (process.env.CHOPSTICKS_AI_MODEL ||
-  "nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free")
+  "nvidia/nemotron-3-ultra-550b-a55b:free,nvidia/nemotron-3-super-120b-a12b:free,google/gemma-4-26b-a4b-it:free")
   .split(",").map((m) => m.trim()).filter(Boolean);
 const MODEL = MODELS[0];
 
-// Two models collaborate on each answer: NVIDIA Nemotron drafts, Google Gemma
+// Two models collaborate on each answer: Nemotron Ultra drafts, Gemma
 // reviews and rewrites. Both are zero-cost tiers, so the second pass adds
 // quality without adding spend. Set CHOPSTICKS_AI_REFINE=off to disable.
 const REFINE_MODEL = process.env.CHOPSTICKS_AI_REFINE_MODEL || "google/gemma-4-26b-a4b-it:free";
