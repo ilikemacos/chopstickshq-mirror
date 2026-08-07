@@ -48,6 +48,9 @@ const REFINE_MIN_MS = 5000;
 // Context window of the model, minus headroom for the reply.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
 const MAX_REPLY_TOKENS = 400;
+// The /chopailab agent generates files and code, which needs far more room than
+// the sidebar widget. Callers may request more, within a hard ceiling.
+const MAX_REPLY_TOKENS_CEILING = 2000;
 
 const MAX_MESSAGES = 12;        // trailing turns kept from the client
 const MAX_CHARS_PER_MSG = 2000;
@@ -161,7 +164,20 @@ function retrieve(query, limit = GROUNDING_INTENTS) {
   return scored.slice(0, limit).map((s) => s.intent);
 }
 
-function systemPrompt(grounding) {
+function systemPrompt(grounding, mode) {
+  // The agent at /chopailab produces files and code; the sidebar widget answers
+  // conversationally. Same knowledge, different output contract.
+  const agent = mode === "agent" ? [
+    "\n\nYou are running as the chopsticksAI Lab agent. The user may ask you to ",
+    "write code, config, scripts, documents or data files.\n",
+    "- Put every file you produce in its own fenced code block.\n",
+    "- Start the fence with the language, then a space, then the filename, ",
+    "e.g. ```python analyse.py or ```json config.json — the interface turns that ",
+    "filename into a download button, so always supply one.\n",
+    "- Give complete, runnable files rather than fragments or ellipses.\n",
+    "- Keep explanation outside the fences and brief.",
+  ].join("") : "";
+
   const facts = grounding.length
     ? grounding.map((i) => `### ${i.label}\n${i.answer}`).join("\n\n")
     : "(no specific reference material matched this question)";
@@ -193,6 +209,7 @@ function systemPrompt(grounding) {
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
+    agent,
   ].join("");
 }
 
@@ -309,7 +326,12 @@ async function handler(event) {
     });
   }
 
-  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns))) };
+  const wanted = Number(payload.maxTokens);
+  const replyTokens = Number.isFinite(wanted)
+    ? Math.max(100, Math.min(MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
+    : MAX_REPLY_TOKENS;
+
+  const system = { role: "system", content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode) };
   const messages = fitContext(system, turns);
 
   const deadline = now + TIMEOUT_MS;
@@ -333,7 +355,7 @@ async function handler(event) {
       const g = withTimeout(budgetMs);
       let r;
       try {
-        r = await callModel({ model: candidate, messages, key, signal: g.signal });
+        r = await callModel({ model: candidate, messages, key, signal: g.signal, maxTokens: replyTokens });
       } catch (e) {
         r = { ok: false, status: 0, detail: String(e && e.name) };
       } finally {
@@ -366,8 +388,12 @@ async function handler(event) {
     // --- stage 2: refine ------------------------------------------------
     // A second model reviews and rewrites the draft. Failure here is not fatal:
     // the draft is already a complete answer, so we return it unchanged.
+    // A review pass rewrites prose safely, but can silently corrupt generated
+    // code or file contents, so drafts containing a fenced block skip it.
+    const hasCodeBlock = draft.text.includes("```");
     const timeLeft = deadline - Date.now();
-    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel && timeLeft >= REFINE_MIN_MS) {
+    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel
+        && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
       const g = withTimeout(timeLeft - 500);
       const r = await callModel({

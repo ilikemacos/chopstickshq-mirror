@@ -1,0 +1,10 @@
+{
+  "latest": "v1.0.0",
+  "product": "Chopsticks HQ",
+  "releases": {
+    "stable": {
+      "zip": "ChopsticksHQ-v1.0.0.zip",
+      "sha256": "85b294082e21a7420477fd5b15cb0250ce93c7a1cedd2d40c28d32ef3f63dfb7"
+    }
+  }
+}
