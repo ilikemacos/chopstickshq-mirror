@@ -73,10 +73,10 @@
     "intel_stable_sh": "",
     "stable_zip": "1e05f5d3cee6c94105c291c0fe1bad339277636becf439d2fab89bbbacd4d803",
     "beta_zip": "cc22f0a56429f3af9a3b6fed86518ce00654e240a4017224eea66752b8694bec",
-    "experimental_zip": "00044c7f2a786f55ab54f2d49e5d15773cd5e00f24c9126508f7d4fd4e1f90b1",
-    "experimental_sh": "88aafe0e8acd3cee86bdff8c46a41ed64e8ee46b81d20b5ff7b57bc568719b8d",
-    "experimental_pkg": "cc37c0cd69641757cf939d6319f9bfffe1f389685c8f21b57b314a93806b8941",
-    "experimental_dmg": "6853bc75b514edabbb8a8690cbbe4bb326579f525b5a3ff596068c7a408501a5",
+    "experimental_zip": "23bdf7aa69a0c8d88b6efe96d7bfc3ce3ee4c61d038a1c240da34851e495df9d",
+    "experimental_sh": "95c9fa347481fd33084a939779e68b5534a7ca1b09c33ed0392989517fb3a131",
+    "experimental_pkg": "00ba9991354cf3a8c28580e043a2614ed99d152672bfa2e758e75d7c46d09e9e",
+    "experimental_dmg": "e37d1a291c523a56287b239c9493aa0e874dc8955f3d4888d646b88cd340300f",
     "windows_zip": "a9ff832f67b248c1dd6f071d917846be02e895812c659969407b641558fd60a1"
   },
   "archive": [

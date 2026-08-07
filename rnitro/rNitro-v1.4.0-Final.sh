@@ -31,7 +31,7 @@ if [[ -z "${HOME:-}" || ! -d "$HOME" ]]; then
   echo "❌ \$HOME is not set to a valid directory. Aborting."
   exit 1
 fi
-EXPECTED_HASH="f78f82569ad2d1626a6e0fed9caeffd79a69a84065d83c4d4983333be502c6af"
+EXPECTED_HASH="dbef2bef8432a80e03ccf2e86ea4591b343f6d56cbd50423f8ed19296ededdd8"
 ACTUAL_HASH="$(sed 's/^EXPECTED_HASH=.*/EXPECTED_HASH="MASKED"/' "$0" | shasum -a 256 | awk '{print $1}')"
 if [[ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]]; then
   echo "❌ Integrity check failed. This file may have been tampered with."
@@ -2917,7 +2917,7 @@ class BatteryMonitor: ObservableObject {
             lines.append(String(format: "Observed drain: %.1f %%/hr", smoothedDrainPctPerHour))
         }
         lines.append("Paths: \(diagSourceLabel)")
-        lines.append("Note: Charge % and remaining time use local IOPS + pmset (same as menu bar / btop). IOKit is for amps/mAh/health only.")
+        lines.append("Note: Charge % follows pmset (same source as the macOS menu bar). Chemical gauge and raw mAh are diagnostics only.")
         return lines.joined(separator: "\n")
     }
 
@@ -3300,12 +3300,11 @@ class BatteryMonitor: ObservableObject {
     ) -> Snapshot {
 
         var snap = readIOPS() ?? Snapshot()
-        if shouldRefreshPmset(for: snap) {
-            if let pm = readPmset() {
-                mergePmsetAsAuthority(pm, into: &snap)
-                lastPmsetRefresh = Date()
-                lastPmsetLevel = snap.levelPercent
-            }
+        // pmset matches the macOS menu bar; always prefer it over IOPS/IOKit mAh ratios.
+        if let pm = readPmset() {
+            mergePmsetAsAuthority(pm, into: &snap)
+            lastPmsetRefresh = Date()
+            lastPmsetLevel = snap.levelPercent
         } else if snap.levelPercent > 0 {
             if snap.remainingSource.isEmpty || snap.remainingSource == "IOKit" {
                 snap.remainingSource = "IOPS"
@@ -3509,6 +3508,7 @@ class BatteryMonitor: ObservableObject {
         if pm.levelPercent > 0 {
             snap.levelPercent = pm.levelPercent
             snap.diagPmsetPercent = pm.levelPercent
+            snap.diagIOPSPercent = snap.diagIOPSPercent ?? pm.levelPercent
         }
         snap.isCharging = pm.isCharging
         snap.isOnAC = pm.isOnAC
@@ -3529,7 +3529,9 @@ class BatteryMonitor: ObservableObject {
     }
 
     private static func mergeIOKitTelemetryOnly(_ hw: Snapshot, into snap: inout Snapshot) {
-        if snap.levelPercent <= 0, hw.levelPercent > 0 {
+        if snap.levelPercent <= 0, let cap = hw.diagIOKitCurrentCapacity, cap >= 0, cap <= 100 {
+            snap.levelPercent = cap
+        } else if snap.levelPercent <= 0, hw.levelPercent > 0, hw.levelPercent <= 100 {
             snap.levelPercent = hw.levelPercent
         }
         if !snap.isPresent { snap.isPresent = hw.isPresent }
@@ -3601,8 +3603,11 @@ class BatteryMonitor: ObservableObject {
                 let cur = n.intValue
                 if let maxN = desc[kIOPSMaxCapacityKey] as? NSNumber ?? desc["Max Capacity"] as? NSNumber {
                     let maxC = maxN.intValue
-                    if maxC > 100, cur >= 0 {
-                        snap.levelPercent = min(100, Int((Double(cur) / Double(maxC) * 100.0).rounded()))
+                    if maxC == 100, cur >= 0, cur <= 100 {
+                        snap.levelPercent = cur
+                    } else if maxC > 100, cur >= 0, cur <= 100 {
+                        // Display percent can appear even when Max Capacity is in mAh; never derive UI % from mAh ratio.
+                        snap.levelPercent = cur
                     } else if cur >= 0, cur <= 100 {
                         snap.levelPercent = cur
                     }
@@ -3947,11 +3952,6 @@ class BatteryMonitor: ObservableObject {
         snap.isFullyCharged = ioPropertyBool(service, "FullyCharged") == true
             || (snap.levelPercent >= 100 && !snap.isCharging && snap.isOnAC)
         applyIOKitChargePower(service, to: &snap)
-
-        if !snap.isCharging, let ma = snap.amperageMa, ma > 80 {
-            snap.isCharging = true
-            snap.isOnAC = true
-        }
         return snap
     }
 
@@ -3961,26 +3961,7 @@ class BatteryMonitor: ObservableObject {
             return cur
         }
 
-        if let cur = ioPropertyInt(service, "CurrentCapacity"),
-           let maxCap = ioPropertyInt(service, "MaxCapacity"), maxCap > 100, cur >= 0 {
-            return min(100, Int((Double(cur) / Double(maxCap) * 100.0).rounded()))
-        }
-
-        if let raw = rawCur, let maxCap = rawMax, maxCap > 0 {
-            return min(100, max(0, Int((Double(raw) / Double(maxCap) * 100.0).rounded())))
-        }
-
-        if let bd = ioProperty(service, "BatteryData") {
-            let socValue: Any? = (bd as? [String: Any])?["StateOfCharge"]
-                ?? (bd as? NSDictionary)?["StateOfCharge"]
-            if let soc = (socValue as? NSNumber)?.intValue ?? socValue.flatMap({ cfInt($0 as AnyObject as CFTypeRef) }),
-               soc >= 0, soc <= 100 {
-                return soc
-            }
-        }
-        if let soc = ioPropertyInt(service, "StateOfCharge"), soc >= 0, soc <= 100 {
-            return soc
-        }
+        // MaxCapacity in mAh with CurrentCapacity 0–100 is the menu-bar scale; never use raw mAh ratio for UI %.
         return 0
     }
 
@@ -4146,13 +4127,9 @@ class BatteryMonitor: ObservableObject {
             }
         }
 
-        if info.levelPercent <= 0 {
-            if let cur = matchInt(#"CurrentCapacity"\s*=\s*(\d+)"#, in: out), cur <= 100 {
-                info.levelPercent = cur
-            } else if let raw = matchInt(#"AppleRawCurrentCapacity"\s*=\s*(\d+)"#, in: out),
-                      let rawMax = matchInt(#"AppleRawMaxCapacity"\s*=\s*(\d+)"#, in: out), rawMax > 0 {
-                info.levelPercent = min(100, Int((Double(raw) / Double(rawMax) * 100.0).rounded()))
-            }
+        if info.levelPercent <= 0,
+           let cur = matchInt(#"CurrentCapacity"\s*=\s*(\d+)"#, in: out), cur <= 100 {
+            info.levelPercent = cur
         }
         return info.levelPercent > 0 || info.isOnAC || info.adapterWatts > 0 || info.batteryInstalled ? info : nil
     }
@@ -6578,6 +6555,7 @@ enum ChopsticksAI {
 
 enum AIProvider: String, CaseIterable, Identifiable {
     case chopsticks = "chopsticksAI"
+    case chopsticksSuper = "chopsticksAI Super"
     case gemini = "Gemini"
     case openai = "OpenAI"
     case anthropic = "Anthropic"
@@ -6591,14 +6569,15 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var requiresApiKey: Bool {
         switch self {
-        case .chopsticks, .lmStudio, .ollama, .hermes: return false
+        case .chopsticks, .chopsticksSuper, .lmStudio, .ollama, .hermes: return false
         default: return true
         }
     }
 
     var modelLabel: String {
         switch self {
-        case .chopsticks: return "on-device knowledge base"
+        case .chopsticks: return "Ultra · 48K context"
+        case .chopsticksSuper: return "Super · 24K context"
         case .gemini: return "gemini-2.0-flash"
         case .openai: return "gpt-4o-mini"
         case .anthropic: return "claude-3-5-haiku-20241022"
@@ -6613,7 +6592,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var keyURL: String {
         switch self {
-        case .chopsticks: return "https://chopstickshq.com/"
+        case .chopsticks, .chopsticksSuper: return "https://chopstickshq.com/chopsticks-ai/"
         case .gemini: return "https://aistudio.google.com/apikey"
         case .openai: return "https://platform.openai.com/api-keys"
         case .anthropic: return "https://console.anthropic.com/settings/keys"
@@ -6628,7 +6607,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var keyHint: String {
         switch self {
-        case .chopsticks: return "built in - no key"
+        case .chopsticks, .chopsticksSuper: return "built in - no key"
         case .gemini: return "Google AI Studio"
         case .openai: return "OpenAI Platform"
         case .anthropic: return "Anthropic Console"
@@ -6643,7 +6622,7 @@ enum AIProvider: String, CaseIterable, Identifiable {
 
     var setupHint: String {
         switch self {
-        case .chopsticks:
+        case .chopsticks, .chopsticksSuper:
             return "chopsticksAI is built in. It answers from an on-device knowledge base about rNitro, Fathom and ARENA - no API key, no network request, nothing leaves your Mac."
         case .lmStudio:
             return "Start LM Studio locally and load a model. API key is optional — leave blank and tap Enable if your server has no auth (default: localhost:1234)."
@@ -7035,7 +7014,7 @@ final class AIChatModel: ObservableObject {
     }
 
     func hasSavedKey(for provider: AIProvider) -> Bool {
-        if provider == .chopsticks { return true }
+        if provider == .chopsticks || provider == .chopsticksSuper { return true }
         if provider.requiresApiKey {
             return resolvedKey(for: provider) != nil
         }
@@ -7114,7 +7093,7 @@ final class AIChatModel: ObservableObject {
         // credential server-side - no key is stored in or extractable from this
         // app. If the proxy is unreachable it falls back to the on-device
         // knowledge base, so the assistant still answers offline.
-        if provider == .chopsticks {
+        if provider == .chopsticks || provider == .chopsticksSuper {
             inputText = ""
             messages.append(ChatMessage(role: "user", text: text))
             let replyId = UUID()
@@ -7122,7 +7101,7 @@ final class AIChatModel: ObservableObject {
             let history = messages
             isLoading = true
             Task {
-                let reply = await Self.requestChopsticks(messages: history)
+                let reply = await Self.requestChopsticks(messages: history, tier: provider == .chopsticksSuper ? "super" : "ultra")
                 replaceMessage(id: replyId, text: reply)
                 markProviderConnected(provider)
                 isLoading = false
@@ -7194,7 +7173,7 @@ final class AIChatModel: ObservableObject {
 
     /// Asks the Chopsticks HQ proxy. Falls back to the compiled-in knowledge
     /// base on any failure so chopsticksAI never dead-ends.
-    nonisolated private static func requestChopsticks(messages: [ChatMessage]) async -> String {
+    nonisolated private static func requestChopsticks(messages: [ChatMessage], tier: String) async -> String {
         let lastUser = messages.last(where: { $0.role == "user" })?.text ?? ""
         guard let url = URL(string: "https://chopstickshq.com/api/chopsticks-ai") else {
             return ChopsticksAI.ask(lastUser).answer
@@ -7209,7 +7188,7 @@ final class AIChatModel: ObservableObject {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.timeoutInterval = 25
-        req.httpBody = try? JSONSerialization.data(withJSONObject: ["messages": turns])
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["messages": turns, "tier": tier])
 
         do {
             let (data, response) = try await URLSession.shared.data(for: req)
@@ -7229,8 +7208,8 @@ final class AIChatModel: ObservableObject {
     nonisolated private static func probe(provider: AIProvider, apiKey: String) async -> Result<Void, Error> {
         do {
             switch provider {
-            case .chopsticks:
-                // Nothing to reach - the knowledge base is compiled in.
+            case .chopsticks, .chopsticksSuper:
+                // Nothing to reach - the endpoint needs no credential from the app.
                 return .success(())
             case .gemini:
                 var req = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models")!)
@@ -7340,7 +7319,7 @@ final class AIChatModel: ObservableObject {
 
     nonisolated private static func request(provider: AIProvider, apiKey: String, messages: [ChatMessage]) async throws -> String {
         switch provider {
-        case .chopsticks:
+        case .chopsticks, .chopsticksSuper:
             // Unreachable in practice - sendMessage answers chopsticksAI before
             // it gets here - but keeps the switch exhaustive and network-free.
             return ChopsticksAI.ask(messages.last?.text ?? "").answer
