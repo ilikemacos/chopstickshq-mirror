@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.0",
+  "latest": "cs.AI 2.0.1",
   "entries": [
+    {
+      "version": "cs.AI 2.0.1",
+      "date": "2026-08-08",
+      "title": "Mozilla Search in the macOS app",
+      "changes": [
+        "New Search rail in the Agents Window — same Mozilla engine as the website (MDN, Wikipedia, DuckDuckGo)",
+        "Results open in your browser; no API key required"
+      ]
+    },
     {
       "version": "cs.AI 2.0",
       "date": "2026-08-08",
