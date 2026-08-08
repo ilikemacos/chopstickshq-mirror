@@ -1,7 +1,17 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.0",
+  "latest": "cs.AI 2.2.1",
   "entries": [
+    {
+      "version": "cs.AI 2.2.1",
+      "date": "2026-08-08",
+      "title": "Fix model timeouts / sticky Offline",
+      "changes": [
+        "Model deadline no longer includes web-search time — stops “couldn't reach its model” on normal questions",
+        "Coding tiers fall back to another model when the primary is busy; short rescue completion as last resort",
+        "macOS Offline badge only sticks when the host is actually offline (not on transient errors)"
+      ]
+    },
     {
       "version": "cs.AI 2.2.0",
       "date": "2026-08-08",

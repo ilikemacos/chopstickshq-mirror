@@ -146,26 +146,40 @@ const TIERS = {
   /** Coding specialist mode — Poolside Laguna S 2.1. Do not expose provider/pricing in UI. */
   chopcode: {
     label: "ChopCode",
-    models: ["poolside/laguna-s-2.1:free"],
-    longModels: ["poolside/laguna-s-2.1:free"],
+    models: [
+      "poolside/laguna-s-2.1:free",
+      "cohere/north-mini-code:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
+    longModels: [
+      "poolside/laguna-s-2.1:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
     context: 64000,
     refine: false,
     maxReply: 4000,
     grounding: 4,
-    searchMax: 10,
+    searchMax: 6,
     temperature: 0.2,
     chopCode: true,
   },
   /** StickerCoder+ — North Mini Code. Do not expose provider/pricing in UI. */
   stickercoderplus: {
     label: "StickerCoder+",
-    models: ["cohere/north-mini-code:free"],
-    longModels: ["cohere/north-mini-code:free"],
+    models: [
+      "cohere/north-mini-code:free",
+      "poolside/laguna-s-2.1:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
+    longModels: [
+      "cohere/north-mini-code:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ],
     context: 96000,
     refine: false,
     maxReply: 6000,
     grounding: 4,
-    searchMax: 10,
+    searchMax: 6,
     temperature: 0.15,
     chopCode: true,
     stickerCoder: true,
@@ -469,12 +483,10 @@ const REFINE_SYSTEM = [
   "the review, or yourself as a reviewer - output only the final reply text.",
 ].join("");
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-// Netlify caps a synchronous function at ~26s, so the whole request - both
-// model calls - must finish inside this. The draft gets the bulk of it; the
-// review pass only runs if enough time is left.
-// Netlify kills a synchronous function at ~26s with a 504 - which the client
-// sees as a broken response, not our graceful message. Stay well inside it.
-const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 18000);
+// Netlify caps a synchronous function at ~26s. Web search runs BEFORE the
+// model deadline (see handler), so TIMEOUT_MS is the model-phase budget only.
+// Stay under the platform kill so clients get a JSON reply, not a 504.
+const TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_TIMEOUT_MS || 20000);
 const REFINE_MIN_MS = 5000;
 // Long generations (the /chopailab agent asking for whole files) need most of
 // the window for the draft. Short widget replies leave room for a review pass.
@@ -795,7 +807,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // parallel: Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News,
 // GitHub, MDN, npm, arXiv, and Google/Brave when API keys are configured.
 const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
-const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 9000);
+const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 6000);
 const SEARCH_MIN_LEN = 3;
 const MAX_SOURCES = 12;
 const UA = "cs.AI/2.0 (+https://chopstickshq.com/chopsticks-ai/)";
@@ -1519,19 +1531,27 @@ async function continueWithTools({
         content: JSON.stringify(result),
       });
     }
-    cur = await callModel({
-      model,
-      messages: msgs,
-      key,
-      signal,
-      maxTokens,
-      temperature,
-      tools: AGENT_TOOLS,
-      toolChoice: "auto",
-    });
+    try {
+      cur = await callModel({
+        model,
+        messages: msgs,
+        key,
+        signal,
+        maxTokens,
+        temperature,
+        tools: AGENT_TOOLS,
+        toolChoice: "auto",
+      });
+    } catch (e) {
+      return {
+        text: first.text || (files.length ? "Created files via tools." : ""),
+        files,
+        tokens,
+      };
+    }
     if (!cur.ok) {
       return {
-        text: first.text || "Created files via tools.",
+        text: first.text || (files.length ? "Created files via tools." : ""),
         files,
         tokens,
       };
@@ -1896,10 +1916,11 @@ async function handler(event) {
   };
   const messages = fitContext(system, modelTurns, contextFor(tier, plan));
 
-  const deadline = now + TIMEOUT_MS;
+  // Model deadline starts AFTER search so Mozilla lookups can't starve the LLM.
+  const deadline = Date.now() + TIMEOUT_MS;
   const withTimeout = (ms) => {
     const c = new AbortController();
-    const t = setTimeout(() => c.abort(), ms);
+    const t = setTimeout(() => c.abort(), Math.max(500, ms));
     return { signal: c.signal, done: () => clearTimeout(t) };
   };
   try {
@@ -1915,11 +1936,11 @@ async function handler(event) {
     const useTools = payload.enableTools !== false
       && (payload.mode === "agent" || tier.chopCode || payload.tools === true);
 
-    // A long generation only has time for one attempt. Falling back would blow
-    // the platform's function limit and produce a 504 instead of an answer.
+    // Prefer a short chain when the reply is large, but keep one fallback so a
+    // busy free model does not hard-fail the whole request.
     const longRun = replyTokens > LONG_REPLY_TOKENS;
     const chain = longRun
-      ? (tier.longModels || tier.models).slice(0, 1)
+      ? (tier.longModels || tier.models).slice(0, 2)
       : tier.models;
 
     for (let ci = 0; ci < chain.length; ci++) {
@@ -1929,9 +1950,9 @@ async function handler(event) {
       // starved every candidate and all of them timed out.
       const msLeft = deadline - Date.now();
       const budgetMs = chain.length > 1
-        ? Math.max(6000, Math.floor(msLeft / (chain.length - ci)))
+        ? Math.max(5000, Math.floor(msLeft / (chain.length - ci)))
         : msLeft - 700;
-      if (budgetMs <= 0) break;
+      if (budgetMs <= 1200) break;
       let r;
       const attemptStart = Date.now();
       const g = withTimeout(budgetMs);
@@ -1954,9 +1975,9 @@ async function handler(event) {
       } finally {
         g.done();
       }
-      // If tools aren't supported by this model, retry once without them.
-      if (!r.ok && useTools && r.status === 400) {
-        const g0 = withTimeout(Math.min(budgetMs, 20000));
+      // If tools aren't supported or overloaded with tools, retry without them.
+      if (!r.ok && useTools && (r.status === 400 || r.status === 404 || r.status === 429 || r.status === 503 || r.status === 0)) {
+        const g0 = withTimeout(Math.min(budgetMs, Math.max(4000, deadline - Date.now() - 400)));
         try {
           r = await callModel({
             model: candidate,
@@ -1973,8 +1994,8 @@ async function handler(event) {
         }
       }
       if (!r.ok && (r.status === 429 || r.status === 503) && budgetMs > 2500) {
-        await sleep(700);
-        const g2 = withTimeout(Math.min(budgetMs, 12000));
+        await sleep(500);
+        const g2 = withTimeout(Math.min(budgetMs, 10000, Math.max(3000, deadline - Date.now() - 400)));
         try {
           r = await callModel({
             model: candidate,
@@ -1983,8 +2004,6 @@ async function handler(event) {
             signal: g2.signal,
             maxTokens: replyTokens,
             temperature: tier.temperature,
-            tools: useTools ? AGENT_TOOLS : undefined,
-            toolChoice: useTools ? "auto" : undefined,
           });
         } catch (e) {
           r = { ok: false, status: 0, detail: String(e && e.name) };
@@ -1994,7 +2013,7 @@ async function handler(event) {
       }
       if (r.ok && (r.text || (r.toolCalls && r.toolCalls.length))) {
         if (r.toolCalls && r.toolCalls.length) {
-          const g3 = withTimeout(Math.max(4000, deadline - Date.now() - 500));
+          const g3 = withTimeout(Math.max(3000, deadline - Date.now() - 500));
           try {
             const cont = await continueWithTools({
               model: candidate,
@@ -2012,6 +2031,14 @@ async function handler(event) {
               toolCalls: [],
             };
             producedFiles = cont.files || [];
+          } catch (e) {
+            // Timed out mid-tool-loop — still return any files already written.
+            draft = {
+              ok: true,
+              text: r.text || "Created files via tools.",
+              tokens: r.tokens || null,
+              toolCalls: [],
+            };
           } finally {
             g3.done();
           }
@@ -2023,6 +2050,33 @@ async function handler(event) {
       }
       lastStatus = r.status || 0;
       lastDetail = (r.detail || "") + ` [${candidate.split("/")[1]} ${Date.now() - attemptStart}/${budgetMs}ms]`;
+    }
+
+    // Last-chance short completion so search-heavy turns still answer.
+    if (!draft && deadline - Date.now() > 2500) {
+      const rescue = "google/gemma-4-26b-a4b-it:free";
+      const gR = withTimeout(Math.min(9000, deadline - Date.now() - 300));
+      try {
+        const r = await callModel({
+          model: rescue,
+          messages,
+          key: apiKey,
+          signal: gR.signal,
+          maxTokens: Math.min(700, replyTokens),
+          temperature: tier.temperature ?? 0.3,
+        });
+        if (r.ok && r.text) {
+          draft = r;
+          draftModel = rescue;
+        } else {
+          lastStatus = r.status || lastStatus;
+          lastDetail = (r.detail || lastDetail || "") + " [rescue]";
+        }
+      } catch (e) {
+        lastDetail = String(e && e.name) + " [rescue]";
+      } finally {
+        gR.done();
+      }
     }
 
     if (!draft) {
