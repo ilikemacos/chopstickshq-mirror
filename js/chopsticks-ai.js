@@ -110,9 +110,15 @@
   }
 
   function askModel(text) {
-    history.push({ role: 'user', content: text });
+    var sr = parseSearch(text);
+    history.push({ role: 'user', content: sr.raw });
     var urls = endpointsFor('/api/chopsticks-ai');
     var i = 0;
+    var payload = { messages: history.slice(-12) };
+    if (sr.hadPrefix && payload.messages.length) {
+      payload.messages = payload.messages.slice();
+      payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
+    }
 
     function attempt() {
       if (i >= urls.length) return Promise.reject(new Error('unreachable'));
@@ -120,7 +126,7 @@
       return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history.slice(-12) })
+        body: JSON.stringify(payload)
       })
         .then(function (r) { return r.json(); })
         .then(function (d) {
@@ -183,6 +189,11 @@
     'padding:0 14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}' +
     '.cai-usage{font-family:var(--mono,"JetBrains Mono",monospace);font-size:9px;letter-spacing:.06em;' +
     'color:var(--muted,#8b8b9a);margin-top:5px;line-height:1.45;text-align:right}' +
+    '.cai-sources{margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}' +
+    '.cai-sources-label{font-family:var(--mono,"JetBrains Mono",monospace);font-size:9px;letter-spacing:.08em;' +
+    'color:var(--muted,#8b8b9a);margin-bottom:4px;text-transform:uppercase}' +
+    '.cai-source-link{display:block;font-size:11px;color:var(--text,#f2f2f5);opacity:.85;margin-top:3px;' +
+    'text-decoration:underline;text-underline-offset:2px;word-break:break-word}' +
     '.cai-panel.compact{width:min(320px,calc(100vw - 32px));max-height:min(420px,calc(100vh - 110px))}' +
     '.cai-panel.compact .cai-head{padding:10px 12px}.cai-panel.compact .cai-title{font-size:13px}' +
     '.cai-panel.compact .cai-sub{font-size:9px}.cai-panel.compact .cai-msg{font-size:12px;padding:7px 10px}' +
@@ -214,6 +225,7 @@
   function showUsage(d) {
     if (!usageEl) return;
     var parts = [];
+    if (d && d.searched) parts.push('Web search');
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Ctx ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
@@ -223,10 +235,42 @@
     usageEl.textContent = parts.join(' · ');
   }
 
+  function parseSearch(text) {
+    if (/^\/search\b/i.test(text)) {
+      var q = text.replace(/^\/search\s*/i, '').trim();
+      return { query: q || text, hadPrefix: true, raw: text };
+    }
+    return { query: text, hadPrefix: false, raw: text };
+  }
+
+  function appendSources(target, sources) {
+    if (!sources || !sources.length) return;
+    var wrap = el('div', 'cai-sources');
+    wrap.appendChild(el('div', 'cai-sources-label', 'Sources'));
+    sources.forEach(function (s) {
+      if (s.url) {
+        var a = document.createElement('a');
+        a.className = 'cai-source-link';
+        a.href = s.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = s.title || s.url;
+        wrap.appendChild(a);
+      } else if (s.title) {
+        wrap.appendChild(el('div', 'cai-source-link', s.title));
+      }
+    });
+    target.appendChild(wrap);
+  }
+
   function handleSlash(text) {
     var cmd = text.trim().toLowerCase();
     if (cmd === '/compact' || cmd === '/compact on') { setCompact(true); return true; }
     if (cmd === '/compact off') { setCompact(false); return true; }
+    if (cmd === '/search') {
+      addMsg('bot', 'Type `/search` followed by your question to force a web lookup.');
+      return true;
+    }
     return false;
   }
 
@@ -296,9 +340,11 @@
         if (liveFailed(d) && canKbFallback(text)) {
           kbFallback(text, thinking);
         } else {
-          thinking.textContent = d && d.reply
+          thinking.textContent = '';
+          thinking.appendChild(document.createTextNode(d && d.reply
             ? d.reply
-            : "I couldn't reach the model just now — try again in a moment.";
+            : "I couldn't reach the model just now — try again in a moment."));
+          appendSources(thinking, d && d.sources);
           showUsage(d);
         }
       })
@@ -323,7 +369,8 @@
       addMsg('bot',
         "Hi, I'm chopsticksAI.\n\n" +
         'Ask me anything — general questions, code, writing, or anything about the ' +
-        'Chopsticks apps. Nothing you type is stored. Tap a question below to start.');
+        'Chopsticks apps. I search Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google when configured on every question. ' +
+        'Nothing you type is stored. Tap a question below to start.');
       showChips(STARTERS);
     }
     input.focus();

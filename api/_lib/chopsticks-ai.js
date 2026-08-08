@@ -343,97 +343,418 @@ function kbFallbackAnswer(query) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ------------------------------------------------------------- web search ---
-// Free sources only (DuckDuckGo Instant Answer + Wikipedia REST), so search
-// adds no cost. Results are injected as context; the model still writes the
-// answer.
+// Runs on every question (unless CHOPSTICKS_AI_SEARCH=off). Sources run in
+// parallel: Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News,
+// GitHub, MDN, npm, arXiv, and Google/Brave when API keys are configured.
 const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
-const SEARCH_TIMEOUT_MS = 5000;
-
-// Questions the knowledge base already covers should not trigger a lookup, and
-// neither should chit-chat. These are the cues that a question wants facts
-// about the wider world.
-const SEARCH_HINTS = /\b(who|what|when|where|which|latest|current|news|today|price|population|capital|founded|born|died|weather|score|release[ds]?|version of|how many|how much|history of|meaning of|define)\b/i;
-// Product questions are covered by the knowledge base, and questions about
-// chopsticksAI itself are answered from selfFacts() - neither needs a lookup.
-const SEARCH_SKIP = /\b(rnitro|fathom|arena|chopsticks|chopsticksai|shader|your|yourself|you\b.*\b(are|can|do)|context window|token limit|rate limit)\b/i;
+const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 9000);
+const SEARCH_MIN_LEN = 3;
+const MAX_SOURCES = 12;
+const UA = "chopsticksAI/1.0 (+https://chopstickshq.com)";
 
 function wantsSearch(text) {
   if (!SEARCH_ENABLED) return false;
-  const t = String(text || "");
-  if (t.length < 8) return false;
-  if (SEARCH_SKIP.test(t)) return false;
-  return SEARCH_HINTS.test(t);
+  return String(text || "").trim().length >= SEARCH_MIN_LEN;
 }
 
-async function fetchJson(url, signal) {
+/** Strips an optional `/search` prefix; search runs either way. */
+function parseSearchRequest(text) {
+  const raw = String(text || "").trim();
+  if (/^\/search\b/i.test(raw)) {
+    const q = raw.replace(/^\/search\s*/i, "").trim();
+    return { query: q || raw, hadPrefix: true };
+  }
+  return { query: raw, hadPrefix: false };
+}
+
+function normUrl(src) {
+  if (!src) return "";
+  if (/^https?:\/\//i.test(src)) return src;
+  return "https://" + String(src).replace(/^\/\//, "");
+}
+
+async function fetchJson(url, signal, init) {
   const res = await fetch(url, {
     signal,
-    headers: { "User-Agent": "chopsticksAI/1.0 (+https://chopstickshq.com)" },
+    headers: { "User-Agent": UA, ...(init && init.headers) },
+    ...init,
   });
   if (!res.ok) return null;
   return res.json().catch(() => null);
 }
 
-/** Returns a short context block, or "" when nothing useful came back. */
-async function webSearch(query) {
-  const c = new AbortController();
-  const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
-  const found = [];
-  try {
-    const ddg = await fetchJson(
-      "https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" +
-        encodeURIComponent(query), c.signal
-    ).catch(() => null);
+async function fetchText(url, signal, init) {
+  const res = await fetch(url, {
+    signal,
+    headers: { "User-Agent": UA, ...(init && init.headers) },
+    ...init,
+  });
+  if (!res.ok) return null;
+  return res.text().catch(() => null);
+}
 
-    if (ddg) {
-      if (ddg.AbstractText) {
-        found.push({
-          title: ddg.Heading || query,
-          text: ddg.AbstractText,
-          src: ddg.AbstractURL || "duckduckgo.com",
-        });
-      }
-      for (const t of (ddg.RelatedTopics || []).slice(0, 3)) {
-        if (t && t.Text) found.push({ title: t.Text.split(" - ")[0], text: t.Text, src: t.FirstURL || "" });
-      }
+function sourceKey(item) {
+  const url = normUrl(item.src || item.url || "");
+  if (url) {
+    try {
+      const u = new URL(url);
+      return u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+    } catch (e) {
+      return url.toLowerCase();
     }
+  }
+  return String(item.title || "").toLowerCase();
+}
 
-    if (!found.length) {
-      // Ask Wikipedia which article matches the question, rather than guessing a
-      // title from the wording - "current president of france" is not a page,
-      // but its search resolves it to "President of France".
-      const hit = await fetchJson(
-        "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json" +
-          "&origin=*&srlimit=1&srsearch=" + encodeURIComponent(query), c.signal
-      ).catch(() => null);
-      const title = hit && hit.query && hit.query.search && hit.query.search[0]
-        && hit.query.search[0].title;
+function dedupeSources(items) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    if (!item || (!item.title && !item.src)) continue;
+    const key = sourceKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
 
-      if (title) {
-        const wiki = await fetchJson(
-          "https://en.wikipedia.org/api/rest_v1/page/summary/" +
-            encodeURIComponent(title.replace(/\s+/g, "_")), c.signal
-        ).catch(() => null);
-        if (wiki && wiki.extract) {
-          found.push({
-            title: wiki.title,
-            text: wiki.extract,
-            src: (wiki.content_urls && wiki.content_urls.desktop && wiki.content_urls.desktop.page) || "wikipedia.org",
+function decodeDdgRedirect(href) {
+  if (!href) return "";
+  if (href.includes("uddg=")) {
+    try {
+      return decodeURIComponent(href.match(/uddg=([^&]+)/)[1]);
+    } catch (e) { /* fall through */ }
+  }
+  return href;
+}
+
+async function searchDuckDuckGoJson(query, signal) {
+  const out = [];
+  const ddg = await fetchJson(
+    "https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" +
+      encodeURIComponent(query), signal
+  ).catch(() => null);
+
+  if (!ddg) return out;
+
+  if (ddg.AbstractText) {
+    out.push({
+      title: ddg.Heading || query,
+      text: ddg.AbstractText,
+      src: ddg.AbstractURL || ddg.AbstractSource || "",
+      via: "DuckDuckGo",
+    });
+  }
+  for (const t of (ddg.RelatedTopics || []).slice(0, 4)) {
+    if (t && t.Text) {
+      out.push({
+        title: (t.Text.split(" - ")[0] || t.Text).slice(0, 120),
+        text: t.Text,
+        src: t.FirstURL || "",
+        via: "DuckDuckGo",
+      });
+    }
+    if (t && t.Topics) {
+      for (const sub of t.Topics.slice(0, 2)) {
+        if (sub && sub.Text) {
+          out.push({
+            title: (sub.Text.split(" - ")[0] || sub.Text).slice(0, 120),
+            text: sub.Text,
+            src: sub.FirstURL || "",
+            via: "DuckDuckGo",
           });
         }
       }
     }
+  }
+  return out;
+}
+
+/** DuckDuckGo lite HTML — organic links to real websites (no API key). */
+async function searchDuckDuckGoWeb(query, signal) {
+  const html = await fetchText("https://lite.duckduckgo.com/lite/", signal, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "text/html",
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    },
+    body: new URLSearchParams({ q: query, b: "" }).toString(),
+  }).catch(() => null);
+
+  if (!html || !/result-link/i.test(html)) return [];
+
+  const out = [];
+  const re = /<a[^>]*href=['"]([^'"]+)['"][^>]*class=['"]result-link['"][^>]*>([^<]+)<\/a>/gi;
+  let m;
+  while ((m = re.exec(html)) && out.length < 6) {
+    const url = decodeDdgRedirect(m[1]);
+    const title = m[2].trim();
+    if (title && url && /^https?:\/\//i.test(url)) {
+      out.push({ title: title.slice(0, 120), text: title, src: url, via: "Web" });
+    }
+  }
+  return out;
+}
+
+/** Stack Overflow / Stack Exchange — good for technical questions, no key. */
+async function searchStackExchange(query, signal) {
+  const data = await fetchJson(
+    "https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance" +
+      "&site=stackoverflow&pagesize=4&q=" + encodeURIComponent(query),
+    signal
+  ).catch(() => null);
+  return (data && data.items || []).map((item) => ({
+    title: item.title || query,
+    text: "Stack Overflow Q&A — score " + (item.score || 0),
+    src: item.link || "",
+    via: "Stack Overflow",
+  }));
+}
+
+/** Hacker News — tech news and discussions via Algolia (no key). */
+async function searchHackerNews(query, signal) {
+  const data = await fetchJson(
+    "https://hn.algolia.com/api/v1/search?query=" + encodeURIComponent(query) + "&hitsPerPage=4",
+    signal
+  ).catch(() => null);
+  return (data && data.hits || []).map((hit) => ({
+    title: hit.title || hit.story_title || query,
+    text: [
+      hit.points ? hit.points + " points" : "",
+      hit.num_comments ? hit.num_comments + " comments" : "",
+    ].filter(Boolean).join(", "),
+    src: hit.url || ("https://news.ycombinator.com/item?id=" + hit.objectID),
+    via: "Hacker News",
+  }));
+}
+
+/** GitHub repositories — open-source projects and docs (no key, rate-limited). */
+async function searchGitHub(query, signal) {
+  const data = await fetchJson(
+    "https://api.github.com/search/repositories?q=" + encodeURIComponent(query) +
+      "&sort=stars&per_page=3",
+    signal
+  ).catch(() => null);
+  return (data && data.items || []).map((item) => ({
+    title: item.full_name || item.name || query,
+    text: [
+      item.description || "",
+      item.stargazers_count ? item.stargazers_count + " stars" : "",
+    ].filter(Boolean).join(" — "),
+    src: item.html_url || "",
+    via: "GitHub",
+  }));
+}
+
+/** Wikidata — structured facts and entity descriptions (no key). */
+async function searchWikidata(query, signal) {
+  const data = await fetchJson(
+    "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=" +
+      encodeURIComponent(query) + "&language=en&format=json&origin=*&limit=3",
+    signal
+  ).catch(() => null);
+  return (data && data.search || []).map((item) => ({
+    title: (item.display && item.display.label && item.display.label.value) || query,
+    text: (item.display && item.display.description && item.display.description.value) || "",
+    src: "https://www.wikidata.org/wiki/" + item.id,
+    via: "Wikidata",
+  }));
+}
+
+/** MDN Web Docs — JavaScript, HTML, CSS, and web APIs (no key). */
+async function searchMdn(query, signal) {
+  const data = await fetchJson(
+    "https://developer.mozilla.org/api/v1/search?q=" + encodeURIComponent(query) +
+      "&locale=en-US",
+    signal
+  ).catch(() => null);
+  return (data && data.documents || []).slice(0, 3).map((doc) => ({
+    title: doc.title || query,
+    text: doc.summary || "",
+    src: "https://developer.mozilla.org" + (doc.mdn_url || ""),
+    via: "MDN",
+  }));
+}
+
+/** npm registry — JavaScript packages (no key). */
+async function searchNpm(query, signal) {
+  const data = await fetchJson(
+    "https://registry.npmjs.org/-/v1/search?text=" + encodeURIComponent(query) + "&size=3",
+    signal
+  ).catch(() => null);
+  return (data && data.objects || []).map((obj) => ({
+    title: (obj.package && obj.package.name) || query,
+    text: (obj.package && obj.package.description) || "",
+    src: "https://www.npmjs.com/package/" + ((obj.package && obj.package.name) || ""),
+    via: "npm",
+  }));
+}
+
+/** arXiv — research papers (no key). */
+async function searchArxiv(query, signal) {
+  const xml = await fetchText(
+    "https://export.arxiv.org/api/query?search_query=all:" +
+      encodeURIComponent(query) + "&max_results=3",
+    signal
+  ).catch(() => null);
+  if (!xml) return [];
+  const out = [];
+  for (const block of xml.split("<entry>").slice(1, 4)) {
+    const title = (block.match(/<title>([\s\S]*?)<\/title>/) || [])[1];
+    const summary = (block.match(/<summary>([\s\S]*?)<\/summary>/) || [])[1];
+    const id = (block.match(/<id>([^<]+)<\/id>/) || [])[1];
+    if (!title) continue;
+    out.push({
+      title: title.replace(/\s+/g, " ").trim(),
+      text: (summary || "").replace(/\s+/g, " ").trim().slice(0, 280),
+      src: id || "",
+      via: "arXiv",
+    });
+  }
+  return out;
+}
+
+/** Brave Search — general web results (optional BRAVE_SEARCH_API_KEY, free tier). */
+async function searchBrave(query, signal) {
+  const key = env("BRAVE_SEARCH_API_KEY");
+  if (!key) return [];
+  const data = await fetchJson(
+    "https://api.search.brave.com/res/v1/web/search?q=" + encodeURIComponent(query) + "&count=6",
+    signal,
+    { headers: { Accept: "application/json", "X-Subscription-Token": key } }
+  ).catch(() => null);
+  return (data && data.web && data.web.results || []).map((item) => ({
+    title: item.title,
+    text: item.description || "",
+    src: item.url || "",
+    via: "Web",
+  }));
+}
+
+/** Up to three Wikipedia articles matching the query. */
+async function searchWikipedia(query, signal, limit) {
+  const hit = await fetchJson(
+    "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json" +
+      "&origin=*&srlimit=" + (limit || 3) + "&srsearch=" + encodeURIComponent(query),
+    signal
+  ).catch(() => null);
+  const titles = (hit && hit.query && hit.query.search || []).map((s) => s.title);
+  if (!titles.length) return [];
+
+  const summaries = await Promise.all(titles.map(async (title) => {
+    const wiki = await fetchJson(
+      "https://en.wikipedia.org/api/rest_v1/page/summary/" +
+        encodeURIComponent(title.replace(/\s+/g, "_")), signal
+    ).catch(() => null);
+    if (!wiki || !wiki.extract) return null;
+    return {
+      title: wiki.title,
+      text: wiki.extract,
+      src: (wiki.content_urls && wiki.content_urls.desktop && wiki.content_urls.desktop.page) || "",
+      via: "Wikipedia",
+    };
+  }));
+  return summaries.filter(Boolean);
+}
+
+/** Google results via serper.dev (optional SERPER_API_KEY — free tier available). */
+async function searchSerper(query, signal) {
+  const key = env("SERPER_API_KEY");
+  if (!key) return [];
+  const data = await fetchJson("https://google.serper.dev/search", signal, {
+    method: "POST",
+    headers: { "X-API-KEY": key, "Content-Type": "application/json" },
+    body: JSON.stringify({ q: query, num: 6 }),
+  }).catch(() => null);
+  if (!data) return [];
+  const organic = (data.organic || []).map((item) => ({
+    title: item.title,
+    text: item.snippet || "",
+    src: item.link || "",
+    via: "Google",
+  }));
+  const kg = data.knowledgeGraph;
+  if (kg && (kg.description || kg.title)) {
+    organic.unshift({
+      title: kg.title || query,
+      text: kg.description || "",
+      src: kg.website || kg.descriptionLink || "",
+      via: "Google",
+    });
+  }
+  return organic;
+}
+
+/** Google Programmable Search (optional GOOGLE_CSE_API_KEY + GOOGLE_CSE_CX). */
+async function searchGoogleCse(query, signal) {
+  const key = env("GOOGLE_CSE_API_KEY");
+  const cx = env("GOOGLE_CSE_CX");
+  if (!key || !cx) return [];
+  const data = await fetchJson(
+    "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(key) +
+      "&cx=" + encodeURIComponent(cx) + "&num=6&q=" + encodeURIComponent(query),
+    signal
+  ).catch(() => null);
+  return (data && data.items || []).map((item) => ({
+    title: item.title,
+    text: item.snippet || "",
+    src: item.link || "",
+    via: "Google",
+  }));
+}
+
+/** Returns prompt context plus structured sources for the client UI. */
+async function webSearch(query) {
+  const c = new AbortController();
+  const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
+  try {
+    const batches = await Promise.allSettled([
+      searchSerper(query, c.signal),
+      searchGoogleCse(query, c.signal),
+      searchBrave(query, c.signal),
+      searchWikipedia(query, c.signal, 3),
+      searchWikidata(query, c.signal),
+      searchDuckDuckGoJson(query, c.signal),
+      searchDuckDuckGoWeb(query, c.signal),
+      searchStackExchange(query, c.signal),
+      searchHackerNews(query, c.signal),
+      searchGitHub(query, c.signal),
+      searchMdn(query, c.signal),
+      searchNpm(query, c.signal),
+      searchArxiv(query, c.signal),
+    ]);
+
+    let found = [];
+    for (const batch of batches) {
+      if (batch.status === "fulfilled" && Array.isArray(batch.value)) {
+        found.push(...batch.value);
+      }
+    }
+    found = dedupeSources(found).slice(0, MAX_SOURCES);
+
+    if (!found.length) return { context: "", sources: [] };
+
+    const sources = found.map((f) => ({
+      title: String(f.via ? f.via + ": " + (f.title || query) : (f.title || query)).slice(0, 140),
+      url: normUrl(f.src),
+      snippet: String(f.text || "").slice(0, 280),
+    }));
+
+    const context = sources
+      .map((f) => `- ${f.title}: ${f.snippet}${f.url ? ` (${f.url})` : ""}`)
+      .join("\n");
+
+    return { context, sources };
   } catch (e) {
-    return "";
+    return { context: "", sources: [] };
   } finally {
     clearTimeout(timer);
   }
-
-  if (!found.length) return "";
-  return found
-    .slice(0, 4)
-    .map((f) => `- ${f.title}: ${String(f.text).slice(0, 400)}${f.src ? ` (${f.src})` : ""}`)
-    .join("\n");
 }
 
 /** Facts chopsticksAI knows about itself. Built from the live config so the
@@ -449,7 +770,7 @@ function selfFacts(tier) {
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
-    "- You can search the web when a question needs current information.",
+    "- You search the web on every question — Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google/Brave when configured — then cite sources in your answer.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
     "- You need no API key from the user, and nothing they type is stored.",
     "- You are available on every page of chopstickshq.com, in the chopAI Lab web agent at /chopailab, and inside rNitro's Chat tab.",
@@ -490,7 +811,7 @@ function systemPrompt(grounding, mode, web, tier) {
     "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
     "reference material below is authoritative.\n\n",
     selfFacts(tier),
-    web ? "\n\nWEB SEARCH RESULTS (retrieved just now - use these for anything current, and cite the source domain when you rely on one):\n" + web : "",
+    web ? web : "",
     "\n\nREFERENCE MATERIAL:\n\n",
     facts,
     "\n\nRules:\n",
@@ -632,16 +953,29 @@ async function handler(event) {
     ? Math.max(100, Math.min(MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
     : MAX_REPLY_TOKENS;
 
-  // Search runs before the draft so results are in the prompt, and only when
-  // the question actually looks like it needs the wider world.
+  // Web search runs on every question before the draft.
   const tier = tierOf(payload.tier);
-  const web = wantsSearch(lastUser.content) ? await webSearch(lastUser.content) : "";
+  const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
+  const searchOn = wantsSearch(searchQuery);
+  const webBundle = searchOn ? await webSearch(searchQuery) : { context: "", sources: [] };
+  let webSection = "";
+  if (searchOn) {
+    webSection = webBundle.context
+      ? "\n\nWEB SEARCH RESULTS (retrieved just now for this question — weave in anything useful; cite URLs when you rely on one, and add a **Sources** section at the end with markdown links when you used them):\n" + webBundle.context
+      : "\n\nWEB SEARCH: no snippets returned for this query — answer from your knowledge and the reference material below.";
+  }
+
+  const modelTurns = turns.map((m) => ({ ...m }));
+  if (hadPrefix && modelTurns.length) {
+    const last = modelTurns[modelTurns.length - 1];
+    if (last.role === "user") last.content = searchQuery;
+  }
 
   const system = {
     role: "system",
-    content: systemPrompt(retrieve(retrievalQuery(turns)), payload.mode, web, tier),
+    content: systemPrompt(retrieve(retrievalQuery(modelTurns)), payload.mode, webSection, tier),
   };
-  const messages = fitContext(system, turns, contextFor(tier));
+  const messages = fitContext(system, modelTurns, contextFor(tier));
 
   const deadline = now + TIMEOUT_MS;
   const withTimeout = (ms) => {
@@ -786,7 +1120,8 @@ async function handler(event) {
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
-      searched: Boolean(web),
+      searched: searchOn,
+      sources: webBundle.sources,
       budget: { used: spentResult.used, limit: TOKEN_BUDGET },
       budgetMode: spentResult.mode,
     });
@@ -806,7 +1141,7 @@ async function handler(event) {
 module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   measureMessages, contextWindowUsage,
-  wantsSearch, webSearch, selfFacts,
+  wantsSearch, parseSearchRequest, webSearch, selfFacts,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };

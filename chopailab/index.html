@@ -156,6 +156,16 @@
     font-family: var(--mono); font-size: .64rem; color: var(--muted);
     text-align: right; line-height: 1.5;
   }
+  .sources { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+  .sources-label {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .08em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 4px;
+  }
+  .sources a {
+    display: block; font-size: .78rem; color: var(--text); opacity: .85;
+    margin-top: 4px; text-decoration: underline; text-underline-offset: 2px;
+    word-break: break-word;
+  }
   html.compact .intro { padding: 1rem 0 .5rem; }
   html.compact .intro h1 { font-size: 1.45rem; }
   html.compact .intro p { display: none; }
@@ -275,7 +285,44 @@
     var cmd = text.trim().toLowerCase();
     if (cmd === '/compact' || cmd === '/compact on') { setCompact(true); return true; }
     if (cmd === '/compact off') { setCompact(false); return true; }
+    if (cmd === '/search') {
+      addTurn('bot', plain('Type `/search` followed by your question to force a web lookup.'));
+      return true;
+    }
     return false;
+  }
+
+  function parseSearch(text) {
+    if (/^\/search\b/i.test(text)) {
+      var q = text.replace(/^\/search\s*/i, '').trim();
+      return { query: q || text, hadPrefix: true, raw: text };
+    }
+    return { query: text, hadPrefix: false, raw: text };
+  }
+
+  function appendSources(node, sources) {
+    if (!sources || !sources.length) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'sources';
+    var label = document.createElement('div');
+    label.className = 'sources-label';
+    label.textContent = 'Sources';
+    wrap.appendChild(label);
+    sources.forEach(function (s) {
+      if (s.url) {
+        var a = document.createElement('a');
+        a.href = s.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = s.title || s.url;
+        wrap.appendChild(a);
+      } else if (s.title) {
+        var t = document.createElement('div');
+        t.textContent = s.title;
+        wrap.appendChild(t);
+      }
+    });
+    node.appendChild(wrap);
   }
 
   try {
@@ -296,6 +343,7 @@
   function showUsage(d) {
     if (!usageEl) return;
     var parts = [];
+    if (d && d.searched) parts.push('Web search');
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
@@ -457,21 +505,28 @@
     addTurn('user', plain(text));
     input.value = '';
     input.style.height = 'auto';
-    history.push({ role: 'user', content: text });
+    var sr = parseSearch(text);
+    history.push({ role: 'user', content: sr.raw });
 
     busy = true;
     send.disabled = true;
     var thinking = addTurn('bot', plain('Working', 'dots'));
 
+    var payload = {
+      messages: history.slice(-12),
+      mode: 'agent',
+      tier: tierSel.value,
+      maxTokens: 600
+    };
+    if (sr.hadPrefix) {
+      payload.messages = payload.messages.slice();
+      payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
+    }
+
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: history.slice(-12),
-        mode: 'agent',
-        tier: tierSel.value,
-        maxTokens: 600
-      })
+      body: JSON.stringify(payload)
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {
@@ -487,7 +542,9 @@
           }
         }
         history.push({ role: 'assistant', content: d.reply });
-        thinking.replaceChild(renderAssistant(d.reply), thinking.lastChild);
+        var rendered = renderAssistant(d.reply);
+        appendSources(rendered, d.sources);
+        thinking.replaceChild(rendered, thinking.lastChild);
         showUsage(d);
         showTier();
         saveSession();

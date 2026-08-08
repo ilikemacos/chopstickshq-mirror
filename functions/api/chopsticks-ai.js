@@ -14,6 +14,10 @@ export async function onRequest(context) {
     if (env.CHOPSTICKS_AI_MODEL) process.env.CHOPSTICKS_AI_MODEL = env.CHOPSTICKS_AI_MODEL;
     if (env.SUPABASE_URL) process.env.SUPABASE_URL = env.SUPABASE_URL;
     if (env.SUPABASE_ANON_KEY) process.env.SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
+    if (env.SERPER_API_KEY) process.env.SERPER_API_KEY = env.SERPER_API_KEY;
+    if (env.GOOGLE_CSE_API_KEY) process.env.GOOGLE_CSE_API_KEY = env.GOOGLE_CSE_API_KEY;
+    if (env.GOOGLE_CSE_CX) process.env.GOOGLE_CSE_CX = env.GOOGLE_CSE_CX;
+    if (env.BRAVE_SEARCH_API_KEY) process.env.BRAVE_SEARCH_API_KEY = env.BRAVE_SEARCH_API_KEY;
   }
 
   if (request.method === "OPTIONS") {
