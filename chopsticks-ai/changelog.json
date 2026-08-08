@@ -1,7 +1,19 @@
 {
-  "product": "chopsticksAI",
-  "latest": "v1.0.14",
+  "product": "cs.AI",
+  "latest": "cs.AI 2.0",
   "entries": [
+    {
+      "version": "cs.AI 2.0",
+      "date": "2026-08-08",
+      "title": "Mozilla engine, profile plans, What’s New",
+      "changes": [
+        "Branding: chopsticksAI is now cs.AI 2.0",
+        "Mozilla search engine on /chopsticks-ai/#search (MDN, Wikipedia, DuckDuckGo) — same path the AI uses first",
+        "Account plans read from Supabase profiles (token_budget / context_limit / plan_label) — no hard-coded emails",
+        "Usage soft warning at 80% allowance + live cooldown countdown",
+        "macOS app shows What’s New from changelog.json after an update"
+      ]
+    },
     {
       "version": "v1.0.14",
       "date": "2026-08-08",

@@ -231,18 +231,26 @@ const CREDIT_TIERS = [
   },
 ];
 
-/** Hard-coded account entitlements (email → plan). Verified via Supabase JWT. */
-const ACCOUNT_ENTITLEMENTS = {
-  "mzx@lam.ws": {
-    id: "founder",
-    label: "Founder",
-    detail: "1.5m tokens · 512k context",
-    limit: 1_500_000,
-    contextLimit: 512_000,
-    cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000),
-    bucketId: "user-mzx-lam-ws",
-  },
-};
+/** Format plan detail from profile budget numbers. */
+function entitlementDetail(limit, contextLimit, cooldownMs) {
+  const toks = (n) => {
+    if (n >= 1_000_000) {
+      const v = n / 1_000_000;
+      return (Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, "")) + "m";
+    }
+    if (n >= 1000) {
+      const v = n / 1000;
+      return (Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, "")) + "k";
+    }
+    return String(n);
+  };
+  const coolH = Math.round((cooldownMs || FREE_USAGE.cooldownMs) / 3600000);
+  const cool =
+    coolH >= 1
+      ? `${coolH}h cooldown`
+      : `${Math.round((cooldownMs || FREE_USAGE.cooldownMs) / 60000)}m cooldown`;
+  return `${toks(limit)} tokens · ${toks(contextLimit)} context · ${cool}`;
+}
 
 function resolveCredits(rawKeys) {
   const list = Array.isArray(rawKeys) ? rawKeys : [];
@@ -316,11 +324,12 @@ async function resolveAccount(accessToken) {
     const email = String(user.email || "").trim().toLowerCase();
     if (!email || !user.id) return null;
 
-    let entitlement = ACCOUNT_ENTITLEMENTS[email] || null;
-    // Optional DB overrides on profiles (token_budget / context_limit).
+    // Account plans live on public.profiles (token_budget / context_limit / plan_label).
+    // Seed via netlify/functions/chopsticks-ai-profile-entitlements.sql — no hard-coded emails.
+    let entitlement = null;
     try {
       const profRes = await fetch(
-        `${env("SUPABASE_URL")}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=email,token_budget,context_limit,plan_label`,
+        `${env("SUPABASE_URL")}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=email,token_budget,context_limit,plan_label,cooldown_ms`,
         {
           headers: {
             apikey: env("SUPABASE_ANON_KEY"),
@@ -335,20 +344,25 @@ async function resolveAccount(accessToken) {
         if (row) {
           const tb = Number(row.token_budget);
           const cl = Number(row.context_limit);
+          const cool = Number(row.cooldown_ms);
           if ((Number.isFinite(tb) && tb > 0) || (Number.isFinite(cl) && cl > 0)) {
+            const limit = Number.isFinite(tb) && tb > 0 ? tb : FREE_USAGE.limit;
+            const contextLimit = Number.isFinite(cl) && cl > 0 ? cl : FREE_USAGE.contextLimit;
+            const cooldownMs =
+              Number.isFinite(cool) && cool > 0 ? cool : FREE_USAGE.cooldownMs;
             entitlement = {
               id: "profile",
-              label: row.plan_label || (entitlement && entitlement.label) || "Member",
-              detail: entitlement ? entitlement.detail : "Account plan",
-              limit: Number.isFinite(tb) && tb > 0 ? tb : (entitlement && entitlement.limit) || FREE_USAGE.limit,
-              contextLimit: Number.isFinite(cl) && cl > 0 ? cl : (entitlement && entitlement.contextLimit) || FREE_USAGE.contextLimit,
-              cooldownMs: (entitlement && entitlement.cooldownMs) || FREE_USAGE.cooldownMs,
-              bucketId: (entitlement && entitlement.bucketId) || ("user-" + String(user.id).slice(0, 8)),
+              label: row.plan_label || "Member",
+              detail: entitlementDetail(limit, contextLimit, cooldownMs),
+              limit,
+              contextLimit,
+              cooldownMs,
+              bucketId: "user-" + String(user.id).replace(/-/g, "").slice(0, 12),
             };
           }
         }
       }
-    } catch (e) { /* profiles columns optional */ }
+    } catch (e) { /* profiles columns optional until SQL is applied */ }
 
     return {
       id: user.id,
@@ -745,7 +759,7 @@ const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
 const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 9000);
 const SEARCH_MIN_LEN = 3;
 const MAX_SOURCES = 12;
-const UA = "chopsticksAI/1.0 (+https://chopstickshq.com)";
+const UA = "cs.AI/2.0 (+https://chopstickshq.com/chopsticks-ai/)";
 
 function wantsSearch(text) {
   if (!SEARCH_ENABLED) return false;
@@ -968,12 +982,36 @@ async function searchMdn(query, signal) {
       "&locale=en-US",
     signal
   ).catch(() => null);
-  return (data && data.documents || []).slice(0, 3).map((doc) => ({
+  return (data && data.documents || []).slice(0, 4).map((doc) => ({
     title: doc.title || query,
     text: doc.summary || "",
     src: "https://developer.mozilla.org" + (doc.mdn_url || ""),
     via: "MDN",
   }));
+}
+
+/**
+ * Mozilla engine — MDN + Wikipedia + DuckDuckGo (privacy-friendly defaults).
+ * Used by the public search action on /chopsticks-ai/ and preferred in chat grounding.
+ */
+async function mozillaEngine(query, signal, maxSources) {
+  const cap = Math.max(1, Math.min(MAX_SOURCES, Number(maxSources) || 8));
+  const batches = await Promise.allSettled([
+    searchMdn(query, signal),
+    searchWikipedia(query, signal, 3),
+    searchDuckDuckGoJson(query, signal),
+    searchDuckDuckGoWeb(query, signal),
+  ]);
+  let found = [];
+  for (const batch of batches) {
+    if (batch.status === "fulfilled" && Array.isArray(batch.value)) {
+      found.push(...batch.value.map((f) => ({
+        ...f,
+        via: f.via === "MDN" ? "Mozilla/MDN" : (f.via || "Mozilla"),
+      })));
+    }
+  }
+  return dedupeSources(found).slice(0, cap);
 }
 
 /** npm registry — JavaScript packages (no key). */
@@ -1109,18 +1147,16 @@ async function webSearch(query, maxSources) {
   const c = new AbortController();
   const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
   try {
+    // Mozilla engine first, then the wider web.
     const batches = await Promise.allSettled([
+      mozillaEngine(query, c.signal, Math.min(6, cap)),
       searchSerper(query, c.signal),
       searchGoogleCse(query, c.signal),
       searchBrave(query, c.signal),
-      searchWikipedia(query, c.signal, 3),
       searchWikidata(query, c.signal),
-      searchDuckDuckGoJson(query, c.signal),
-      searchDuckDuckGoWeb(query, c.signal),
       searchStackExchange(query, c.signal),
       searchHackerNews(query, c.signal),
       searchGitHub(query, c.signal),
-      searchMdn(query, c.signal),
       searchNpm(query, c.signal),
       searchArxiv(query, c.signal),
     ]);
@@ -1159,7 +1195,7 @@ function selfFacts(tier) {
   const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
-    `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
+    `- You are cs.AI 2.0 (chopsticksAI), built and run by Chopsticks HQ.`,
     `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks.`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in ChopsticksAI Lab); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
@@ -1167,9 +1203,11 @@ function selfFacts(tier) {
     `- Free usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
     "- Upgrades are bought with Fathom Pro oi-pl API keys (not OpenRouter keys): 2 keys → 800k + 2h30m cooldown; 5 keys → 900k + 2h; 10 keys → 1m + 1h.",
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
-    "- You search the web on every question — Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google/Brave when configured — then cite sources in your answer.",
+    "- You search with the Mozilla engine first (MDN, Wikipedia, DuckDuckGo), then wider sources (Stack Overflow, Hacker News, GitHub, npm, arXiv, Google/Brave when configured). Cite sources in your answer.",
+    "- Visitors can also use the Mozilla engine directly on https://chopstickshq.com/chopsticks-ai/#search without chatting.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
     "- You need no OpenRouter API key from the user; Fathom Pro unlock keys can be redeemed as usage credits in the Usage tab.",
+    "- Signed-in account plans come from the user's Supabase profile (token_budget / context_limit), not hard-coded emails.",
     "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside rNitro's Chat tab.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
   ].join("\n");
@@ -1197,7 +1235,7 @@ function systemPrompt(grounding, mode, web, tier) {
     : "(no specific reference material matched this question)";
 
   return [
-    "You are chopsticksAI, a helpful and knowledgeable general-purpose assistant, ",
+    "You are cs.AI 2.0 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
     "made by Chopsticks HQ.\n\n",
     "Answer ANY question the user asks — general knowledge, science, history, coding, ",
     "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
@@ -1224,8 +1262,8 @@ function systemPrompt(grounding, mode, web, tier) {
     "steer the conversation back to Chopsticks HQ, and do not mention the reference material ",
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
-    "- You are chopsticksAI v1.0, made by Chopsticks HQ. If asked what model, ",
-    "engine or company is behind you, say you are chopsticksAI v1.0 by Chopsticks ",
+    "- You are cs.AI 2.0 (chopsticksAI), made by Chopsticks HQ. If asked what model, ",
+    "engine or company is behind you, say you are cs.AI 2.0 by Chopsticks ",
     "HQ. Never name or speculate about any underlying model, provider or vendor.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
     agent,
@@ -1287,14 +1325,31 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
 }
 
 function usagePayload(plan, state) {
+  const used = state.used || 0;
+  const limit = plan.limit || 0;
+  const ratio = limit > 0 ? used / limit : 0;
+  let warning = null;
+  if (!state.blocked && ratio >= 0.8) {
+    const pct = Math.round(ratio * 100);
+    warning = {
+      level: ratio >= 0.95 ? "critical" : "high",
+      ratio,
+      percent: pct,
+      message:
+        ratio >= 0.95
+          ? `Allowance almost full (${pct}%). Next replies may hit the cooldown soon.`
+          : `You've used ${pct}% of your allowance. Consider redeeming Fathom Pro keys in Usage.`,
+    };
+  }
   return {
-    used: state.used || 0,
-    limit: plan.limit,
+    used,
+    limit,
     contextLimit: plan.contextLimit || MAX_CONTEXT_TOKENS,
     cooldownMs: plan.cooldownMs,
     cooldown: state.blocked
       ? { blocked: true, retryInMs: state.retryInMs || 0 }
       : null,
+    warning,
     keysValid: plan.keysValid,
     keysSubmitted: plan.keysSubmitted,
     keysRejected: plan.keysRejected,
@@ -1316,6 +1371,8 @@ function usagePayload(plan, state) {
     account: plan.account || null,
     budgetMode: state.mode || budgetMode,
     creditSource: "fathom-pro-oi-pl",
+    product: "cs.AI",
+    version: "2.0",
   };
 }
 
@@ -1417,6 +1474,50 @@ async function handler(event) {
       usage: usagePayload(plan, stateU),
       budget: { used: stateU.used || 0, limit: plan.limit },
       budgetMode: stateU.mode || budgetMode,
+    });
+  }
+
+  // Public Mozilla-engine search (no LLM spend). Same sources the AI prefers.
+  if (payload.action === "search" || payload.mode === "search") {
+    const q = String(payload.q || payload.query || "").trim().slice(0, 240);
+    if (q.length < SEARCH_MIN_LEN) {
+      return json(400, { error: "query too short", min: SEARCH_MIN_LEN });
+    }
+    if (!SEARCH_ENABLED) {
+      return json(200, { mode: "search", engine: "mozilla", query: q, sources: [], searched: false });
+    }
+    const headersS = event.headers || {};
+    const whoS =
+      headersS["x-nf-client-connection-ip"] ||
+      headersS["cf-connecting-ip"] ||
+      (headersS["x-forwarded-for"] || "").split(",")[0].trim() ||
+      "anon";
+    if (rateLimited(whoS)) {
+      return json(429, { error: "rate limited", retryInMs: 60000 });
+    }
+    const cap = Math.max(1, Math.min(MAX_SOURCES, Number(payload.max) || 8));
+    const c = new AbortController();
+    const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
+    let raw = [];
+    try {
+      raw = await mozillaEngine(q, c.signal, cap);
+    } finally {
+      clearTimeout(timer);
+    }
+    const sources = raw.map((f) => ({
+      title: String(f.title || q).slice(0, 140),
+      url: normUrl(f.src),
+      snippet: String(f.text || "").slice(0, 280),
+      via: f.via || "Mozilla",
+    }));
+    return json(200, {
+      mode: "search",
+      engine: "mozilla",
+      product: "cs.AI",
+      version: "2.0",
+      query: q,
+      searched: true,
+      sources,
     });
   }
 
@@ -1639,7 +1740,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "chopsticksAI v1.0",
+      model: "cs.AI 2.0",
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
@@ -1673,5 +1774,5 @@ module.exports = {
   resolveCredits, resolvePlan, resolveAccount, usagePayload,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
-  FREE_USAGE, CREDIT_TIERS, ACCOUNT_ENTITLEMENTS,
+  FREE_USAGE, CREDIT_TIERS, mozillaEngine,
 };

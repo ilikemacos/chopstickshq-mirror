@@ -165,6 +165,9 @@
     overflow-wrap: anywhere; word-break: break-word; white-space: normal;
     box-sizing: border-box; padding: 0 2px;
   }
+  .usage.warn { color: #e8a25a; }
+  .usage.critical { color: #e86a5a; }
+  .usage.cooldown { color: #e8a25a; }
   .sources { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
   .sources-label {
     font-family: var(--mono); font-size: .64rem; letter-spacing: .08em;
@@ -509,28 +512,94 @@
       return Array.isArray(arr) ? arr.filter(function (k) { return /^oi-pl-/i.test(String(k || '')); }) : [];
     } catch (e) { return []; }
   }
+  var cooldownTimer = null;
+  var cooldownEndsAt = 0;
+
+  function fmtCooldownLeft(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    if (h > 0) return h + 'h ' + m + 'm';
+    if (m > 0) return m + 'm ' + sec + 's';
+    return sec + 's';
+  }
+
+  function tickCooldown() {
+    if (!usageEl || !cooldownEndsAt) return;
+    var left = cooldownEndsAt - Date.now();
+    if (left <= 0) {
+      cooldownEndsAt = 0;
+      if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
+      usageEl.className = 'usage';
+      usageEl.textContent = 'Cooldown ended — ready again';
+      pollUsage();
+      return;
+    }
+    usageEl.className = 'usage cooldown';
+    usageEl.textContent = 'Cooling down · ' + fmtCooldownLeft(left) + ' left';
+  }
+
   function showUsage(d) {
     if (!usageEl) return;
+    if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
+    cooldownEndsAt = 0;
+    usageEl.className = 'usage';
+
+    var cool = d && d.usage && d.usage.cooldown;
+    if (cool && cool.blocked && cool.retryInMs > 0) {
+      cooldownEndsAt = Date.now() + cool.retryInMs;
+      tickCooldown();
+      cooldownTimer = setInterval(tickCooldown, 1000);
+      return;
+    }
+
     var parts = [];
-    if (d && d.searched) parts.push('Web search');
+    if (d && d.searched) parts.push('Mozilla search');
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
-    if (d && d.budget && typeof d.budget.used === 'number' && d.budget.limit) {
-      parts.push('Allowance ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
+    var used = d && d.usage && typeof d.usage.used === 'number' ? d.usage.used
+      : (d && d.budget && d.budget.used);
+    var limit = d && d.usage && d.usage.limit ? d.usage.limit
+      : (d && d.budget && d.budget.limit);
+    if (typeof used === 'number' && limit) {
+      parts.push('Allowance ' + fmt(used) + '/' + fmt(limit));
     }
     if (d && d.usage && d.usage.tier && d.usage.tier.label) {
       parts.push(d.usage.tier.label);
     }
     var n = unlockKeys().length;
     if (n) parts.push(n + ' Fathom Pro key' + (n === 1 ? '' : 's'));
+
+    var warn = d && d.usage && d.usage.warning;
+    if (warn && warn.message) {
+      usageEl.className = 'usage ' + (warn.level === 'critical' ? 'critical' : 'warn');
+      parts.push(warn.message);
+    }
     usageEl.textContent = parts.join(' · ');
+  }
+
+  function pollUsage() {
+    var body = { action: 'usage', unlockKeys: unlockKeys() };
+    var headers = { 'Content-Type': 'application/json' };
+    try {
+      if (Cloud && Cloud.session && Cloud.session.access_token) {
+        headers.Authorization = 'Bearer ' + Cloud.session.access_token;
+        body.accessToken = Cloud.session.access_token;
+      }
+    } catch (e) {}
+    fetch(API, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { showUsage(d); })
+      .catch(function () {});
   }
   tierSel.addEventListener('change', function () {
     try { localStorage.setItem('chq.aiTier', tierSel.value); } catch (e) {}
     showTier();
   });
   showTier();
+  pollUsage();
 
   var SUGGESTIONS = [
     ['Write a Python script', 'that renames every file in a folder by date'],
@@ -952,6 +1021,7 @@
         m.role === 'user' ? plain(m.content) : renderAssistant(m.content, m.sources));
     });
     showTier();
+    pollUsage();
     stage.scrollTop = stage.scrollHeight;
   })();
 
