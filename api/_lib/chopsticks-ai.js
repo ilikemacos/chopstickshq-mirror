@@ -1243,12 +1243,10 @@ function systemPrompt(grounding, mode, web, tier) {
     tier.chopCode ? " in ChopCode mode (coding specialist)" : "",
     ". The user may ask you to ",
     "write code, config, scripts, documents or data files.\n",
-    "- Put every file you produce in its own fenced code block.\n",
-    "- Start the fence with the language, then a space, then the filename, ",
-    "e.g. ```python analyse.py or ```json config.json — the interface turns that ",
-    "filename into a download button, so always supply one.\n",
+    "- Prefer the write_file tool for each file you create (path + full content).\n",
+    "- You may also put files in fenced code blocks: ```lang filename then the body.\n",
     "- Give complete, runnable files rather than fragments or ellipses.\n",
-    "- Keep explanation outside the fences and brief.",
+    "- Keep explanation outside tools/fences and brief.",
     tier.chopsticksFocus
       ? "\n- Chopsticks effort: prioritise accurate answers about Chopsticks HQ software from the reference material; still help with general tasks when asked."
       : "",
@@ -1327,8 +1325,200 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-/** One chat completion. Returns null on any non-OK response. */
-async function callModel({ model, messages, key, signal, maxTokens, temperature }) {
+/** OpenAI-compatible tools for agent file creation. */
+const AGENT_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "write_file",
+      description:
+        "Create a downloadable file for the user. Call once per file. Prefer this over pasting huge code in prose.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "File name only, e.g. analyse.py or src/app.swift",
+          },
+          content: {
+            type: "string",
+            description: "Full file contents",
+          },
+          language: {
+            type: "string",
+            description: "Optional language tag for highlighting (python, swift, …)",
+          },
+        },
+        required: ["path", "content"],
+      },
+    },
+  },
+];
+
+function sanitizeFileName(raw) {
+  let name = String(raw || "file.txt").replace(/\\/g, "/").split("/").filter(Boolean).pop() || "file.txt";
+  name = name.replace(/[^\w.\-()+ ]+/g, "_").replace(/^\.+/, "").slice(0, 180);
+  return name || "file.txt";
+}
+
+function langFromName(name) {
+  const ext = String(name).split(".").pop().toLowerCase();
+  const map = {
+    py: "python", js: "javascript", ts: "typescript", tsx: "tsx", jsx: "jsx",
+    swift: "swift", md: "markdown", json: "json", html: "html", css: "css",
+    sh: "bash", rs: "rust", go: "go", java: "java", rb: "ruby", php: "php",
+    sql: "sql", yaml: "yaml", yml: "yaml", toml: "toml", c: "c", cpp: "cpp", h: "c",
+  };
+  return map[ext] || "text";
+}
+
+/** Pull ```lang filename … ``` fences into structured files. */
+function extractFencedFiles(text) {
+  const out = [];
+  const re = /```([^\n`]*)\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(String(text || "")))) {
+    const head = String(m[1] || "").trim();
+    const body = String(m[2] || "").replace(/\n+$/, "");
+    if (!body) continue;
+    const bits = head.split(/\s+/).filter(Boolean);
+    let lang = "text";
+    let name = "";
+    if (bits.length >= 2) {
+      lang = bits[0].toLowerCase();
+      name = sanitizeFileName(bits.slice(1).join(" "));
+    } else if (bits.length === 1 && /\./.test(bits[0])) {
+      name = sanitizeFileName(bits[0]);
+      lang = langFromName(name);
+    } else if (bits.length === 1) {
+      lang = bits[0].toLowerCase();
+      name = `chopsticksai-file.${lang === "text" ? "txt" : lang}`;
+    } else {
+      name = "chopsticksai-file.txt";
+    }
+    out.push({ name, content: body, language: lang });
+  }
+  return out;
+}
+
+function mergeFiles(a, b) {
+  const map = new Map();
+  for (const f of [...(a || []), ...(b || [])]) {
+    if (!f || !f.name) continue;
+    map.set(f.name, {
+      name: f.name,
+      content: String(f.content || ""),
+      language: f.language || langFromName(f.name),
+    });
+  }
+  return [...map.values()];
+}
+
+/** Ensure each file appears as a downloadable fence in the reply text. */
+function ensureFileFences(text, files) {
+  let out = String(text || "").trim();
+  for (const f of files || []) {
+    const needle = f.name;
+    if (out.includes(needle) && out.includes("```")) {
+      // Likely already fenced; still ok to skip duplicate
+      const hasFence = new RegExp("```[^\\n]*\\b" + needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(out);
+      if (hasFence) continue;
+    }
+    const lang = f.language || langFromName(f.name);
+    out += (out ? "\n\n" : "") + "```" + lang + " " + f.name + "\n" + f.content + "\n```";
+  }
+  return out;
+}
+
+function parseToolArgs(raw) {
+  if (raw && typeof raw === "object") return raw;
+  try {
+    return JSON.parse(String(raw || "{}"));
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * After a first completion that may include tool_calls, execute write_file
+ * tools and ask the model to finish. Returns { text, files, tokens }.
+ */
+async function continueWithTools({
+  model, messages, first, key, signal, maxTokens, temperature,
+}) {
+  const files = [];
+  let tokens = first.tokens || 0;
+  let msgs = messages.map((m) => ({ ...m }));
+  let cur = first;
+  for (let round = 0; round < 4; round++) {
+    const calls = cur.toolCalls || [];
+    if (!calls.length) {
+      return { text: cur.text || "", files, tokens };
+    }
+    msgs.push({
+      role: "assistant",
+      content: cur.text || null,
+      tool_calls: calls,
+    });
+    for (const tc of calls) {
+      const fn = (tc && tc.function) || {};
+      const name = String(fn.name || "");
+      const args = parseToolArgs(fn.arguments);
+      let result = { ok: false, error: "unknown tool" };
+      if (name === "write_file") {
+        const path = sanitizeFileName(args.path || args.name || "file.txt");
+        const content = String(args.content ?? args.body ?? "");
+        if (content.length > 1_500_000) {
+          result = { ok: false, error: "file too large" };
+        } else {
+          files.push({
+            name: path,
+            content,
+            language: String(args.language || langFromName(path)).slice(0, 40),
+          });
+          result = { ok: true, path, bytes: content.length };
+        }
+      }
+      msgs.push({
+        role: "tool",
+        tool_call_id: tc.id || ("call_" + round),
+        content: JSON.stringify(result),
+      });
+    }
+    cur = await callModel({
+      model,
+      messages: msgs,
+      key,
+      signal,
+      maxTokens,
+      temperature,
+      tools: AGENT_TOOLS,
+      toolChoice: "auto",
+    });
+    if (!cur.ok) {
+      return {
+        text: first.text || "Created files via tools.",
+        files,
+        tokens,
+      };
+    }
+    tokens += cur.tokens || 0;
+  }
+  return { text: cur.text || "", files, tokens };
+}
+
+/** One chat completion. Supports optional OpenAI-style tools. */
+async function callModel({ model, messages, key, signal, maxTokens, temperature, tools, toolChoice }) {
+  const body = {
+    model,
+    messages,
+    temperature: temperature ?? 0.3,
+    max_tokens: maxTokens ?? MAX_REPLY_TOKENS,
+  };
+  if (tools && tools.length) {
+    body.tools = tools;
+    body.tool_choice = toolChoice || "auto";
+  }
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     signal,
@@ -1338,25 +1528,23 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
       "HTTP-Referer": "https://chopstickshq.com",
       "X-Title": "chopsticksAI",
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: temperature ?? 0.3,
-      max_tokens: maxTokens ?? MAX_REPLY_TOKENS,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     return { ok: false, status: res.status, detail: await res.text().catch(() => "") };
   }
   const data = await res.json();
-  const text = (data.choices && data.choices[0] && data.choices[0].message.content || "").trim();
-  if (!text) {
+  const msg = (data.choices && data.choices[0] && data.choices[0].message) || {};
+  const text = String(msg.content || "").trim();
+  const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+  if (!text && !toolCalls.length) {
     return { ok: false, status: res.status, detail: "empty completion" };
   }
   const reported = data.usage && Number(data.usage.total_tokens);
   return {
     ok: true,
     text,
+    toolCalls,
     tokens: Number.isFinite(reported) && reported > 0 ? reported : null,
   };
 }
@@ -1688,6 +1876,10 @@ async function handler(event) {
     let draftModel = null;
     let lastStatus = 0;
     let lastDetail = "";
+    let producedFiles = [];
+
+    const useTools = payload.enableTools !== false
+      && (payload.mode === "agent" || tier.chopCode || payload.tools === true);
 
     // A long generation only has time for one attempt. Falling back would blow
     // the platform's function limit and produce a 504 instead of an answer.
@@ -1709,19 +1901,42 @@ async function handler(event) {
       let r;
       const attemptStart = Date.now();
       const g = withTimeout(budgetMs);
+      const callOpts = {
+        model: candidate,
+        messages,
+        key: apiKey,
+        signal: g.signal,
+        maxTokens: replyTokens,
+        temperature: tier.temperature,
+      };
+      if (useTools) {
+        callOpts.tools = AGENT_TOOLS;
+        callOpts.toolChoice = "auto";
+      }
       try {
-        r = await callModel({
-          model: candidate,
-          messages,
-          key: apiKey,
-          signal: g.signal,
-          maxTokens: replyTokens,
-          temperature: tier.temperature,
-        });
+        r = await callModel(callOpts);
       } catch (e) {
         r = { ok: false, status: 0, detail: String(e && e.name) };
       } finally {
         g.done();
+      }
+      // If tools aren't supported by this model, retry once without them.
+      if (!r.ok && useTools && r.status === 400) {
+        const g0 = withTimeout(Math.min(budgetMs, 20000));
+        try {
+          r = await callModel({
+            model: candidate,
+            messages,
+            key: apiKey,
+            signal: g0.signal,
+            maxTokens: replyTokens,
+            temperature: tier.temperature,
+          });
+        } catch (e) {
+          r = { ok: false, status: 0, detail: String(e && e.name) };
+        } finally {
+          g0.done();
+        }
       }
       if (!r.ok && (r.status === 429 || r.status === 503) && budgetMs > 2500) {
         await sleep(700);
@@ -1734,6 +1949,8 @@ async function handler(event) {
             signal: g2.signal,
             maxTokens: replyTokens,
             temperature: tier.temperature,
+            tools: useTools ? AGENT_TOOLS : undefined,
+            toolChoice: useTools ? "auto" : undefined,
           });
         } catch (e) {
           r = { ok: false, status: 0, detail: String(e && e.name) };
@@ -1741,8 +1958,32 @@ async function handler(event) {
           g2.done();
         }
       }
-      if (r.ok && r.text) {
-        draft = r;
+      if (r.ok && (r.text || (r.toolCalls && r.toolCalls.length))) {
+        if (r.toolCalls && r.toolCalls.length) {
+          const g3 = withTimeout(Math.max(4000, deadline - Date.now() - 500));
+          try {
+            const cont = await continueWithTools({
+              model: candidate,
+              messages,
+              first: r,
+              key: apiKey,
+              signal: g3.signal,
+              maxTokens: replyTokens,
+              temperature: tier.temperature,
+            });
+            draft = {
+              ok: true,
+              text: cont.text || r.text || "",
+              tokens: cont.tokens,
+              toolCalls: [],
+            };
+            producedFiles = cont.files || [];
+          } finally {
+            g3.done();
+          }
+        } else {
+          draft = r;
+        }
         draftModel = candidate;
         break;
       }
@@ -1772,15 +2013,21 @@ async function handler(event) {
     }
 
     let spent = draft.tokens || (messages.reduce((n, m) => n + messageTokens(m), 0) + MAX_REPLY_TOKENS);
-    let reply = draft.text;
+    let reply = draft.text || "";
     let refinedBy = null;
+
+    // Merge tool-created files with any fenced files in the reply text.
+    producedFiles = mergeFiles(producedFiles, extractFencedFiles(reply));
+    if (producedFiles.length) {
+      reply = ensureFileFences(reply, producedFiles);
+    }
 
     // --- stage 2: refine ------------------------------------------------
     // A second model reviews and rewrites the draft. Failure here is not fatal:
     // the draft is already a complete answer, so we return it unchanged.
     // A review pass rewrites prose safely, but can silently corrupt generated
     // code or file contents, so drafts containing a fenced block skip it.
-    const hasCodeBlock = draft.text.includes("```");
+    const hasCodeBlock = reply.includes("```") || producedFiles.length > 0;
     const timeLeft = deadline - Date.now();
     const refineOn = REFINE_ENABLED && tier.refine !== false;
     const refineModel = tier.refineModel || REFINE_MODEL;
@@ -1803,7 +2050,7 @@ async function handler(event) {
             role: "user",
             content:
               "QUESTION:\n" + (question ? question.content : "") +
-              "\n\nDRAFT REPLY:\n" + draft.text,
+              "\n\nDRAFT REPLY:\n" + reply,
           },
         ],
       });
@@ -1815,14 +2062,17 @@ async function handler(event) {
       if (r.ok && r.text) {
         reply = r.text;
         refinedBy = refineModel;
-        spent += r.tokens || estimateTokens(draft.text) + MAX_REPLY_TOKENS;
+        spent += r.tokens || estimateTokens(draft.text || "") + MAX_REPLY_TOKENS;
       }
     }
 
     const spentResult = await budgetSpend(spent, now, budgetOpts);
 
-    if (!reply) {
+    if (!reply && !producedFiles.length) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
+    }
+    if (!reply && producedFiles.length) {
+      reply = ensureFileFences("Created " + producedFiles.length + " file(s).", producedFiles);
     }
 
     const ctxLimit = contextFor(tier, plan);
@@ -1835,6 +2085,11 @@ async function handler(event) {
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: searchOn,
       sources: webBundle.sources,
+      files: producedFiles.map((f) => ({
+        name: f.name,
+        content: f.content,
+        language: f.language,
+      })),
       budget: { used: spentResult.used, limit: plan.limit },
       usage: usagePayload(plan, {
         used: spentResult.used,

@@ -1,7 +1,17 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.0.4",
+  "latest": "cs.AI 2.0.5",
   "entries": [
+    {
+      "version": "cs.AI 2.0.5",
+      "date": "2026-08-08",
+      "title": "Tool-call files · labeled sidebar · more settings",
+      "changes": [
+        "Agent can create files via write_file tool-calls (Lab + macOS); replies include downloadable file cards",
+        "macOS nav rail shows text labels (toggle in Settings → General)",
+        "More settings: Tools (write_file, confirm save, default folder), Agents (file tools), Beta (file previews)"
+      ]
+    },
     {
       "version": "cs.AI 2.0.4",
       "date": "2026-08-08",
