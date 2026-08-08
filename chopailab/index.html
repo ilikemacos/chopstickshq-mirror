@@ -6,14 +6,14 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>chopAI Lab — the chopsticksAI web agent · Chopsticks HQ</title>
-<meta name="description" content="chopAI Lab is the chopsticksAI web agent: ask anything, generate complete files and code, and download them straight from the chat.">
+<title>C.ai — chopsticksAI web agent · Chopsticks HQ</title>
+<meta name="description" content="C.ai is the chopsticksAI web agent: pick Low, Medium, High, Xhigh, or Chopsticks effort, generate complete files and code, and download them from the chat.">
 <link rel="canonical" href="https://chopstickshq.com/chopailab/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
-<meta property="og:title" content="chopAI Lab — the chopsticksAI web agent">
-<meta property="og:description" content="Ask anything, generate complete files, download them from the chat.">
+<meta property="og:title" content="C.ai — chopsticksAI web agent">
+<meta property="og:description" content="Ask anything, pick your effort level, generate complete files, download them from the chat.">
 <meta property="og:url" content="https://chopstickshq.com/chopailab/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -185,11 +185,14 @@
 </head>
 <body>
 <nav>
-  <a class="brand" href="/">Chopsticks HQ <span>· chopAI Lab</span></a>
+  <a class="brand" href="/">Chopsticks HQ <span>· C.ai</span></a>
   <div class="nav-right">
-    <select class="nbtn" id="tier" aria-label="Model tier" title="Ultra: largest context. Super: lighter and faster, smaller context.">
-      <option value="ultra">Ultra · 48K context</option>
-      <option value="super">Super · 24K context</option>
+    <select class="nbtn" id="tier" aria-label="Effort level" title="Low: fastest. Medium: balanced. High: deeper answers. Xhigh: max effort. Chopsticks: product expert.">
+      <option value="low">Low · quick</option>
+      <option value="medium">Medium · balanced</option>
+      <option value="high" selected>High · default</option>
+      <option value="xhigh">Xhigh · max</option>
+      <option value="chopsticks">Chopsticks · HQ apps</option>
     </select>
     <button type="button" class="nbtn" id="export">Export chat</button>
     <button type="button" class="nbtn" id="reset">New chat</button>
@@ -201,12 +204,12 @@
 <div class="stage" id="stage">
   <div class="inner" id="log">
     <div class="intro" id="intro">
-      <div class="kicker">chopsticksAI 1.0 · Web agent</div>
-      <h1>chopAI Lab</h1>
+      <div class="kicker">chopsticksAI 1.0 · C.ai</div>
+      <h1>C.ai</h1>
       <p>
-        Ask anything, or have it build something. Files and code come back as
-        complete, downloadable documents — not fragments you have to stitch
-        together. Nothing you type is stored.
+        Ask anything, or have it build something. Pick an effort level — Low,
+        Medium, High, Xhigh, or Chopsticks for HQ app questions. Files and code
+        come back as complete, downloadable documents. Nothing you type is stored.
       </p>
       <div class="suggest" id="suggest"></div>
     </div>
@@ -216,7 +219,7 @@
 <div class="composer">
   <div class="hint">
     <span>Enter to send · Shift+Enter for new line · <code>/compact</code> toggles compact UI</span>
-    <span id="status">chopsticksAI v1.0</span>
+    <span id="status">C.ai</span>
   </div>
   <div class="usage" id="usage" aria-live="polite"></div>
   <div class="composer-inner">
@@ -231,6 +234,15 @@
 (function () {
   'use strict';
 
+  var EFFORT = {
+    low: { label: 'Low', maxTokens: 400 },
+    medium: { label: 'Medium', maxTokens: 600 },
+    high: { label: 'High', maxTokens: 1000 },
+    xhigh: { label: 'Xhigh', maxTokens: 2000 },
+    chopsticks: { label: 'Chopsticks', maxTokens: 800 },
+    ultra: { label: 'Xhigh', maxTokens: 2000 },
+    super: { label: 'Medium', maxTokens: 600 }
+  };
   var API = '/api/chopsticks-ai';
   var STORE = 'chq.lab.session';
   var history = [];
@@ -327,18 +339,20 @@
 
   try {
     var savedTier = localStorage.getItem('chq.aiTier');
-    if (savedTier === 'super' || savedTier === 'ultra') tierSel.value = savedTier;
+    if (savedTier && EFFORT[savedTier]) tierSel.value = savedTier;
   } catch (e) {}
+  function effortInfo() {
+    return EFFORT[tierSel.value] || EFFORT.high;
+  }
+  function showTier() {
+    var e = effortInfo();
+    status.textContent = 'C.ai · ' + e.label + ' effort' + (compact ? ' · compact' : '');
+  }
   function fmt(n) {
     if (!isFinite(n)) return '?';
     if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     return String(Math.round(n));
-  }
-  function showTier() {
-    status.textContent = 'chopsticksAI v1.0 · ' +
-      (tierSel.value === 'super' ? 'Super · 24K context' : 'Ultra · 48K context') +
-      (compact ? ' · compact' : '');
   }
   function showUsage(d) {
     if (!usageEl) return;
@@ -433,7 +447,7 @@
       var bits = head.split(/\s+/);
       var lang = (bits[0] || 'text').toLowerCase();
       var name = bits.slice(1).join(' ').trim();
-      if (!name) name = 'chopailab-file.' + (EXT[lang] || 'txt');
+      if (!name) name = 'cai-file.' + (EXT[lang] || 'txt');
 
       var card = document.createElement('div');
       card.className = 'file';
@@ -470,7 +484,7 @@
     t.className = 'turn ' + who;
     var label = document.createElement('div');
     label.className = 'who';
-    label.textContent = who === 'user' ? 'You' : 'chopsticksAI';
+    label.textContent = who === 'user' ? 'You' : 'C.ai';
     t.appendChild(label);
     t.appendChild(node);
     log.appendChild(t);
@@ -516,7 +530,7 @@
       messages: history.slice(-12),
       mode: 'agent',
       tier: tierSel.value,
-      maxTokens: 600
+      maxTokens: effortInfo().maxTokens
     };
     if (sr.hadPrefix) {
       payload.messages = payload.messages.slice();
@@ -588,7 +602,7 @@
     if (!saved) return;
     history = saved.history;
     if (usageEl && saved.usage) usageEl.textContent = saved.usage;
-    if (saved.tier === 'super' || saved.tier === 'ultra') tierSel.value = saved.tier;
+    if (saved.tier && EFFORT[saved.tier]) tierSel.value = saved.tier;
     intro.remove();
 
     var when = new Date(saved.at);
@@ -610,11 +624,11 @@
 
   document.getElementById('export').addEventListener('click', function () {
     if (!history.length) return;
-    var md = '# chopAI Lab conversation\n\n' + history.map(function (m) {
-      return (m.role === 'user' ? '## You\n\n' : '## chopsticksAI\n\n') + m.content;
+    var md = '# C.ai conversation\n\n' + history.map(function (m) {
+      return (m.role === 'user' ? '## You\n\n' : '## C.ai\n\n') + m.content;
     }).join('\n\n');
     var d = new Date().toISOString().slice(0, 10);
-    download('chopailab-' + d + '.md', md);
+    download('cai-' + d + '.md', md);
   });
 
   input.focus();

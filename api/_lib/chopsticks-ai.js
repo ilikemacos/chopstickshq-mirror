@@ -17,28 +17,74 @@
 // between releases and a wrong one 404s every request, so check before editing.
 // Tried in order: if the first is rate-limited or erroring, the next takes over.
 // Both are zero-cost tiers, so failover never introduces spend.
-// Selectable tiers. Clients send a tier NAME, never a model id - accepting an
-// arbitrary model from the browser would let anyone run a paid model on our key.
+// Effort levels for C.ai (and legacy ultra/super aliases for the sidebar widget).
+// Clients send a tier NAME, never a model id - accepting an arbitrary model from
+// the browser would let anyone run a paid model on our key.
 const TIERS = {
-  ultra: {
-    label: "Ultra",
+  low: {
+    label: "Low",
+    models: ["nvidia/nemotron-3-nano-30b-a3b:free"],
+    longModels: ["nvidia/nemotron-3-nano-30b-a3b:free"],
+    context: 12000,
+    refine: false,
+    maxReply: 400,
+    grounding: 3,
+    searchMax: 4,
+  },
+  medium: {
+    label: "Medium",
+    models: [
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+    ],
+    longModels: [
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+    ],
+    context: 24000,
+    refine: true,
+    maxReply: 600,
+    grounding: 5,
+    searchMax: 8,
+  },
+  high: {
+    label: "High",
+    models: [
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+    ],
+    longModels: [
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+    ],
+    context: 36000,
+    refine: true,
+    maxReply: 1000,
+    grounding: 6,
+    searchMax: 10,
+  },
+  xhigh: {
+    label: "Xhigh",
     models: [
       "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
-    // Long generations are token-rate bound, and a 55B-active model cannot emit
-    // ~1.5k tokens inside the serverless window. Fewer active parameters first.
     longModels: [
       "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     context: 48000,
+    refine: true,
+    maxReply: 2000,
+    grounding: 8,
+    searchMax: 12,
   },
-  super: {
-    label: "Super",
+  chopsticks: {
+    label: "Chopsticks",
     models: [
       "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -47,13 +93,22 @@ const TIERS = {
     longModels: [
       "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
-    context: 24000,
+    context: 36000,
+    refine: true,
+    maxReply: 800,
+    grounding: 10,
+    searchMax: 6,
+    chopsticksFocus: true,
   },
 };
-const DEFAULT_TIER = "ultra";
-const tierOf = (name) => TIERS[String(name || "").toLowerCase()] || TIERS[DEFAULT_TIER];
+const TIER_ALIASES = { ultra: "xhigh", super: "medium" };
+const DEFAULT_TIER = "high";
+const tierOf = (name) => {
+  const key = String(name || "").toLowerCase();
+  const id = TIER_ALIASES[key] || key;
+  return TIERS[id] || TIERS[DEFAULT_TIER];
+};
 
 const MODELS = TIERS[DEFAULT_TIER].models;
 const MODEL = MODELS[0];
@@ -709,7 +764,8 @@ async function searchGoogleCse(query, signal) {
 }
 
 /** Returns prompt context plus structured sources for the client UI. */
-async function webSearch(query) {
+async function webSearch(query, maxSources) {
+  const cap = Math.max(1, Math.min(MAX_SOURCES, Number(maxSources) || MAX_SOURCES));
   const c = new AbortController();
   const timer = setTimeout(() => c.abort(), SEARCH_TIMEOUT_MS);
   try {
@@ -735,7 +791,7 @@ async function webSearch(query) {
         found.push(...batch.value);
       }
     }
-    found = dedupeSources(found).slice(0, MAX_SOURCES);
+    found = dedupeSources(found).slice(0, cap);
 
     if (!found.length) return { context: "", sources: [] };
 
@@ -764,16 +820,16 @@ function selfFacts(tier) {
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
     `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
-    `- You run in two selectable tiers: Ultra (the default, largest context) and Super (lighter, smaller context, faster).`,
-    `- Current tier: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
-    `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in the chopAI Lab agent); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
+    `- You run on selectable effort levels in C.ai: Low, Medium, High, Xhigh, and Chopsticks (product expert).`,
+    `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
+    `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in C.ai); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
     "- You search the web on every question — Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google/Brave when configured — then cite sources in your answer.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
     "- You need no API key from the user, and nothing they type is stored.",
-    "- You are available on every page of chopstickshq.com, in the chopAI Lab web agent at /chopailab, and inside rNitro's Chat tab.",
+    "- You are available on every page of chopstickshq.com, in C.ai at /chopailab, and inside rNitro's Chat tab.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
   ].join("\n");
 }
@@ -782,7 +838,7 @@ function systemPrompt(grounding, mode, web, tier) {
   // The agent at /chopailab produces files and code; the sidebar widget answers
   // conversationally. Same knowledge, different output contract.
   const agent = mode === "agent" ? [
-    "\n\nYou are running as the chopsticksAI Lab agent. The user may ask you to ",
+    "\n\nYou are running as the C.ai agent. The user may ask you to ",
     "write code, config, scripts, documents or data files.\n",
     "- Put every file you produce in its own fenced code block.\n",
     "- Start the fence with the language, then a space, then the filename, ",
@@ -790,6 +846,9 @@ function systemPrompt(grounding, mode, web, tier) {
     "filename into a download button, so always supply one.\n",
     "- Give complete, runnable files rather than fragments or ellipses.\n",
     "- Keep explanation outside the fences and brief.",
+    tier.chopsticksFocus
+      ? "\n- Chopsticks effort: prioritise accurate answers about Chopsticks HQ software from the reference material; still help with general tasks when asked."
+      : "",
   ].join("") : "";
 
   const facts = grounding.length
@@ -948,16 +1007,17 @@ async function handler(event) {
     });
   }
 
+  const tier = tierOf(payload.tier);
   const wanted = Number(payload.maxTokens);
+  const tierCap = tier.maxReply || MAX_REPLY_TOKENS_CEILING;
   const replyTokens = Number.isFinite(wanted)
-    ? Math.max(100, Math.min(MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
-    : MAX_REPLY_TOKENS;
+    ? Math.max(100, Math.min(tierCap, MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
+    : (payload.mode === "agent" ? tierCap : MAX_REPLY_TOKENS);
 
   // Web search runs on every question before the draft.
-  const tier = tierOf(payload.tier);
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
   const searchOn = wantsSearch(searchQuery);
-  const webBundle = searchOn ? await webSearch(searchQuery) : { context: "", sources: [] };
+  const webBundle = searchOn ? await webSearch(searchQuery, tier.searchMax) : { context: "", sources: [] };
   let webSection = "";
   if (searchOn) {
     webSection = webBundle.context
@@ -973,7 +1033,10 @@ async function handler(event) {
 
   const system = {
     role: "system",
-    content: systemPrompt(retrieve(retrievalQuery(modelTurns)), payload.mode, webSection, tier),
+    content: systemPrompt(
+      retrieve(retrievalQuery(modelTurns), tier.grounding || GROUNDING_INTENTS),
+      payload.mode, webSection, tier
+    ),
   };
   const messages = fitContext(system, modelTurns, contextFor(tier));
 
@@ -1071,7 +1134,8 @@ async function handler(event) {
     // code or file contents, so drafts containing a fenced block skip it.
     const hasCodeBlock = draft.text.includes("```");
     const timeLeft = deadline - Date.now();
-    if (REFINE_ENABLED && REFINE_MODEL && REFINE_MODEL !== draftModel
+    const refineOn = REFINE_ENABLED && tier.refine !== false;
+    if (refineOn && REFINE_MODEL && REFINE_MODEL !== draftModel
         && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
       const g = withTimeout(timeLeft - 500);
