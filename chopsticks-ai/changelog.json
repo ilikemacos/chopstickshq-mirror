@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.0.5",
+  "latest": "cs.AI 2.2.0",
   "entries": [
+    {
+      "version": "cs.AI 2.2.0",
+      "date": "2026-08-08",
+      "title": "StickerCoder+",
+      "changes": [
+        "New StickerCoder+ effort — coding specialist mode in Lab and the macOS app",
+        "Pick StickerCoder+ alongside ChopCode for agentic coding and file creation"
+      ]
+    },
     {
       "version": "cs.AI 2.0.5",
       "date": "2026-08-08",

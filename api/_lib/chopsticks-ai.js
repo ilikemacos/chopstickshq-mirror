@@ -156,6 +156,20 @@ const TIERS = {
     temperature: 0.2,
     chopCode: true,
   },
+  /** StickerCoder+ — North Mini Code. Do not expose provider/pricing in UI. */
+  stickercoderplus: {
+    label: "StickerCoder+",
+    models: ["cohere/north-mini-code:free"],
+    longModels: ["cohere/north-mini-code:free"],
+    context: 96000,
+    refine: false,
+    maxReply: 6000,
+    grounding: 4,
+    searchMax: 10,
+    temperature: 0.15,
+    chopCode: true,
+    stickerCoder: true,
+  },
 };
 const TIER_ALIASES = {
   ultra: "xhigh",
@@ -163,6 +177,12 @@ const TIER_ALIASES = {
   "xhigh+": "xhighplus",
   chopcode: "chopcode",
   "chop-code": "chopcode",
+  stickercoderplus: "stickercoderplus",
+  "stickercoder+": "stickercoderplus",
+  "sticker-coder+": "stickercoderplus",
+  "sticker-coderplus": "stickercoderplus",
+  coderplus: "stickercoderplus",
+  "coder+": "stickercoderplus",
 };
 const DEFAULT_TIER = "high";
 const tierOf = (name) => {
@@ -1214,12 +1234,14 @@ function selfFacts(tier) {
   const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
-    `- You are cs.AI 2.0 (chopsticksAI), built and run by Chopsticks HQ.`,
-    `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, and ChopCode (coding specialist).`,
+    `- You are cs.AI 2.2 (chopsticksAI), built and run by Chopsticks HQ.`,
+    `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, ChopCode, and StickerCoder+ (coding specialists).`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
-    t.chopCode
-      ? "- ChopCode mode: prioritise complete, runnable code, clear file fences, and practical engineering answers."
-      : null,
+    t.stickerCoder
+      ? "- StickerCoder+ mode: prioritise complete, runnable code, write_file tool use, and sharp engineering answers."
+      : t.chopCode
+        ? "- ChopCode mode: prioritise complete, runnable code, clear file fences, and practical engineering answers."
+        : null,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in ChopsticksAI Lab); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Free usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
@@ -1240,7 +1262,11 @@ function systemPrompt(grounding, mode, web, tier) {
   // conversationally. Same knowledge, different output contract.
   const agent = mode === "agent" || tier.chopCode ? [
     "\n\nYou are running as the ChopsticksAI agent",
-    tier.chopCode ? " in ChopCode mode (coding specialist)" : "",
+    tier.stickerCoder
+      ? " in StickerCoder+ mode (coding specialist)"
+      : tier.chopCode
+        ? " in ChopCode mode (coding specialist)"
+        : "",
     ". The user may ask you to ",
     "write code, config, scripts, documents or data files.\n",
     "- Prefer the write_file tool for each file you create (path + full content).\n",
@@ -1250,23 +1276,31 @@ function systemPrompt(grounding, mode, web, tier) {
     tier.chopsticksFocus
       ? "\n- Chopsticks effort: prioritise accurate answers about Chopsticks HQ software from the reference material; still help with general tasks when asked."
       : "",
-    tier.chopCode
-      ? "\n- ChopCode: prefer correct, idiomatic code; include imports and edge-case handling; add short usage notes only when helpful; do not pad with long essays."
-      : "",
+    tier.stickerCoder
+      ? "\n- StickerCoder+: prefer correct, idiomatic code; use tools aggressively for file creation; include imports and edge cases; keep prose short."
+      : tier.chopCode
+        ? "\n- ChopCode: prefer correct, idiomatic code; include imports and edge-case handling; add short usage notes only when helpful; do not pad with long essays."
+        : "",
   ].join("") : "";
 
   const facts = grounding.length
     ? grounding.map((i) => `### ${i.label}\n${i.answer}`).join("\n\n")
     : "(no specific reference material matched this question)";
 
-  const persona = tier.chopCode
+  const persona = tier.stickerCoder
+    ? [
+        "You are cs.AI StickerCoder+ — a coding mode of chopsticksAI, made by Chopsticks HQ.\n\n",
+        "Focus on software engineering: write, debug, refactor, and explain code. ",
+        "Be precise and practical. Prefer working solutions over theory.\n\n",
+      ].join("")
+    : tier.chopCode
     ? [
         "You are cs.AI ChopCode — the coding mode of chopsticksAI, made by Chopsticks HQ.\n\n",
         "Focus on software engineering: write, debug, refactor, and explain code. ",
         "Be precise and practical. Prefer working solutions over theory.\n\n",
       ].join("")
     : [
-        "You are cs.AI 2.0 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
+        "You are cs.AI 2.2 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
         "made by Chopsticks HQ.\n\n",
         "Answer ANY question the user asks — general knowledge, science, history, coding, ",
         "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
@@ -2079,7 +2113,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "cs.AI 2.0",
+      model: "cs.AI 2.2",
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),

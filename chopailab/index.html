@@ -250,7 +250,7 @@
 <nav>
   <a class="brand" href="/">Chopsticks HQ <span>· ChopsticksAI</span></a>
   <div class="nav-right">
-    <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps. ChopCode is for coding.">
+    <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps. ChopCode and StickerCoder+ are for coding.">
       <option value="low">Low · quick</option>
       <option value="medium">Medium · balanced</option>
       <option value="high" selected>High · default</option>
@@ -259,6 +259,7 @@
       <option value="insane">Insane · max</option>
       <option value="chopsticks">Chopsticks · HQ apps</option>
       <option value="chopcode">ChopCode · coding</option>
+      <option value="stickercoderplus">StickerCoder+ · coding</option>
     </select>
     <select class="nbtn" id="chat-list" aria-label="Saved chats" title="Cloud chats (sign in to sync)" hidden>
       <option value="">Local chat</option>
@@ -297,7 +298,7 @@
       <h1>ChopsticksAI</h1>
       <p>
         Ask anything, or have it build something. Pick an effort level — Low through Insane,
-        Chopsticks for HQ apps, or ChopCode for coding. Files and code come back as
+        Chopsticks for HQ apps, ChopCode or StickerCoder+ for coding. Files and code come back as
         complete, downloadable documents. Sign in with Account to sync chats to Supabase;
         guests stay on this device only.
       </p>
@@ -338,6 +339,7 @@
     insane: { label: 'Insane', maxTokens: 4000 },
     chopsticks: { label: 'Chopsticks', maxTokens: 800 },
     chopcode: { label: 'ChopCode', maxTokens: 4000 },
+    stickercoderplus: { label: 'StickerCoder+', maxTokens: 6000 },
     ultra: { label: 'Xhigh', maxTokens: 2000 },
     super: { label: 'Medium', maxTokens: 600 }
   };
