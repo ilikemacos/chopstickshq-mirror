@@ -1,7 +1,17 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.3",
+  "latest": "cs.AI 2.2.4",
   "entries": [
+    {
+      "version": "cs.AI 2.2.4",
+      "date": "2026-08-08",
+      "title": "Fix empty/hung free-model replies",
+      "changes": [
+        "Handle reasoning models that return empty content by retrying with a larger token budget",
+        "Fail fast per attempt (8s cap) so rescue models can answer instead of hanging Offline",
+        "Prefer the faster nano model on High effort"
+      ]
+    },
     {
       "version": "cs.AI 2.2.3",
       "date": "2026-08-08",

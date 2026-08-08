@@ -54,13 +54,13 @@ const TIERS = {
   high: {
     label: "High",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
+      "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
+      "google/gemma-4-26b-a4b-it:free",
     ],
     context: 36000,
     refine: true,
@@ -1561,13 +1561,34 @@ async function continueWithTools({
   return { text: cur.text || "", files, tokens };
 }
 
+/** Normalize assistant message content (string or text parts). */
+function messageText(msg) {
+  const raw = msg && msg.content;
+  if (typeof raw === "string") return raw.trim();
+  if (Array.isArray(raw)) {
+    return raw
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part.text === "string") return part.text;
+        if (part && typeof part.content === "string") return part.content;
+        return "";
+      })
+      .join("")
+      .trim();
+  }
+  return "";
+}
+
 /** One chat completion. Supports optional OpenAI-style tools. */
 async function callModel({ model, messages, key, signal, maxTokens, temperature, tools, toolChoice }) {
+  // Reasoning-capable free models often burn a small max_tokens budget on
+  // chain-of-thought and return content:null — pad the ceiling a bit.
+  const asked = maxTokens ?? MAX_REPLY_TOKENS;
   const body = {
     model,
     messages,
     temperature: temperature ?? 0.3,
-    max_tokens: maxTokens ?? MAX_REPLY_TOKENS,
+    max_tokens: Math.max(asked, Math.min(asked + 256, asked * 2, 1200)),
   };
   if (tools && tools.length) {
     body.tools = tools;
@@ -1588,11 +1609,56 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature,
     return { ok: false, status: res.status, detail: await res.text().catch(() => "") };
   }
   const data = await res.json();
-  const msg = (data.choices && data.choices[0] && data.choices[0].message) || {};
-  const text = String(msg.content || "").trim();
+  const choice = (data.choices && data.choices[0]) || {};
+  const msg = choice.message || {};
+  let text = messageText(msg);
   const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+  // If the model spent the budget on reasoning only, retry once with a larger cap.
+  if (!text && !toolCalls.length && /length|max_tokens/i.test(String(choice.finish_reason || choice.native_finish_reason || ""))) {
+    if (!signal || !signal.aborted) {
+      try {
+        const retryBody = {
+          model: body.model,
+          messages: body.messages,
+          temperature: body.temperature,
+          max_tokens: Math.min(Math.max(asked * 3, 900), 2000),
+        };
+        const res2 = await fetch(OPENROUTER_URL, {
+          method: "POST",
+          signal,
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://chopstickshq.com",
+            "X-Title": "chopsticksAI",
+          },
+          body: JSON.stringify(retryBody),
+        });
+        if (res2.ok) {
+          const data2 = await res2.json();
+          const msg2 = (data2.choices && data2.choices[0] && data2.choices[0].message) || {};
+          text = messageText(msg2);
+          const reported2 = data2.usage && Number(data2.usage.total_tokens);
+          if (text) {
+            return {
+              ok: true,
+              text,
+              toolCalls: [],
+              tokens: Number.isFinite(reported2) && reported2 > 0 ? reported2 : null,
+            };
+          }
+        }
+      } catch (e) {
+        // fall through to empty completion
+      }
+    }
+  }
   if (!text && !toolCalls.length) {
-    return { ok: false, status: res.status, detail: "empty completion" };
+    return {
+      ok: false,
+      status: res.status,
+      detail: "empty completion finish=" + String(choice.finish_reason || ""),
+    };
   }
   const reported = data.usage && Number(data.usage.total_tokens);
   return {
@@ -1922,9 +1988,12 @@ async function handler(event) {
 
   // Model deadline starts AFTER search so Mozilla lookups can't starve the LLM.
   // Keep a hard rescue slice so a busy primary model cannot burn the whole window.
-  const RESCUE_RESERVE_MS = 7000;
+  const RESCUE_RESERVE_MS = 8000;
   const deadline = Date.now() + TIMEOUT_MS;
   const modelDeadline = deadline - RESCUE_RESERVE_MS;
+  // Cap each attempt — datacenter IPs to OpenRouter free models often hang
+  // until abort; failing fast lets the rescue path answer.
+  const ATTEMPT_CAP_MS = 8000;
   const withTimeout = (ms) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), Math.max(500, ms));
@@ -1964,12 +2033,12 @@ async function handler(event) {
       const share = ci === 0
         ? Math.floor(msLeft * 0.75)
         : msLeft - 400;
-      const reserveRetry = useTools ? Math.min(4000, Math.floor(share * 0.35)) : 0;
-      const budgetMs = Math.max(2500, share - reserveRetry);
+      const reserveRetry = useTools ? Math.min(3500, Math.floor(share * 0.35)) : 0;
+      const budgetMs = Math.min(ATTEMPT_CAP_MS, Math.max(2500, share - reserveRetry));
       let r;
       const attemptStart = Date.now();
       const tryCall = async (ms, withTools) => {
-        const g = withTimeout(ms);
+        const g = withTimeout(Math.min(ATTEMPT_CAP_MS, ms));
         try {
           return await callModel({
             model: candidate,
@@ -2120,6 +2189,14 @@ async function handler(event) {
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
         mode: "error",
+        ...(payload.debug ? {
+          diag: {
+            status: lastStatus,
+            detail: String(lastDetail || "").slice(0, 400),
+            replyTokens,
+            msLeft: deadline - Date.now(),
+          },
+        } : {}),
       });
     }
 

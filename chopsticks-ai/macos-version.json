@@ -1,10 +1,10 @@
 {
-  "latest": "v2.2.3",
+  "latest": "v2.2.4",
   "product": "chopsticksAI",
   "releases": {
     "stable": {
-      "zip": "chopsticksAI-v2.2.3.zip",
-      "sha256": "c965b1f90360fd84194ef855d65e7a9b21fdc2e8aca9264bfa0e4464dec6b44c"
+      "zip": "chopsticksAI-v2.2.4.zip",
+      "sha256": "3f4e1c48b1ed3677a16f7191f54229d2e6cde71f02ac701f47f4215230a748f3"
     }
   }
 }
