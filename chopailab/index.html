@@ -190,6 +190,32 @@
   }
   .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
   @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+  .nbtn.primary { background: var(--soft); color: var(--bg); border-color: transparent; }
+  .nbtn.primary:hover { opacity: .9; background: var(--soft); }
+  .auth-modal {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,.55); padding: 1rem;
+  }
+  .auth-modal.is-open { display: flex; }
+  .auth-card {
+    width: min(22rem, 100%); background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.15rem 1.2rem 1.25rem;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .auth-card h2 { font-size: 1.1rem; margin-bottom: .25rem; }
+  .auth-card p { color: var(--muted); font-size: .82rem; margin-bottom: .9rem; }
+  .auth-card label { display: block; font-size: .72rem; color: var(--muted); margin: .55rem 0 .25rem; }
+  .auth-card input {
+    width: 100%; background: var(--bg2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: .65rem .75rem; font: inherit; font-size: .9rem;
+  }
+  .auth-card input:focus { outline: none; border-color: var(--muted); }
+  .auth-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+  .auth-err { color: #e07070; font-size: .78rem; min-height: 1.1em; margin-top: .55rem; }
+  .auth-ok { color: #6dbf7a; font-size: .78rem; margin-top: .55rem; }
+  #account-label { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -205,12 +231,35 @@
       <option value="insane">Insane · max</option>
       <option value="chopsticks">Chopsticks · HQ apps</option>
     </select>
+    <select class="nbtn" id="chat-list" aria-label="Saved chats" title="Cloud chats (sign in to sync)" hidden>
+      <option value="">Local chat</option>
+    </select>
     <button type="button" class="nbtn" id="export">Export chat</button>
     <button type="button" class="nbtn" id="reset">New chat</button>
+    <button type="button" class="nbtn" id="account-btn"><span id="account-label">Account</span></button>
     <a class="nbtn" href="/chopsticks-ai/">About</a>
     <button type="button" class="nbtn" data-theme-toggle>&#9680;</button>
   </div>
 </nav>
+
+<div class="auth-modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+  <div class="auth-card">
+    <h2 id="auth-title">ChopsticksAI account</h2>
+    <p>Sign in to save chats to your account in Supabase. Guests still work locally.</p>
+    <label for="auth-email">Email</label>
+    <input id="auth-email" type="email" autocomplete="username" placeholder="you@example.com">
+    <label for="auth-password">Password</label>
+    <input id="auth-password" type="password" autocomplete="current-password" placeholder="••••••••" minlength="6">
+    <div class="auth-err" id="auth-err"></div>
+    <div class="auth-ok" id="auth-ok"></div>
+    <div class="auth-actions">
+      <button type="button" class="nbtn primary" id="auth-signin">Sign in</button>
+      <button type="button" class="nbtn" id="auth-signup">Create account</button>
+      <button type="button" class="nbtn" id="auth-signout" hidden>Sign out</button>
+      <button type="button" class="nbtn" id="auth-close">Close</button>
+    </div>
+  </div>
+</div>
 
 <div class="stage" id="stage">
   <div class="inner" id="log">
@@ -220,7 +269,8 @@
       <p>
         Ask anything, or have it build something. Pick an effort level — Low, Medium, High,
         Xhigh, Xhigh+, Insane, or Chopsticks for HQ apps. Files and code come back as
-        complete, downloadable documents. Nothing you type is stored.
+        complete, downloadable documents. Sign in with Account to sync chats to Supabase;
+        guests stay on this device only.
       </p>
       <div class="suggest" id="suggest"></div>
     </div>
@@ -241,6 +291,7 @@
 
 <script src="/js/theme.js"></script>
 <script src="/js/chopsticks-ai-kb.js" defer></script>
+<script src="/js/chopsticks-ai-cloud.js"></script>
 <script>
 (function () {
   'use strict';
@@ -260,28 +311,112 @@
   var STORE = 'chq.lab.session';
   var history = [];
   var busy = false;
+  var cloudChatId = null;
+  var cloudSyncing = false;
+  var Cloud = window.ChopsticksAICloud;
 
-  // Sessions survive reloads and revisits. Kept in localStorage only - nothing
-  // is sent anywhere, and "New chat" wipes it.
+  // Guests: localStorage. Signed-in: also sync to Supabase chats.
   function saveSession() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        v: 1, at: Date.now(), tier: tierSel.value,
+        v: 2, at: Date.now(), tier: tierSel.value,
         usage: usageEl ? usageEl.textContent : '',
-        history: history.slice(-40)
+        history: history.slice(-40),
+        cloudChatId: cloudChatId
       }));
     } catch (e) {}
+    if (Cloud && Cloud.isSignedIn() && history.length) {
+      cloudSync();
+    }
   }
   function loadSession() {
     try {
       var raw = localStorage.getItem(STORE);
       if (!raw) return null;
       var d = JSON.parse(raw);
-      return (d && d.v === 1 && Array.isArray(d.history) && d.history.length) ? d : null;
+      return (d && (d.v === 1 || d.v === 2) && Array.isArray(d.history) && d.history.length) ? d : null;
     } catch (e) { return null; }
   }
   function clearSession() {
     try { localStorage.removeItem(STORE); } catch (e) {}
+    cloudChatId = null;
+  }
+  async function cloudSync() {
+    if (!Cloud || !Cloud.isSignedIn() || cloudSyncing) return;
+    cloudSyncing = true;
+    try {
+      var title = 'New Chat';
+      for (var i = 0; i < history.length; i++) {
+        if (history[i].role === 'user' && history[i].content) {
+          title = String(history[i].content).slice(0, 60);
+          break;
+        }
+      }
+      if (!cloudChatId) {
+        var created = await Cloud.createChat({ title: title, client: 'lab', tier: tierSel.value });
+        cloudChatId = created && created.id;
+      }
+      if (!cloudChatId) return;
+      await Cloud.saveMessages(cloudChatId, history.slice(-40), {
+        title: title,
+        tier: tierSel.value
+      });
+      await refreshChatList();
+    } catch (e) {
+      console.warn('cloud sync failed', e);
+    } finally {
+      cloudSyncing = false;
+    }
+  }
+  async function refreshChatList() {
+    var sel = document.getElementById('chat-list');
+    if (!sel || !Cloud) return;
+    if (!Cloud.isSignedIn()) {
+      sel.hidden = true;
+      return;
+    }
+    sel.hidden = false;
+    try {
+      var chats = await Cloud.listChats();
+      var cur = cloudChatId || '';
+      sel.innerHTML = '<option value="">' + (cur ? 'Current chat' : 'New local draft') + '</option>';
+      chats.forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = (c.title || 'Untitled').slice(0, 48);
+        if (c.id === cur) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      sel.hidden = true;
+    }
+  }
+  async function openCloudChat(id) {
+    if (!Cloud || !id) return;
+    var msgs = await Cloud.loadMessages(id);
+    history = msgs.map(function (m) {
+      return { role: m.role, content: m.content, sources: m.sources || [] };
+    });
+    cloudChatId = id;
+    log.innerHTML = '';
+    if (!history.length) {
+      log.appendChild(intro);
+    } else {
+      history.forEach(function (m) {
+        addTurn(m.role === 'user' ? 'user' : 'bot',
+          m.role === 'user' ? plain(m.content) : renderAssistant(m.content, m.sources));
+      });
+    }
+    saveSession();
+    stage.scrollTop = stage.scrollHeight;
+  }
+  function updateAccountUI() {
+    var label = document.getElementById('account-label');
+    var signOut = document.getElementById('auth-signout');
+    var signed = Cloud && Cloud.isSignedIn();
+    if (label) label.textContent = signed ? (Cloud.userEmail() || 'Signed in') : 'Account';
+    if (signOut) signOut.hidden = !signed;
+    refreshChatList();
   }
 
   var stage = document.getElementById('stage');
@@ -447,7 +582,7 @@
 
   /** Renders assistant text: fenced blocks become downloadable file cards,
    *  everything else becomes paragraphs with inline code. */
-  function renderAssistant(text) {
+  function renderAssistant(text, sources) {
     var wrap = document.createElement('div');
     wrap.className = 'bubble';
     var parts = String(text).split(/```/);
@@ -500,6 +635,30 @@
     });
 
     if (!wrap.childNodes.length) wrap.textContent = text;
+    if (sources && sources.length) {
+      var box = document.createElement('div');
+      box.className = 'sources';
+      var lab = document.createElement('div');
+      lab.className = 'sources-label';
+      lab.textContent = 'Sources';
+      box.appendChild(lab);
+      sources.forEach(function (s) {
+        if (!s) return;
+        if (s.url) {
+          var a = document.createElement('a');
+          a.href = s.url;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = s.title || s.url;
+          box.appendChild(a);
+        } else if (s.title) {
+          var span = document.createElement('div');
+          span.textContent = s.title;
+          box.appendChild(span);
+        }
+      });
+      wrap.appendChild(box);
+    }
     return wrap;
   }
 
@@ -629,7 +788,7 @@
       .then(function (d) {
         if (!d || !d.reply) throw new Error('empty');
         if (d.mode === 'cooldown') {
-          history.push({ role: 'assistant', content: d.reply });
+          history.push({ role: 'assistant', content: d.reply, sources: d.sources || [] });
           showCooldown(thinking, d);
           showUsage(d);
           showTier();
@@ -646,7 +805,7 @@
             return;
           }
         }
-        history.push({ role: 'assistant', content: d.reply });
+        history.push({ role: 'assistant', content: d.reply, sources: d.sources || [] });
         showUsage(d);
         showTier();
         return new Promise(function (resolve) {
@@ -686,14 +845,86 @@
     log.innerHTML = '';
     log.appendChild(intro);
     showTier();
+    refreshChatList();
     input.focus();
   });
+
+  var chatList = document.getElementById('chat-list');
+  if (chatList) {
+    chatList.addEventListener('change', function () {
+      var id = chatList.value;
+      if (!id) return;
+      openCloudChat(id).catch(function (e) {
+        console.warn(e);
+      });
+    });
+  }
+
+  // Account modal
+  (function wireAuth() {
+    var modal = document.getElementById('auth-modal');
+    var err = document.getElementById('auth-err');
+    var ok = document.getElementById('auth-ok');
+    var email = document.getElementById('auth-email');
+    var pass = document.getElementById('auth-password');
+    function open() {
+      if (!modal) return;
+      err.textContent = '';
+      ok.textContent = '';
+      updateAccountUI();
+      modal.classList.add('is-open');
+      email && email.focus();
+    }
+    function close() {
+      if (modal) modal.classList.remove('is-open');
+    }
+    document.getElementById('account-btn').addEventListener('click', open);
+    document.getElementById('auth-close').addEventListener('click', close);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+    document.getElementById('auth-signin').addEventListener('click', function () {
+      err.textContent = '';
+      ok.textContent = '';
+      Cloud.signIn(email.value.trim(), pass.value)
+        .then(function () {
+          ok.textContent = 'Signed in. Chats will sync to your account.';
+          updateAccountUI();
+          if (history.length) cloudSync();
+          setTimeout(close, 700);
+        })
+        .catch(function (e) { err.textContent = e.message || 'Sign in failed'; });
+    });
+    document.getElementById('auth-signup').addEventListener('click', function () {
+      err.textContent = '';
+      ok.textContent = '';
+      Cloud.signUp(email.value.trim(), pass.value)
+        .then(function (r) {
+          if (r && r.needsConfirm) {
+            ok.textContent = 'Check your email to confirm, then sign in.';
+          } else {
+            ok.textContent = 'Account created. Chats will sync.';
+            updateAccountUI();
+            if (history.length) cloudSync();
+            setTimeout(close, 700);
+          }
+        })
+        .catch(function (e) { err.textContent = e.message || 'Sign up failed'; });
+    });
+    document.getElementById('auth-signout').addEventListener('click', function () {
+      Cloud.signOut().then(function () {
+        updateAccountUI();
+        ok.textContent = 'Signed out. Local draft kept on this device.';
+      });
+    });
+  })();
 
   // Restore a previous session, if there is one.
   (function restore() {
     var saved = loadSession();
     if (!saved) return;
     history = saved.history;
+    cloudChatId = saved.cloudChatId || null;
     if (usageEl && saved.usage) {
       usageEl.textContent = String(saved.usage).replace(/\s*·?\s*Your OpenRouter key/gi, '').trim();
     }
@@ -711,7 +942,7 @@
 
     history.forEach(function (m) {
       addTurn(m.role === 'user' ? 'user' : 'bot',
-        m.role === 'user' ? plain(m.content) : renderAssistant(m.content));
+        m.role === 'user' ? plain(m.content) : renderAssistant(m.content, m.sources));
     });
     showTier();
     stage.scrollTop = stage.scrollHeight;
@@ -725,6 +956,13 @@
     var d = new Date().toISOString().slice(0, 10);
     download('chopsticksai-' + d + '.md', md);
   });
+
+  if (Cloud) {
+    Cloud.init().then(function () {
+      updateAccountUI();
+      if (Cloud.isSignedIn() && history.length && !cloudChatId) cloudSync();
+    }).catch(function () {});
+  }
 
   input.focus();
 })();
