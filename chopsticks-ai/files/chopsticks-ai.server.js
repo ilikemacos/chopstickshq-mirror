@@ -197,8 +197,9 @@ const FREE_USAGE = {
   keysRequired: 0,
   limit: Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000),
   cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000),
+  contextLimit: Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000),
   label: "Free",
-  detail: "775k tokens · 3h cooldown",
+  detail: "775k tokens · 48k context · 3h cooldown",
 };
 const CREDIT_TIERS = [
   {
@@ -206,26 +207,42 @@ const CREDIT_TIERS = [
     keysRequired: 2,
     limit: 800000,
     cooldownMs: Math.round(2.5 * 60 * 60 * 1000),
+    contextLimit: 64000,
     label: "2 Fathom Pro APIs",
-    detail: "800k token limit · 2h 30m cooldown",
+    detail: "800k tokens · 64k context · 2h 30m cooldown",
   },
   {
     id: "credits-5",
     keysRequired: 5,
     limit: 900000,
     cooldownMs: 2 * 60 * 60 * 1000,
+    contextLimit: 96000,
     label: "5 Fathom Pro APIs",
-    detail: "900k token limit · 2h cooldown",
+    detail: "900k tokens · 96k context · 2h cooldown",
   },
   {
     id: "credits-10",
     keysRequired: 10,
     limit: 1000000,
     cooldownMs: 1 * 60 * 60 * 1000,
+    contextLimit: 128000,
     label: "10 Fathom Pro APIs",
-    detail: "1m token limit · 1h cooldown",
+    detail: "1m tokens · 128k context · 1h cooldown",
   },
 ];
+
+/** Hard-coded account entitlements (email → plan). Verified via Supabase JWT. */
+const ACCOUNT_ENTITLEMENTS = {
+  "mzx@lam.ws": {
+    id: "founder",
+    label: "Founder",
+    detail: "1.5m tokens · 512k context",
+    limit: 1_500_000,
+    contextLimit: 512_000,
+    cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000),
+    bucketId: "user-mzx-lam-ws",
+  },
+};
 
 function resolveCredits(rawKeys) {
   const list = Array.isArray(rawKeys) ? rawKeys : [];
@@ -260,15 +277,117 @@ function resolveCredits(rawKeys) {
     bucketId,
     limit: tier.limit,
     cooldownMs: tier.cooldownMs,
+    contextLimit: tier.contextLimit || FREE_USAGE.contextLimit,
     upgrades: CREDIT_TIERS.map((t) => ({
       id: t.id,
       keysRequired: t.keysRequired,
       limit: t.limit,
       cooldownMs: t.cooldownMs,
+      contextLimit: t.contextLimit,
       label: t.label,
       detail: t.detail,
       unlocked: valid.length >= t.keysRequired,
     })),
+  };
+}
+
+function extractAccessToken(event, payload) {
+  const headers = (event && event.headers) || {};
+  const auth = headers.authorization || headers.Authorization || "";
+  const m = String(auth).match(/^Bearer\s+(.+)$/i);
+  if (m && m[1] && m[1].length > 40) return m[1].trim();
+  if (payload && typeof payload.accessToken === "string" && payload.accessToken.length > 40) {
+    return payload.accessToken.trim();
+  }
+  return "";
+}
+
+async function resolveAccount(accessToken) {
+  if (!accessToken || !supabaseConfigured()) return null;
+  try {
+    const userRes = await fetch(`${env("SUPABASE_URL")}/auth/v1/user`, {
+      headers: {
+        apikey: env("SUPABASE_ANON_KEY"),
+        authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (!userRes.ok) return null;
+    const user = await userRes.json();
+    const email = String(user.email || "").trim().toLowerCase();
+    if (!email || !user.id) return null;
+
+    let entitlement = ACCOUNT_ENTITLEMENTS[email] || null;
+    // Optional DB overrides on profiles (token_budget / context_limit).
+    try {
+      const profRes = await fetch(
+        `${env("SUPABASE_URL")}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=email,token_budget,context_limit,plan_label`,
+        {
+          headers: {
+            apikey: env("SUPABASE_ANON_KEY"),
+            authorization: `Bearer ${accessToken}`,
+            accept: "application/json",
+          },
+        }
+      );
+      if (profRes.ok) {
+        const rows = await profRes.json();
+        const row = Array.isArray(rows) ? rows[0] : null;
+        if (row) {
+          const tb = Number(row.token_budget);
+          const cl = Number(row.context_limit);
+          if ((Number.isFinite(tb) && tb > 0) || (Number.isFinite(cl) && cl > 0)) {
+            entitlement = {
+              id: "profile",
+              label: row.plan_label || (entitlement && entitlement.label) || "Member",
+              detail: entitlement ? entitlement.detail : "Account plan",
+              limit: Number.isFinite(tb) && tb > 0 ? tb : (entitlement && entitlement.limit) || FREE_USAGE.limit,
+              contextLimit: Number.isFinite(cl) && cl > 0 ? cl : (entitlement && entitlement.contextLimit) || FREE_USAGE.contextLimit,
+              cooldownMs: (entitlement && entitlement.cooldownMs) || FREE_USAGE.cooldownMs,
+              bucketId: (entitlement && entitlement.bucketId) || ("user-" + String(user.id).slice(0, 8)),
+            };
+          }
+        }
+      }
+    } catch (e) { /* profiles columns optional */ }
+
+    return {
+      id: user.id,
+      email,
+      entitlement,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Merge Fathom Pro credit tier with signed-in account entitlements (best wins). */
+function resolvePlan(rawKeys, account) {
+  const credits = resolveCredits(rawKeys);
+  const ent = account && account.entitlement;
+  if (!ent) return { ...credits, account: account ? { email: account.email, id: account.id } : null };
+
+  const limit = Math.max(credits.limit, ent.limit || 0);
+  const contextLimit = Math.max(credits.contextLimit || 0, ent.contextLimit || 0);
+  const cooldownMs = Math.min(credits.cooldownMs, ent.cooldownMs || credits.cooldownMs);
+  const fromAccount = (ent.limit || 0) >= credits.limit;
+  return {
+    ...credits,
+    limit,
+    contextLimit,
+    cooldownMs,
+    bucketId: ent.bucketId || credits.bucketId,
+    tier: fromAccount
+      ? {
+          id: ent.id,
+          keysRequired: credits.tier.keysRequired,
+          limit,
+          cooldownMs,
+          contextLimit,
+          label: ent.label,
+          detail: ent.detail,
+        }
+      : { ...credits.tier, contextLimit: credits.contextLimit },
+    account: { email: account.email, id: account.id, plan: ent.label },
   };
 }
 
@@ -311,9 +430,14 @@ const REFINE_RESERVE_MS = 6000;
 const draftBudgetMs = (replyTokens, msLeft) =>
   replyTokens > LONG_REPLY_TOKENS ? msLeft - 800 : Math.max(8000, msLeft - REFINE_RESERVE_MS);
 
-// Context window of the model, minus headroom for the reply.
+// Default context ceiling for free / unsigned traffic. Credit tiers and account
+// entitlements raise this via resolvePlan().contextLimit.
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
-const contextFor = (tier) => Math.min(MAX_CONTEXT_TOKENS, tier.context);
+const contextFor = (effortTier, plan) => {
+  const cap = (plan && plan.contextLimit) || MAX_CONTEXT_TOKENS;
+  // Plan sets the available window; effort tier cannot exceed it.
+  return Math.min(cap, Math.max(effortTier.context || MAX_CONTEXT_TOKENS, cap));
+};
 const MAX_REPLY_TOKENS = 400;
 // The /chopailab agent generates files and code, which needs far more room than
 // the sidebar widget. Callers may request more, within a hard ceiling.
@@ -1162,30 +1286,34 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
   };
 }
 
-function usagePayload(credits, state) {
+function usagePayload(plan, state) {
   return {
     used: state.used || 0,
-    limit: credits.limit,
-    cooldownMs: credits.cooldownMs,
+    limit: plan.limit,
+    contextLimit: plan.contextLimit || MAX_CONTEXT_TOKENS,
+    cooldownMs: plan.cooldownMs,
     cooldown: state.blocked
       ? { blocked: true, retryInMs: state.retryInMs || 0 }
       : null,
-    keysValid: credits.keysValid,
-    keysSubmitted: credits.keysSubmitted,
-    keysRejected: credits.keysRejected,
+    keysValid: plan.keysValid,
+    keysSubmitted: plan.keysSubmitted,
+    keysRejected: plan.keysRejected,
     tier: {
-      id: credits.tier.id,
-      label: credits.tier.label,
-      detail: credits.tier.detail,
-      keysRequired: credits.tier.keysRequired,
+      id: plan.tier.id,
+      label: plan.tier.label,
+      detail: plan.tier.detail,
+      keysRequired: plan.tier.keysRequired,
+      contextLimit: plan.contextLimit || plan.tier.contextLimit,
     },
-    upgrades: credits.upgrades,
+    upgrades: plan.upgrades,
     free: {
       limit: FREE_USAGE.limit,
       cooldownMs: FREE_USAGE.cooldownMs,
+      contextLimit: FREE_USAGE.contextLimit,
       label: FREE_USAGE.label,
       detail: FREE_USAGE.detail,
     },
+    account: plan.account || null,
     budgetMode: state.mode || budgetMode,
     creditSource: "fathom-pro-oi-pl",
   };
@@ -1201,15 +1329,17 @@ async function healthHandler(event) {
       unlockKeys = String(q.unlockKeys).split(",").map((s) => s.trim()).filter(Boolean);
     }
   } catch (e) { /* ignore */ }
-  const credits = resolveCredits(unlockKeys);
+  const accessToken = extractAccessToken(event, null);
+  const account = await resolveAccount(accessToken);
+  const plan = resolvePlan(unlockKeys, account);
   let cooldown = null;
   let budgetModeNow = "memory";
   let used = 0;
   try {
     const state = await budgetPeek(now, {
-      bucketId: credits.bucketId,
-      limit: credits.limit,
-      cooldownMs: credits.cooldownMs,
+      bucketId: plan.bucketId,
+      limit: plan.limit,
+      cooldownMs: plan.cooldownMs,
     });
     budgetModeNow = state.mode || budgetMode;
     used = state.used || 0;
@@ -1225,8 +1355,8 @@ async function healthHandler(event) {
     service: "chopsticks-ai",
     configured,
     cooldown,
-    budget: { used, limit: credits.limit },
-    usage: usagePayload(credits, {
+    budget: { used, limit: plan.limit },
+    usage: usagePayload(plan, {
       used,
       blocked: Boolean(cooldown && cooldown.blocked),
       retryInMs: cooldown && cooldown.retryInMs,
@@ -1269,11 +1399,13 @@ async function handler(event) {
   const unlockKeys = Array.isArray(payload.unlockKeys)
     ? payload.unlockKeys
     : (Array.isArray(payload.fathomProKeys) ? payload.fathomProKeys : []);
-  const credits = resolveCredits(unlockKeys);
+  const accessToken = extractAccessToken(event, payload);
+  const account = await resolveAccount(accessToken);
+  const plan = resolvePlan(unlockKeys, account);
   const budgetOpts = {
-    bucketId: credits.bucketId,
-    limit: credits.limit,
-    cooldownMs: credits.cooldownMs,
+    bucketId: plan.bucketId,
+    limit: plan.limit,
+    cooldownMs: plan.cooldownMs,
   };
 
   // Usage / upgrade status without spending a chat turn.
@@ -1282,8 +1414,8 @@ async function handler(event) {
     const stateU = await budgetPeek(nowU, budgetOpts);
     return json(200, {
       mode: "usage",
-      usage: usagePayload(credits, stateU),
-      budget: { used: stateU.used || 0, limit: credits.limit },
+      usage: usagePayload(plan, stateU),
+      budget: { used: stateU.used || 0, limit: plan.limit },
       budgetMode: stateU.mode || budgetMode,
     });
   }
@@ -1317,7 +1449,7 @@ async function handler(event) {
   const state = await budgetPeek(now, budgetOpts);
   if (state.blocked) {
     const mins = Math.ceil(state.retryInMs / 60000);
-    const next = credits.upgrades.find((u) => !u.unlocked);
+    const next = plan.upgrades.find((u) => !u.unlocked);
     const tip = next
       ? ` Redeem ${next.keysRequired} Fathom Pro API keys in Usage to raise your limit (${next.detail}).`
       : "";
@@ -1329,8 +1461,8 @@ async function handler(event) {
         " Everything it knows is still on chopstickshq.com in the meantime.",
       mode: "cooldown",
       retryInMs: state.retryInMs,
-      usage: usagePayload(credits, state),
-      budget: { used: state.used || 0, limit: credits.limit },
+      usage: usagePayload(plan, state),
+      budget: { used: state.used || 0, limit: plan.limit },
     });
   }
 
@@ -1364,7 +1496,7 @@ async function handler(event) {
       payload.mode, webSection, tier
     ),
   };
-  const messages = fitContext(system, modelTurns, contextFor(tier));
+  const messages = fitContext(system, modelTurns, contextFor(tier, plan));
 
   const deadline = now + TIMEOUT_MS;
   const withTimeout = (ms) => {
@@ -1503,7 +1635,7 @@ async function handler(event) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
     }
 
-    const ctxLimit = contextFor(tier);
+    const ctxLimit = contextFor(tier, plan);
     return json(200, {
       reply,
       mode: "live",
@@ -1513,8 +1645,8 @@ async function handler(event) {
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: searchOn,
       sources: webBundle.sources,
-      budget: { used: spentResult.used, limit: credits.limit },
-      usage: usagePayload(credits, {
+      budget: { used: spentResult.used, limit: plan.limit },
+      usage: usagePayload(plan, {
         used: spentResult.used,
         blocked: false,
         mode: spentResult.mode,
@@ -1538,8 +1670,8 @@ module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   measureMessages, contextWindowUsage,
   wantsSearch, parseSearchRequest, webSearch, selfFacts, verifyFathomProUnlock,
-  resolveCredits, usagePayload,
+  resolveCredits, resolvePlan, resolveAccount, usagePayload,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
-  FREE_USAGE, CREDIT_TIERS,
+  FREE_USAGE, CREDIT_TIERS, ACCOUNT_ENTITLEMENTS,
 };

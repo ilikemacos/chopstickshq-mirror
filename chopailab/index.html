@@ -779,9 +779,16 @@
       payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
     }
 
+    var headers = { 'Content-Type': 'application/json' };
+    try {
+      if (Cloud && Cloud.isSignedIn() && Cloud.getSession() && Cloud.getSession().access_token) {
+        headers.Authorization = 'Bearer ' + Cloud.getSession().access_token;
+        payload.accessToken = Cloud.getSession().access_token;
+      }
+    } catch (e) {}
     fetch(API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload)
     })
       .then(function (r) { return r.json(); })
