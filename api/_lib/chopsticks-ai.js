@@ -807,7 +807,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // parallel: Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News,
 // GitHub, MDN, npm, arXiv, and Google/Brave when API keys are configured.
 const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
-const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 6000);
+const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 4500);
 const SEARCH_MIN_LEN = 3;
 const MAX_SOURCES = 12;
 const UA = "cs.AI/2.0 (+https://chopstickshq.com/chopsticks-ai/)";
@@ -1890,9 +1890,10 @@ async function handler(event) {
     ? Math.max(100, Math.min(tierCap, MAX_REPLY_TOKENS_CEILING, Math.round(wanted)))
     : (payload.mode === "agent" ? tierCap : MAX_REPLY_TOKENS);
 
-  // Web search runs on every question before the draft.
+  // Web search runs before the draft. Coding modes skip it unless the user
+  // forced `/search …` — search was starving the model deadline.
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
-  const searchOn = wantsSearch(searchQuery);
+  const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix);
   const webBundle = searchOn ? await webSearch(searchQuery, tier.searchMax) : { context: "", sources: [] };
   let webSection = "";
   if (searchOn) {
@@ -1917,7 +1918,10 @@ async function handler(event) {
   const messages = fitContext(system, modelTurns, contextFor(tier, plan));
 
   // Model deadline starts AFTER search so Mozilla lookups can't starve the LLM.
+  // Keep a hard rescue slice so a busy primary model cannot burn the whole window.
+  const RESCUE_RESERVE_MS = 7000;
   const deadline = Date.now() + TIMEOUT_MS;
+  const modelDeadline = deadline - RESCUE_RESERVE_MS;
   const withTimeout = (ms) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), Math.max(500, ms));
@@ -1933,114 +1937,108 @@ async function handler(event) {
     let lastDetail = "";
     let producedFiles = [];
 
+    // Tools only when coding tiers / explicit tools / the user asks for files.
+    // Enabling tools on every agent turn made free models time out constantly.
+    const ask = String(lastUser.content || "");
+    const wantsFiles = /\b(write|create|generate|make|build|scaffold|implement)\b[\s\S]{0,80}\b(file|script|code|program|function|class|module|component|app)\b|\.\w{1,8}\b|```|write_file/i.test(ask);
     const useTools = payload.enableTools !== false
-      && (payload.mode === "agent" || tier.chopCode || payload.tools === true);
+      && (tier.chopCode || payload.tools === true || wantsFiles);
 
-    // Prefer a short chain when the reply is large, but keep one fallback so a
-    // busy free model does not hard-fail the whole request.
+    // One primary (+ optional fast fallback). Rescue below is the safety net.
     const longRun = replyTokens > LONG_REPLY_TOKENS;
-    const chain = longRun
-      ? (tier.longModels || tier.models).slice(0, 2)
-      : tier.models;
+    const chain = (longRun
+      ? (tier.longModels || tier.models)
+      : tier.models
+    ).slice(0, 2);
 
     for (let ci = 0; ci < chain.length; ci++) {
       const candidate = chain[ci];
-      // The first candidate is the likeliest to succeed, so give it most of the
-      // window and leave a short retry slice for the rest. Splitting evenly
-      // starved every candidate and all of them timed out.
-      const msLeft = deadline - Date.now();
-      const budgetMs = chain.length > 1
-        ? Math.max(5000, Math.floor(msLeft / (chain.length - ci)))
-        : msLeft - 700;
-      if (budgetMs <= 1200) break;
+      // Give the first candidate most of the window; keep a reserve so a
+      // no-tools retry (and the next model) can still run after a timeout.
+      const msLeft = modelDeadline - Date.now();
+      if (msLeft <= 1500) break;
+      // First model gets ~75%; second only runs if the first failed quickly.
+      const share = ci === 0
+        ? Math.floor(msLeft * 0.75)
+        : msLeft - 400;
+      const reserveRetry = useTools ? Math.min(4000, Math.floor(share * 0.35)) : 0;
+      const budgetMs = Math.max(2500, share - reserveRetry);
       let r;
       const attemptStart = Date.now();
-      const g = withTimeout(budgetMs);
-      const callOpts = {
-        model: candidate,
-        messages,
-        key: apiKey,
-        signal: g.signal,
-        maxTokens: replyTokens,
-        temperature: tier.temperature,
-      };
-      if (useTools) {
-        callOpts.tools = AGENT_TOOLS;
-        callOpts.toolChoice = "auto";
-      }
-      try {
-        r = await callModel(callOpts);
-      } catch (e) {
-        r = { ok: false, status: 0, detail: String(e && e.name) };
-      } finally {
-        g.done();
-      }
-      // If tools aren't supported or overloaded with tools, retry without them.
-      if (!r.ok && useTools && (r.status === 400 || r.status === 404 || r.status === 429 || r.status === 503 || r.status === 0)) {
-        const g0 = withTimeout(Math.min(budgetMs, Math.max(4000, deadline - Date.now() - 400)));
+      const tryCall = async (ms, withTools) => {
+        const g = withTimeout(ms);
         try {
-          r = await callModel({
+          return await callModel({
             model: candidate,
             messages,
             key: apiKey,
-            signal: g0.signal,
+            signal: g.signal,
             maxTokens: replyTokens,
             temperature: tier.temperature,
+            tools: withTools ? AGENT_TOOLS : undefined,
+            toolChoice: withTools ? "auto" : undefined,
           });
         } catch (e) {
-          r = { ok: false, status: 0, detail: String(e && e.name) };
+          return { ok: false, status: 0, detail: String(e && e.name) };
         } finally {
-          g0.done();
+          g.done();
+        }
+      };
+
+      r = await tryCall(budgetMs, useTools);
+      // Timed-out / tool-rejected / rate-limited → plain completion with leftover time.
+      if (!r.ok && useTools) {
+        const left = modelDeadline - Date.now() - 300;
+        if (left > 2000) {
+          r = await tryCall(Math.min(left, Math.max(reserveRetry, 3500)), false);
         }
       }
-      if (!r.ok && (r.status === 429 || r.status === 503) && budgetMs > 2500) {
-        await sleep(500);
-        const g2 = withTimeout(Math.min(budgetMs, 10000, Math.max(3000, deadline - Date.now() - 400)));
-        try {
-          r = await callModel({
-            model: candidate,
-            messages,
-            key: apiKey,
-            signal: g2.signal,
-            maxTokens: replyTokens,
-            temperature: tier.temperature,
-          });
-        } catch (e) {
-          r = { ok: false, status: 0, detail: String(e && e.name) };
-        } finally {
-          g2.done();
+      if (!r.ok && (r.status === 429 || r.status === 503)) {
+        const left = modelDeadline - Date.now() - 300;
+        if (left > 2500) {
+          await sleep(300);
+          r = await tryCall(Math.min(left, 7000), false);
         }
       }
       if (r.ok && (r.text || (r.toolCalls && r.toolCalls.length))) {
         if (r.toolCalls && r.toolCalls.length) {
-          const g3 = withTimeout(Math.max(3000, deadline - Date.now() - 500));
-          try {
-            const cont = await continueWithTools({
-              model: candidate,
-              messages,
-              first: r,
-              key: apiKey,
-              signal: g3.signal,
-              maxTokens: replyTokens,
-              temperature: tier.temperature,
-            });
-            draft = {
-              ok: true,
-              text: cont.text || r.text || "",
-              tokens: cont.tokens,
-              toolCalls: [],
-            };
-            producedFiles = cont.files || [];
-          } catch (e) {
-            // Timed out mid-tool-loop — still return any files already written.
+          const left = Math.min(deadline - Date.now() - 400, modelDeadline - Date.now() + 2000);
+          if (left > 2000) {
+            const g3 = withTimeout(left);
+            try {
+              const cont = await continueWithTools({
+                model: candidate,
+                messages,
+                first: r,
+                key: apiKey,
+                signal: g3.signal,
+                maxTokens: replyTokens,
+                temperature: tier.temperature,
+              });
+              draft = {
+                ok: true,
+                text: cont.text || r.text || "",
+                tokens: cont.tokens,
+                toolCalls: [],
+              };
+              producedFiles = cont.files || [];
+            } catch (e) {
+              draft = {
+                ok: true,
+                text: r.text || "Created files via tools.",
+                tokens: r.tokens || null,
+                toolCalls: [],
+              };
+            } finally {
+              g3.done();
+            }
+          } else {
             draft = {
               ok: true,
               text: r.text || "Created files via tools.",
               tokens: r.tokens || null,
               toolCalls: [],
             };
-          } finally {
-            g3.done();
           }
         } else {
           draft = r;
@@ -2050,32 +2048,42 @@ async function handler(event) {
       }
       lastStatus = r.status || 0;
       lastDetail = (r.detail || "") + ` [${candidate.split("/")[1]} ${Date.now() - attemptStart}/${budgetMs}ms]`;
+      // If the first model burned most of the window, skip further chain peers
+      // and let the reserved rescue attempt run instead.
+      if (ci === 0 && Date.now() - attemptStart > 8000) break;
     }
 
-    // Last-chance short completion so search-heavy turns still answer.
-    if (!draft && deadline - Date.now() > 2500) {
-      const rescue = "google/gemma-4-26b-a4b-it:free";
-      const gR = withTimeout(Math.min(9000, deadline - Date.now() - 300));
-      try {
-        const r = await callModel({
-          model: rescue,
-          messages,
-          key: apiKey,
-          signal: gR.signal,
-          maxTokens: Math.min(700, replyTokens),
-          temperature: tier.temperature ?? 0.3,
-        });
-        if (r.ok && r.text) {
-          draft = r;
-          draftModel = rescue;
-        } else {
+    // Last-chance short completion — reserved time, no tools, small token cap.
+    if (!draft) {
+      const rescues = [
+        "google/gemma-4-26b-a4b-it:free",
+        "nvidia/nemotron-3-nano-30b-a3b:free",
+      ];
+      for (const rescue of rescues) {
+        const left = deadline - Date.now() - 200;
+        if (left < 2500) break;
+        const gR = withTimeout(Math.min(RESCUE_RESERVE_MS, left));
+        try {
+          const r = await callModel({
+            model: rescue,
+            messages,
+            key: apiKey,
+            signal: gR.signal,
+            maxTokens: Math.min(500, replyTokens),
+            temperature: tier.temperature ?? 0.3,
+          });
+          if (r.ok && r.text) {
+            draft = r;
+            draftModel = rescue;
+            break;
+          }
           lastStatus = r.status || lastStatus;
-          lastDetail = (r.detail || lastDetail || "") + " [rescue]";
+          lastDetail = (r.detail || lastDetail || "") + ` [rescue:${rescue.split("/")[1]}]`;
+        } catch (e) {
+          lastDetail = String(e && e.name) + " [rescue]";
+        } finally {
+          gR.done();
         }
-      } catch (e) {
-        lastDetail = String(e && e.name) + " [rescue]";
-      } finally {
-        gR.done();
       }
     }
 

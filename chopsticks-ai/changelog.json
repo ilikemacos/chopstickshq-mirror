@@ -1,7 +1,17 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.1",
+  "latest": "cs.AI 2.2.2",
   "entries": [
+    {
+      "version": "cs.AI 2.2.2",
+      "date": "2026-08-08",
+      "title": "Harder fix for model reachability",
+      "changes": [
+        "Reserved rescue model attempt so busy free models can’t burn the whole request",
+        "write_file tools only when coding / file requests (not every chat turn)",
+        "StickerCoder+/ChopCode skip web search unless you use /search"
+      ]
+    },
     {
       "version": "cs.AI 2.2.1",
       "date": "2026-08-08",
