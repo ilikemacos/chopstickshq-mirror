@@ -174,6 +174,26 @@
   html.compact .bubble { font-size: .88rem; }
   html.compact nav { min-height: 2.75rem; }
   html.compact .inner { padding-top: .75rem; }
+  .pro-keys {
+    display: none; flex-direction: column; gap: .45rem;
+    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .65rem;
+    padding: .65rem .75rem; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .pro-keys.is-on { display: flex; }
+  .pro-keys-label {
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .pro-keys-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .pro-keys input {
+    flex: 1 1 12rem; min-width: 0; background: var(--bg2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: .45rem .6rem;
+    font-family: var(--mono); font-size: .72rem;
+  }
+  .pro-keys input:focus { outline: none; border-color: var(--muted); }
+  .pro-keys-note { font-size: .72rem; color: var(--muted); line-height: 1.45; }
+  .pro-keys-note a { text-decoration: underline; text-underline-offset: 2px; }
   .resumed {
     font-family: var(--mono); font-size: .66rem; color: var(--muted);
     border: 1px dashed var(--border); border-radius: 999px;
@@ -191,7 +211,9 @@
       <option value="low">Low · quick</option>
       <option value="medium">Medium · balanced</option>
       <option value="high" selected>High · default</option>
-      <option value="xhigh">Xhigh · max</option>
+      <option value="xhigh">Xhigh · max free</option>
+      <option value="xhighplus">Xhigh+ · Fathom Pro</option>
+      <option value="insane">Insane · Fathom Pro</option>
       <option value="chopsticks">Chopsticks · HQ apps</option>
     </select>
     <button type="button" class="nbtn" id="export">Export chat</button>
@@ -207,9 +229,10 @@
       <div class="kicker">chopsticksAI 1.0 · C.ai</div>
       <h1>C.ai</h1>
       <p>
-        Ask anything, or have it build something. Pick an effort level — Low,
-        Medium, High, Xhigh, or Chopsticks for HQ app questions. Files and code
-        come back as complete, downloadable documents. Nothing you type is stored.
+        Ask anything, or have it build something. Pick an effort level — Low through
+        Xhigh are free. <strong>Xhigh+</strong> and <strong>Insane</strong> are Fathom Pro
+        only: paste your oi-pl unlock key and OpenRouter API key below. Files come back
+        as complete, downloadable documents. Keys stay in your browser only.
       </p>
       <div class="suggest" id="suggest"></div>
     </div>
@@ -222,6 +245,18 @@
     <span id="status">C.ai</span>
   </div>
   <div class="usage" id="usage" aria-live="polite"></div>
+  <div class="pro-keys" id="proKeys">
+    <div class="pro-keys-label">Fathom Pro · your keys (browser only)</div>
+    <div class="pro-keys-row">
+      <input type="text" id="fathomKey" placeholder="oi-pl unlock key" autocomplete="off" spellcheck="false" aria-label="Fathom Pro unlock key">
+      <input type="password" id="apiKey" placeholder="OpenRouter sk-or-…" autocomplete="off" spellcheck="false" aria-label="OpenRouter API key">
+    </div>
+    <div class="pro-keys-note">
+      Xhigh+ and Insane bill your <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter</a>
+      account — same as Fathom Pro AI. Get an oi-pl key at
+      <a href="/vault/">the vault</a> or <a href="/fathom-pro/?tab=unlock">Fathom Pro unlock</a>.
+    </div>
+  </div>
   <div class="composer-inner">
     <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
@@ -235,14 +270,18 @@
   'use strict';
 
   var EFFORT = {
-    low: { label: 'Low', maxTokens: 400 },
-    medium: { label: 'Medium', maxTokens: 600 },
-    high: { label: 'High', maxTokens: 1000 },
-    xhigh: { label: 'Xhigh', maxTokens: 2000 },
-    chopsticks: { label: 'Chopsticks', maxTokens: 800 },
-    ultra: { label: 'Xhigh', maxTokens: 2000 },
-    super: { label: 'Medium', maxTokens: 600 }
+    low: { label: 'Low', maxTokens: 400, pro: false },
+    medium: { label: 'Medium', maxTokens: 600, pro: false },
+    high: { label: 'High', maxTokens: 1000, pro: false },
+    xhigh: { label: 'Xhigh', maxTokens: 2000, pro: false },
+    xhighplus: { label: 'Xhigh+', maxTokens: 3000, pro: true },
+    insane: { label: 'Insane', maxTokens: 4000, pro: true },
+    chopsticks: { label: 'Chopsticks', maxTokens: 800, pro: false },
+    ultra: { label: 'Xhigh', maxTokens: 2000, pro: false },
+    super: { label: 'Medium', maxTokens: 600, pro: false }
   };
+  var FATHOM_STORE = 'chq.cai.fathomKey';
+  var APIKEY_STORE = 'chq.cai.apiKey';
   var API = '/api/chopsticks-ai';
   var STORE = 'chq.lab.session';
   var history = [];
@@ -279,7 +318,34 @@
   var status = document.getElementById('status');
   var usageEl = document.getElementById('usage');
   var tierSel = document.getElementById('tier');
+  var proKeysEl = document.getElementById('proKeys');
+  var fathomKeyEl = document.getElementById('fathomKey');
+  var apiKeyEl = document.getElementById('apiKey');
   var compact = false;
+
+  try {
+    var lk = localStorage.getItem(FATHOM_STORE) || localStorage.getItem('fathomProLastKey') || '';
+    if (lk && fathomKeyEl) fathomKeyEl.value = lk;
+    var ak = localStorage.getItem(APIKEY_STORE) || '';
+    if (ak && apiKeyEl) apiKeyEl.value = ak;
+  } catch (e) {}
+
+  function saveProKeys() {
+    try {
+      if (fathomKeyEl) localStorage.setItem(FATHOM_STORE, fathomKeyEl.value.trim());
+      if (apiKeyEl) localStorage.setItem(APIKEY_STORE, apiKeyEl.value.trim());
+    } catch (e) {}
+  }
+  if (fathomKeyEl) fathomKeyEl.addEventListener('change', saveProKeys);
+  if (apiKeyEl) apiKeyEl.addEventListener('change', saveProKeys);
+
+  function isProTier() {
+    var e = effortInfo();
+    return !!(e && e.pro);
+  }
+  function toggleProKeys() {
+    if (proKeysEl) proKeysEl.classList.toggle('is-on', isProTier());
+  }
 
   try {
     compact = localStorage.getItem('chq.aiCompact') === '1';
@@ -347,6 +413,7 @@
   function showTier() {
     var e = effortInfo();
     status.textContent = 'C.ai · ' + e.label + ' effort' + (compact ? ' · compact' : '');
+    toggleProKeys();
   }
   function fmt(n) {
     if (!isFinite(n)) return '?';
@@ -361,7 +428,9 @@
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
-    if (d && d.budget && typeof d.budget.used === 'number') {
+    if (d && d.budget && d.budget.note) {
+      parts.push('Your OpenRouter key');
+    } else if (d && d.budget && typeof d.budget.used === 'number' && d.budget.limit) {
       parts.push('Allowance ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
     }
     usageEl.textContent = parts.join(' · ');
@@ -537,14 +606,43 @@
       payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
     }
 
+    if (isProTier()) {
+      saveProKeys();
+      var fp = (fathomKeyEl && fathomKeyEl.value || '').trim();
+      var ak = (apiKeyEl && apiKeyEl.value || '').trim();
+      if (!fp || !/^oi-pl-/i.test(fp)) {
+        busy = false;
+        send.disabled = false;
+        thinking.replaceChild(plain('Paste your Fathom Pro oi-pl unlock key above first.'), thinking.lastChild);
+        toggleProKeys();
+        return;
+      }
+      if (!ak || !/^sk-or-/i.test(ak)) {
+        busy = false;
+        send.disabled = false;
+        thinking.replaceChild(plain('Add your OpenRouter API key (sk-or-…) above for this effort level.'), thinking.lastChild);
+        toggleProKeys();
+        return;
+      }
+      payload.fathomProKey = fp;
+      payload.apiKey = ak;
+    }
+
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        var d = res.d;
         if (!d || !d.reply) throw new Error('empty');
+        if (!res.ok && (d.mode === 'fathom_pro_required' || d.mode === 'api_key_required')) {
+          history.pop();
+          thinking.replaceChild(plain(d.reply), thinking.lastChild);
+          toggleProKeys();
+          return;
+        }
         if (d.mode === 'error' && window.chopsticksAI && window.chopsticksAI.ask) {
           var off = window.chopsticksAI.ask(text);
           if (off.confident) {

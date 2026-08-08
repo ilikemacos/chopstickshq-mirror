@@ -101,14 +101,94 @@ const TIERS = {
     searchMax: 6,
     chopsticksFocus: true,
   },
+  xhighplus: {
+    label: "Xhigh+",
+    requiresUserKey: true,
+    requiresFathomPro: true,
+    models: [
+      "anthropic/claude-3.5-haiku",
+      "google/gemini-2.5-flash-preview",
+      "openai/gpt-4.1-mini",
+    ],
+    longModels: [
+      "anthropic/claude-3.5-haiku",
+      "google/gemini-2.5-flash-preview",
+    ],
+    refineModel: "anthropic/claude-3.5-haiku",
+    context: 64000,
+    refine: true,
+    maxReply: 3000,
+    grounding: 10,
+    searchMax: 14,
+  },
+  insane: {
+    label: "Insane",
+    requiresUserKey: true,
+    requiresFathomPro: true,
+    models: [
+      "anthropic/claude-sonnet-4",
+      "openai/gpt-4.1",
+      "google/gemini-2.5-pro-preview",
+    ],
+    longModels: [
+      "anthropic/claude-sonnet-4",
+      "openai/gpt-4.1-mini",
+    ],
+    refineModel: "anthropic/claude-3.5-haiku",
+    context: 96000,
+    refine: true,
+    maxReply: 4000,
+    grounding: 12,
+    searchMax: 16,
+  },
 };
-const TIER_ALIASES = { ultra: "xhigh", super: "medium" };
+const TIER_ALIASES = { ultra: "xhigh", super: "medium", "xhigh+": "xhighplus" };
 const DEFAULT_TIER = "high";
 const tierOf = (name) => {
-  const key = String(name || "").toLowerCase();
+  const key = String(name || "").toLowerCase().replace(/\s+/g, "");
   const id = TIER_ALIASES[key] || key;
   return TIERS[id] || TIERS[DEFAULT_TIER];
 };
+
+const FATHOM_PRO_SECRET = "chopstickshq.fathompro.unlock.v1";
+const FATHOM_PRO_LEGACY = "chopstickshq.fathomplus.unlock.v1";
+const FATHOM_PRO_SITE_KEYS = new Set([
+  "oi-pl-c0ffee-faded1-358dc51a",
+  "oi-pl-c0ffee-faded1-21657207",
+]);
+
+function fnv1a32(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** Validates a Fathom Pro oi-pl unlock key (vault / scavenger mint). */
+function verifyFathomProUnlock(raw) {
+  const key = String(raw || "").trim().toLowerCase();
+  if (!key || key.includes("c0ffee")) return false;
+  if (FATHOM_PRO_SITE_KEYS.has(key)) return true;
+  const m = key.match(/^oi-pl-([0-9a-f]{6,16})-([0-9a-f]{6,16})-([0-9a-f]{8})$/);
+  if (!m) return false;
+  const body = m[1] + m[2];
+  const sig = m[3];
+  for (const sec of [FATHOM_PRO_SECRET, FATHOM_PRO_LEGACY]) {
+    for (const tag of ["web", "3", "5"]) {
+      const expect = fnv1a32(sec + "|" + body + "|" + tag).toString(16).padStart(8, "0");
+      if (sig === expect) return true;
+    }
+  }
+  return false;
+}
+
+function normalizeOpenRouterKey(raw) {
+  const key = String(raw || "").trim();
+  if (!/^sk-or-[a-z0-9-_]{20,}$/i.test(key)) return "";
+  return key;
+}
 
 const MODELS = TIERS[DEFAULT_TIER].models;
 const MODEL = MODELS[0];
@@ -820,7 +900,8 @@ function selfFacts(tier) {
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
     `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
-    `- You run on selectable effort levels in C.ai: Low, Medium, High, Xhigh, and Chopsticks (product expert).`,
+    `- You run on selectable effort levels in C.ai: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks.`,
+    `- Xhigh+ and Insane are Fathom Pro only — they use the visitor's own OpenRouter API key.`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in C.ai); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
@@ -961,6 +1042,36 @@ async function handler(event) {
     });
   }
 
+  let payload;
+  try {
+    payload = JSON.parse(event.body || "{}");
+  } catch (e) {
+    return json(400, { error: "invalid JSON" });
+  }
+
+  const tier = tierOf(payload.tier);
+  let apiKey = key;
+  if (tier.requiresUserKey) {
+    if (tier.requiresFathomPro && !verifyFathomProUnlock(payload.fathomProKey)) {
+      return json(403, {
+        reply:
+          "Xhigh+ and Insane are for Fathom Pro users. Paste a valid oi-pl unlock key " +
+          "from chopstickshq.com/vault/ or Fathom Pro → Activate, then add your OpenRouter API key.",
+        mode: "fathom_pro_required",
+      });
+    }
+    const userKey = normalizeOpenRouterKey(payload.apiKey);
+    if (!userKey) {
+      return json(403, {
+        reply:
+          "This effort level runs on your OpenRouter API key (same as Fathom Pro AI). " +
+          "Add a key that starts with sk-or- from openrouter.ai/keys — you pay OpenRouter directly.",
+        mode: "api_key_required",
+      });
+    }
+    apiKey = userKey;
+  }
+
   const headers = event.headers || {};
   const who =
     headers["x-nf-client-connection-ip"] ||
@@ -972,13 +1083,6 @@ async function handler(event) {
       reply: "That's a lot of questions at once — give it a minute and try again.",
       mode: "limited",
     });
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(event.body || "{}");
-  } catch (e) {
-    return json(400, { error: "invalid JSON" });
   }
 
   const incoming = Array.isArray(payload.messages) ? payload.messages : [];
@@ -994,20 +1098,21 @@ async function handler(event) {
   if (!lastUser) return json(400, { error: "no user message" });
 
   const now = Date.now();
-  const state = await budgetPeek(now);
-  if (state.blocked) {
-    const mins = Math.ceil(state.retryInMs / 60000);
-    return json(200, {
-      reply:
-        "chopsticksAI has used up its free allowance for now and is cooling down " +
-        `(about ${mins} minute${mins === 1 ? "" : "s"} left). ` +
-        "Everything it knows is still on chopstickshq.com in the meantime.",
-      mode: "cooldown",
-      retryInMs: state.retryInMs,
-    });
+  if (!tier.requiresUserKey) {
+    const state = await budgetPeek(now);
+    if (state.blocked) {
+      const mins = Math.ceil(state.retryInMs / 60000);
+      return json(200, {
+        reply:
+          "chopsticksAI has used up its free allowance for now and is cooling down " +
+          `(about ${mins} minute${mins === 1 ? "" : "s"} left). ` +
+          "Everything it knows is still on chopstickshq.com in the meantime.",
+        mode: "cooldown",
+        retryInMs: state.retryInMs,
+      });
+    }
   }
 
-  const tier = tierOf(payload.tier);
   const wanted = Number(payload.maxTokens);
   const tierCap = tier.maxReply || MAX_REPLY_TOKENS_CEILING;
   const replyTokens = Number.isFinite(wanted)
@@ -1076,7 +1181,7 @@ async function handler(event) {
       const attemptStart = Date.now();
       const g = withTimeout(budgetMs);
       try {
-        r = await callModel({ model: candidate, messages, key, signal: g.signal, maxTokens: replyTokens });
+        r = await callModel({ model: candidate, messages, key: apiKey, signal: g.signal, maxTokens: replyTokens });
       } catch (e) {
         r = { ok: false, status: 0, detail: String(e && e.name) };
       } finally {
@@ -1086,7 +1191,7 @@ async function handler(event) {
         await sleep(700);
         const g2 = withTimeout(Math.min(budgetMs, 12000));
         try {
-          r = await callModel({ model: candidate, messages, key, signal: g2.signal, maxTokens: replyTokens });
+          r = await callModel({ model: candidate, messages, key: apiKey, signal: g2.signal, maxTokens: replyTokens });
         } catch (e) {
           r = { ok: false, status: 0, detail: String(e && e.name) };
         } finally {
@@ -1135,7 +1240,8 @@ async function handler(event) {
     const hasCodeBlock = draft.text.includes("```");
     const timeLeft = deadline - Date.now();
     const refineOn = REFINE_ENABLED && tier.refine !== false;
-    if (refineOn && REFINE_MODEL && REFINE_MODEL !== draftModel
+    const refineModel = tier.refineModel || REFINE_MODEL;
+    if (refineOn && refineModel && refineModel !== draftModel
         && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
       const question = [...turns].reverse().find((m) => m.role === "user");
       const g = withTimeout(timeLeft - 500);
@@ -1144,8 +1250,8 @@ async function handler(event) {
       let r;
       try {
       r = await callModel({
-        model: REFINE_MODEL,
-        key,
+        model: refineModel,
+        key: apiKey,
         signal: g.signal,
         temperature: 0.2,
         messages: [
@@ -1165,12 +1271,14 @@ async function handler(event) {
       }
       if (r.ok && r.text) {
         reply = r.text;
-        refinedBy = REFINE_MODEL;
+        refinedBy = refineModel;
         spent += r.tokens || estimateTokens(draft.text) + MAX_REPLY_TOKENS;
       }
     }
 
-    const spentResult = await budgetSpend(spent, now);
+    const spentResult = tier.requiresUserKey
+      ? { used: 0, mode: "user_key" }
+      : await budgetSpend(spent, now);
 
     if (!reply) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
@@ -1186,7 +1294,9 @@ async function handler(event) {
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: searchOn,
       sources: webBundle.sources,
-      budget: { used: spentResult.used, limit: TOKEN_BUDGET },
+      budget: tier.requiresUserKey
+        ? { used: 0, limit: 0, note: "your OpenRouter key" }
+        : { used: spentResult.used, limit: TOKEN_BUDGET },
       budgetMode: spentResult.mode,
     });
   } catch (e) {
@@ -1205,7 +1315,7 @@ async function handler(event) {
 module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   measureMessages, contextWindowUsage,
-  wantsSearch, parseSearchRequest, webSearch, selfFacts,
+  wantsSearch, parseSearchRequest, webSearch, selfFacts, verifyFathomProUnlock,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
 };
