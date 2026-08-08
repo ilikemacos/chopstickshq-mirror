@@ -12,6 +12,10 @@
  * Answers are grounded in the generated knowledge base: the most relevant
  * entries are retrieved and injected as context so the model quotes real
  * version numbers and install commands instead of inventing them.
+ *
+ * Live mode POSTs questions through this proxy to a language-model provider.
+ * Offline clients fall back to the on-device KB for Chopsticks HQ topics only.
+ * GET /api/chopsticks-ai returns a health payload (configured / cooldown).
  */
 // Verified against https://openrouter.ai/api/v1/models. OpenRouter ids change
 // between releases and a wrong one 404s every request, so check before editing.
@@ -1023,10 +1027,39 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
   };
 }
 
+async function healthHandler() {
+  const configured = Boolean(env("OPENROUTER_API_KEY"));
+  const now = Date.now();
+  let cooldown = null;
+  let budgetModeNow = "memory";
+  try {
+    const state = await budgetPeek(now);
+    budgetModeNow = state.mode || budgetMode;
+    if (state.blocked) {
+      cooldown = { blocked: true, retryInMs: state.retryInMs || 0 };
+    }
+  } catch (e) {
+    /* health should still return */
+  }
+  const ok = configured && !(cooldown && cooldown.blocked);
+  return json(ok ? 200 : 503, {
+    ok,
+    service: "chopsticks-ai",
+    configured,
+    cooldown,
+    budgetMode: budgetModeNow,
+    search: SEARCH_ENABLED,
+    time: new Date(now).toISOString(),
+  });
+}
+
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, body: "" };
+  if (event.httpMethod === "GET") {
+    return healthHandler();
+  }
   if (event.httpMethod !== "POST") {
-    return json(405, { error: "POST only" });
+    return json(405, { error: "GET or POST only" });
   }
 
   const key = env("OPENROUTER_API_KEY");

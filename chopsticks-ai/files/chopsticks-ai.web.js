@@ -367,10 +367,10 @@
     if (!started) {
       started = true;
       addMsg('bot',
-        "Hi, I'm chopsticksAI.\n\n" +
-        'Ask me anything — general questions, code, writing, or anything about the ' +
-        'Chopsticks apps. I search Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google when configured on every question. ' +
-        'Nothing you type is stored. Tap a question below to start.');
+        "Hi, I'm ChopsticksAI.\n\n" +
+        'Ask me anything — general questions, code, writing, or Chopsticks apps. ' +
+        'Live answers go through chopstickshq.com (no account, no key from you). ' +
+        'Offline fallback covers HQ product topics only. Tap a question below to start.');
       showChips(STARTERS);
     }
     input.focus();
@@ -390,8 +390,8 @@
     panel.setAttribute('aria-label', 'chopsticksAI');
 
     var head = el('div', 'cai-head');
-    head.appendChild(el('div', 'cai-title', 'chopsticksAI'));
-    head.appendChild(el('div', 'cai-sub', 'Live · no key · /compact'));
+    head.appendChild(el('div', 'cai-title', 'ChopsticksAI'));
+    head.appendChild(el('div', 'cai-sub', 'Live proxy · offline KB · /compact'));
     usageEl = el('div', 'cai-usage');
     head.appendChild(usageEl);
     panel.appendChild(head);

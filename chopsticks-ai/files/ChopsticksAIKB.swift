@@ -10,7 +10,7 @@ struct ChopsticksAIIntent {
 }
 
 enum ChopsticksAIKB {
-    static let tagline = "The Chopsticks HQ assistant — runs entirely on your device."
+    static let tagline = "The Chopsticks HQ assistant — live answers via chopstickshq.com, offline KB for product help."
     static let version = "1.0.0"
     static let intents: [ChopsticksAIIntent] = [
         ChopsticksAIIntent(
@@ -60,6 +60,38 @@ enum ChopsticksAIKB {
             priority: 70,
             answer: "ARENA is a first-person shooter for macOS, written in C++17 with OpenGL 4.1.\n\nEvery run generates a fresh 5 km × 5 km world from a compact seed using spectral synthesis — the terrain is a summed waveform turned into a heightmap — then populates it with buildings, structures, and movable furniture.\n\nFree, from chopstickshq.com/arena-fps/.",
             terms: [("aerna", 2), ("arean", 2), ("arena", 2), ("arena fps", 5), ("arenafps", 3), ("arenas", 3), ("arnea", 2), ("qrena", 2), ("raena", 2), ("tell me about arena", 8), ("tell me about arena fps", 8), ("tell me about the game", 8), ("tell me about the shooter", 8), ("the game", 5), ("the shooter", 5), ("thegame", 3), ("theshooter", 3), ("what is arena", 8), ("what is arena fps", 8), ("what is the game", 8), ("what is the shooter", 8), ("wrena", 2)]
+        ),
+        ChopsticksAIIntent(
+            id: "chopsticksai.app",
+            product: "chopsticks-ai",
+            label: "How do I install the ChopsticksAI macOS app?",
+            priority: 70,
+            answer: "ChopsticksAI for macOS is free.\n\n1. Download the App ZIP from chopstickshq.com/chopsticks-ai/ (currently v1.0.8)\n2. Or run: curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash\n3. It installs to ~/Applications/chopsticksAI.app\n\nLive chat uses chopstickshq.com — no API key from you. If the network is down, product questions fall back to the on-device knowledge base.",
+            terms: [("apple computer app", 6), ("chopsticksai app", 6), ("chopsticksai apple computer app", 8), ("chopsticksai imac app", 8), ("chopsticksai mac app", 8), ("chopsticksai macbook app", 8), ("chopsticksai macos app", 8), ("chopsticksai os x app", 8), ("chopsticksai osx app", 8), ("download chopsticksai app", 8), ("get chopsticksai app", 8), ("get started chopsticksai", 8), ("grab chopsticksai app", 8), ("how do i download chopsticksai", 8), ("how do i get chopsticksai", 8), ("how do i grab chopsticksai", 8), ("how do i obtain chopsticksai", 8), ("imac app", 5), ("imacapp", 3), ("install chopsticksai", 8), ("installation chopsticksai", 8), ("installing chopsticksai", 8), ("mac app", 5), ("macapp", 3), ("macbook app", 5), ("macbookapp", 3), ("macos app", 5), ("macosapp", 3), ("obtain chopsticksai app", 8), ("os x app", 5), ("osx app", 5), ("osxapp", 3), ("set up chopsticksai", 8), ("setup chopsticksai", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "chopsticksai.gatekeeper",
+            product: "chopsticks-ai",
+            label: "macOS says ChopsticksAI can't be opened",
+            priority: 72,
+            answer: "That's Gatekeeper on an unsigned download — not malware.\n\nFix:\n1. Right-click chopsticksAI.app → Open → Open\n2. Or clear quarantine: xattr -cr ~/Applications/chopsticksAI.app\n3. Re-run the Terminal installer if needed\n\nThe install script already clears quarantine for ~/Applications installs.",
+            terms: [("agtekeeper", 3), ("apple could not verify chopsticksai", 8), ("chopsticksai can t be opened", 8), ("chopsticksai damaged", 8), ("gaetkeeper", 3), ("gateekeper", 3), ("gatekeeper", 3), ("gatekeeper chopsticksai", 8), ("gatekeepers", 3), ("gatekepeer", 3), ("gatkeeeper", 3), ("gtaekeeper", 3), ("qaurantine", 3), ("quaarntine", 3), ("quarantine", 3), ("quarantines", 3), ("quaratnine", 3), ("quarnatine", 3), ("quraantine", 3), ("uqarantine", 3)]
+        ),
+        ChopsticksAIIntent(
+            id: "chopsticksai.lab",
+            product: "chopsticks-ai",
+            label: "What is ChopsticksAI Lab?",
+            priority: 92,
+            answer: "ChopsticksAI Lab is the full-page web agent at chopstickshq.com/chopailab/\n\n• Ask anything or generate downloadable files/code\n• Effort levels: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks (HQ apps)\n• Sessions stay in your browser; Export chat downloads a markdown file\n\nThe sidebar widget on other pages is the lighter chat; Lab is for longer agent work.",
+            terms: [("choapilab", 3), ("chopailab", 3), ("chopailabs", 3), ("chopaliab", 3), ("chopialab", 3), ("chopsticksai lab", 8), ("chpoailab", 3), ("cohpailab", 3), ("effort levels", 8), ("effortlevels", 8), ("hcopailab", 3), ("open the lab", 8), ("web agent", 5), ("webagent", 3), ("what is c ai", 8), ("what is chopai lab", 8), ("what is chopsticksai lab", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "chopstickshq.app",
+            product: "chopsticks-hq",
+            label: "What is the Chopsticks HQ macOS app?",
+            priority: 65,
+            answer: "Chopsticks HQ is a free macOS catalog app (currently v1.0.3) that lists Chopsticks products and opens their pages.\n\nInstall from chopstickshq.com or the downloads on the HQ site. It uses a WebView for product pages and links into ChopsticksAI Lab — it is not a separate AI model.",
+            terms: [("actalog", 3), ("caatlog", 3), ("catalgo", 3), ("catalog", 3), ("catalogs", 3), ("cataolg", 3), ("catlaog", 3), ("chopsticks hq catalog", 8), ("chopstickshq app", 6), ("ctaalog", 3), ("get started chopsticks hq", 8), ("hq launcher", 7), ("hqlauncher", 7), ("install chopsticks hq", 8), ("installation chopsticks hq", 8), ("installing chopsticks hq", 8), ("set up chopsticks hq", 8), ("setup chopsticks hq", 8), ("what is chopsticks hq app", 8)]
         ),
         ChopsticksAIIntent(
             id: "fathom.battery.accuracy",
@@ -218,7 +250,7 @@ enum ChopsticksAIKB {
             product: "general",
             label: "What can you help with?",
             priority: 80,
-            answer: "I can answer general questions — coding, writing, science, recommendations, casual chat — and I'm also the in-house expert on Chopsticks HQ software:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows, Homebrew\n• Fathom Air — battery monitor, install, uninstall\n• Fathom Pro — weather, AI chat, unlock keys\n• ARENA — the FPS game\n• Guides, privacy, licensing, and downloads\n\nJust ask in plain English.",
+            answer: "I can answer general questions — coding, writing, science, recommendations, casual chat — and I'm also the in-house expert on Chopsticks HQ software:\n\n• rNitro — install, features, troubleshooting, CLI, Linux, Windows, Homebrew\n• Fathom Air — battery monitor, install, uninstall\n• Fathom Pro — weather, AI chat, unlock keys\n• Chopsticks HQ — macOS catalog app\n• ChopsticksAI — this assistant (web Lab + macOS app)\n• ARENA — the FPS game\n• Guides, privacy, licensing, and downloads\n\nOffline fallback covers Chopsticks HQ topics only. Just ask in plain English.",
             terms: [("acpabilities", 4), ("caapbilities", 4), ("capabilitie", 3), ("capabilities", 4), ("capabliities", 4), ("capaiblities", 4), ("capbailities", 4), ("cmomands", 3), ("comamnds", 3), ("commadns", 3), ("command", 3), ("commands", 3), ("commansd", 3), ("commnads", 3), ("cpaabilities", 4), ("help me", 7), ("helpme", 7), ("ocmmands", 3), ("what can you do", 8), ("what can you help", 8), ("what do you know", 8)]
         ),
         ChopsticksAIIntent(
@@ -234,7 +266,7 @@ enum ChopsticksAIKB {
             product: "general",
             label: "What is chopsticksAI?",
             priority: 90,
-            answer: "I'm chopsticksAI v1.0 — the assistant built by Chopsticks HQ.\n\nAsk me anything: general knowledge, code, writing, or anything about the Chopsticks apps. Product answers come from a maintained knowledge base, so version numbers and install commands are the real ones.\n\nNo account, no API key, and nothing you type is stored.",
+            answer: "I'm ChopsticksAI v1.0 — the assistant built by Chopsticks HQ.\n\nAsk me anything: general knowledge, code, writing, or anything about the Chopsticks apps. Product answers come from a maintained knowledge base, so version numbers and install commands are the real ones.\n\nNo account and no API key on your side. In live mode your question is sent to chopstickshq.com (then a language model) to answer; we don't keep a chat history or analytics on what you ask. Details: chopstickshq.com/chopsticks-ai/privacy.html",
             terms: [("are you an ai", 8), ("are you chatgpt", 8), ("chopsitcksai", 4), ("chopsticksai", 4), ("chopsticksais", 4), ("choptsicksai", 4), ("chospticksai", 4), ("chposticksai", 4), ("cohpsticksai", 4), ("hcopsticksai", 4), ("what are you", 8), ("what is chopsticksai", 8), ("who are you", 7)]
         ),
         ChopsticksAIIntent(
@@ -242,8 +274,16 @@ enum ChopsticksAIKB {
             product: "general",
             label: "Do you send my questions anywhere?",
             priority: 70,
-            answer: "No. chopsticksAI runs locally — in your browser on the website, and on-device inside rNitro.\n\nYour questions are never uploaded, logged, or sent to any server. There's no account, no cookie tracking, and no analytics on what you ask.\n\nThe same applies to the apps: rNitro and Fathom send no usage telemetry.",
+            answer: "Live mode: your question goes to chopstickshq.com/api/chopsticks-ai, which may call a language-model provider to draft the reply. Chopsticks HQ does not create an account for you, does not require your own API key, and does not keep a searchable log or analytics of what you ask.\n\nOffline fallback: if the API is down or on cooldown, ChopsticksAI answers from the on-device knowledge base for Chopsticks HQ topics only — nothing leaves your device in that path.\n\nrNitro and Fathom themselves send no usage telemetry. Full note: chopstickshq.com/chopsticks-ai/privacy.html",
             terms: [("aanlytics", 3), ("analtyics", 3), ("analyitcs", 3), ("analytic", 3), ("analytics", 3), ("anayltics", 3), ("anlaytics", 3), ("do you store", 8), ("do you track me", 8), ("etlemetry", 3), ("is this private", 8), ("naalytics", 3), ("pirvacy", 3), ("priavcy", 3), ("privacy", 3), ("privayc", 3), ("privcay", 3), ("prviacy", 3), ("rpivacy", 3), ("rtacking", 3), ("tarcking", 3), ("teelmetry", 3), ("teleemtry", 3), ("telemetry", 3), ("telemtery", 3), ("telmeetry", 3), ("tleemetry", 3), ("tracikng", 3), ("tracking", 3), ("tracknig", 3), ("trakcing", 3), ("trcaking", 3), ("where do my questions go", 8)]
+        ),
+        ChopsticksAIIntent(
+            id: "meta.versions",
+            product: "general",
+            label: "What are the current app versions?",
+            priority: 75,
+            answer: "Current published builds (from the site manifests):\n\n• rNitro — v1.2.9-Final\n• Chopsticks HQ — v1.0.3\n• ChopsticksAI macOS — v1.0.8\n\nDownload pages always show the live number if this drifts.",
+            terms: [("current version", 8), ("evrsion", 3), ("latest release", 6), ("latest version", 8), ("latestrelease", 4), ("latestversion", 8), ("verison", 3), ("versino", 3), ("version", 3), ("versions", 3), ("versoin", 3), ("vesrion", 3), ("vresion", 3), ("what version is chopsticks hq", 8), ("what version is chopsticksai", 8), ("what version is macbar", 8), ("what version is nitro", 8), ("what version is r nitro", 8), ("what version is rnitro", 8), ("what version is rnitro app", 8)]
         ),
         ChopsticksAIIntent(
             id: "minecraft.portfolio",

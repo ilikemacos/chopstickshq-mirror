@@ -520,6 +520,63 @@
     return 'The model is unreachable right now. Try again shortly.';
   }
 
+  /** Progressive reveal — Netlify sync functions can't SSE, so stream the
+   *  finished reply into the bubble for Lab UX. */
+  function streamReveal(targetTurn, fullText, sources, done) {
+    var host = targetTurn.lastChild;
+    var scratch = document.createElement('div');
+    scratch.className = 'bubble';
+    targetTurn.replaceChild(scratch, host);
+    var i = 0;
+    var step = Math.max(12, Math.floor(fullText.length / 40));
+    function tick() {
+      i = Math.min(fullText.length, i + step);
+      var chunk = fullText.slice(0, i);
+      var rendered = renderAssistant(i < fullText.length ? chunk + '▌' : chunk);
+      if (i >= fullText.length) {
+        rendered = renderAssistant(fullText);
+        appendSources(rendered, sources);
+      }
+      targetTurn.replaceChild(rendered, targetTurn.lastChild);
+      stage.scrollTop = stage.scrollHeight;
+      if (i < fullText.length) {
+        requestAnimationFrame(function () { setTimeout(tick, 16); });
+      } else if (done) done();
+    }
+    tick();
+  }
+
+  function showCooldown(targetTurn, d) {
+    var mins = Math.max(1, Math.ceil((d.retryInMs || 0) / 60000));
+    var wrap = document.createElement('div');
+    wrap.className = 'bubble';
+    var p = document.createElement('p');
+    p.textContent = d.reply || ('Free allowance cooling down (~' + mins + ' min left).');
+    wrap.appendChild(p);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'fbtn';
+    btn.style.marginTop = '8px';
+    btn.textContent = 'Retry in ~' + mins + ' min';
+    btn.disabled = true;
+    wrap.appendChild(btn);
+    var left = d.retryInMs || mins * 60000;
+    var t0 = Date.now();
+    var timer = setInterval(function () {
+      var remain = Math.max(0, left - (Date.now() - t0));
+      var m = Math.ceil(remain / 60000);
+      if (remain <= 0) {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.textContent = 'Retry now';
+        btn.onclick = function () { submit(history.length ? history[history.length - 1].content : ''); };
+      } else {
+        btn.textContent = 'Retry in ~' + m + ' min';
+      }
+    }, 15000);
+    targetTurn.replaceChild(wrap, targetTurn.lastChild);
+  }
+
   function submit(text) {
     text = (text || '').trim();
     if (!text || busy) return;
@@ -558,6 +615,14 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.reply) throw new Error('empty');
+        if (d.mode === 'cooldown') {
+          history.push({ role: 'assistant', content: d.reply });
+          showCooldown(thinking, d);
+          showUsage(d);
+          showTier();
+          saveSession();
+          return;
+        }
         if (d.mode === 'error' && window.chopsticksAI && window.chopsticksAI.ask) {
           var off = window.chopsticksAI.ask(text);
           if (off.confident) {
@@ -569,12 +634,14 @@
           }
         }
         history.push({ role: 'assistant', content: d.reply });
-        var rendered = renderAssistant(d.reply);
-        appendSources(rendered, d.sources);
-        thinking.replaceChild(rendered, thinking.lastChild);
         showUsage(d);
         showTier();
-        saveSession();
+        return new Promise(function (resolve) {
+          streamReveal(thinking, d.reply, d.sources, function () {
+            saveSession();
+            resolve();
+          });
+        });
       })
       .catch(function () {
         var msg = offline(text);
