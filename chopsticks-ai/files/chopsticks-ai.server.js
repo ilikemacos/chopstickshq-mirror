@@ -168,11 +168,16 @@ function fnv1a32(str) {
   return h >>> 0;
 }
 
-/** Validates a Fathom Pro oi-pl unlock key (vault / scavenger mint). */
+/** Validates a Fathom Pro oi-pl unlock key (vault / scavenger mint).
+ *  These are NOT OpenRouter keys — OpenRouter stays server-side only. */
 function verifyFathomProUnlock(raw) {
   const key = String(raw || "").trim().toLowerCase();
-  if (!key || key.includes("c0ffee")) return false;
+  if (!key) return false;
+  // Site demo keys first (contain c0ffee on purpose).
   if (FATHOM_PRO_SITE_KEYS.has(key)) return true;
+  if (key.includes("c0ffee")) return false;
+  // Reject anything that looks like an OpenRouter / provider secret.
+  if (/^sk-or-/i.test(key) || /^sk-[a-z0-9]/i.test(key)) return false;
   const m = key.match(/^oi-pl-([0-9a-f]{6,16})-([0-9a-f]{6,16})-([0-9a-f]{8})$/);
   if (!m) return false;
   const body = m[1] + m[2];
@@ -184,6 +189,87 @@ function verifyFathomProUnlock(raw) {
     }
   }
   return false;
+}
+
+/** Usage upgrades are earned by redeeming Fathom Pro oi-pl API keys as credits. */
+const FREE_USAGE = {
+  id: "free",
+  keysRequired: 0,
+  limit: Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000),
+  cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000),
+  label: "Free",
+  detail: "775k tokens · 3h cooldown",
+};
+const CREDIT_TIERS = [
+  {
+    id: "credits-2",
+    keysRequired: 2,
+    limit: 800000,
+    cooldownMs: Math.round(2.5 * 60 * 60 * 1000),
+    label: "2 Fathom Pro APIs",
+    detail: "800k token limit · 2h 30m cooldown",
+  },
+  {
+    id: "credits-5",
+    keysRequired: 5,
+    limit: 900000,
+    cooldownMs: 2 * 60 * 60 * 1000,
+    label: "5 Fathom Pro APIs",
+    detail: "900k token limit · 2h cooldown",
+  },
+  {
+    id: "credits-10",
+    keysRequired: 10,
+    limit: 1000000,
+    cooldownMs: 1 * 60 * 60 * 1000,
+    label: "10 Fathom Pro APIs",
+    detail: "1m token limit · 1h cooldown",
+  },
+];
+
+function resolveCredits(rawKeys) {
+  const list = Array.isArray(rawKeys) ? rawKeys : [];
+  const valid = [];
+  const seen = new Set();
+  let rejected = 0;
+  for (const raw of list) {
+    const key = String(raw || "").trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!verifyFathomProUnlock(key)) {
+      rejected += 1;
+      continue;
+    }
+    valid.push(key);
+  }
+  let tier = FREE_USAGE;
+  for (const t of CREDIT_TIERS) {
+    if (valid.length >= t.keysRequired) tier = t;
+  }
+  // Free traffic shares the global bucket; credit upgrades get a personal bucket
+  // derived from the redeemed key set so one upgrade doesn't raise everyone.
+  const bucketId = tier.keysRequired === 0
+    ? "global"
+    : ("credits-" + fnv1a32(valid.slice().sort().join("|")).toString(16).padStart(8, "0"));
+  return {
+    keysSubmitted: seen.size,
+    keysValid: valid.length,
+    keysRejected: rejected,
+    tier,
+    bucketId,
+    limit: tier.limit,
+    cooldownMs: tier.cooldownMs,
+    upgrades: CREDIT_TIERS.map((t) => ({
+      id: t.id,
+      keysRequired: t.keysRequired,
+      limit: t.limit,
+      cooldownMs: t.cooldownMs,
+      label: t.label,
+      detail: t.detail,
+      unlocked: valid.length >= t.keysRequired,
+    })),
+  };
 }
 
 function normalizeOpenRouterKey(raw) {
@@ -237,15 +323,23 @@ const MAX_MESSAGES = 12;        // trailing turns kept from the client
 const MAX_CHARS_PER_MSG = 2000;
 const GROUNDING_INTENTS = 6;
 
-// Free-tier budget: once TOKEN_BUDGET is spent the endpoint stops calling the
-// model for COOLDOWN_MS, so a burst of traffic cannot burn the whole allowance
-// and leave the assistant dead for everyone. When Supabase is configured the
-// counter is durable across serverless cold starts; otherwise it falls back to
-// a per-instance in-memory counter.
-const TOKEN_BUDGET = Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000);
-const COOLDOWN_MS = Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000);
+// Free-tier budget (overridable). Credit upgrades raise limit / shorten cooldown
+// via redeemed Fathom Pro oi-pl keys — see resolveCredits / CREDIT_TIERS.
+const TOKEN_BUDGET = FREE_USAGE.limit;
+const COOLDOWN_MS = FREE_USAGE.cooldownMs;
 const SB_TIMEOUT_MS = 5000;
-const budget = { used: 0, windowStart: Date.now(), cooldownUntil: 0 };
+const budgets = new Map(); // bucketId -> { used, windowStart, cooldownUntil }
+function budgetBucket(id) {
+  const key = id || "global";
+  let row = budgets.get(key);
+  if (!row) {
+    row = { used: 0, windowStart: Date.now(), cooldownUntil: 0 };
+    budgets.set(key, row);
+  }
+  return row;
+}
+// Back-compat alias used by fixtures / exports.
+const budget = budgetBucket("global");
 let budgetMode = "memory";
 
 // Simple in-memory throttle. Serverless instances are short-lived so this is a
@@ -288,21 +382,28 @@ function contextWindowUsage(messages, limit, turnsTotal) {
   };
 }
 
-function memoryBudgetState(now) {
-  if (budget.cooldownUntil && now < budget.cooldownUntil) {
-    return { blocked: true, retryInMs: budget.cooldownUntil - now };
+function memoryBudgetState(now, bucketId, limit, cooldownMs) {
+  const row = budgetBucket(bucketId);
+  const lim = limit || TOKEN_BUDGET;
+  const cool = cooldownMs || COOLDOWN_MS;
+  if (row.cooldownUntil && now < row.cooldownUntil) {
+    return { blocked: true, retryInMs: row.cooldownUntil - now, used: row.used, limit: lim };
   }
-  if (budget.cooldownUntil && now >= budget.cooldownUntil) {
-    budget.used = 0;
-    budget.windowStart = now;
-    budget.cooldownUntil = 0;
+  if (row.cooldownUntil && now >= row.cooldownUntil) {
+    row.used = 0;
+    row.windowStart = now;
+    row.cooldownUntil = 0;
   }
-  return { blocked: false };
+  return { blocked: false, used: row.used, limit: lim, cooldownMs: cool };
 }
 
-function memorySpend(tokens, now) {
-  budget.used += tokens;
-  if (budget.used >= TOKEN_BUDGET) budget.cooldownUntil = now + COOLDOWN_MS;
+function memorySpend(tokens, now, bucketId, limit, cooldownMs) {
+  const row = budgetBucket(bucketId);
+  const lim = limit || TOKEN_BUDGET;
+  const cool = cooldownMs || COOLDOWN_MS;
+  row.used += tokens;
+  if (row.used >= lim) row.cooldownUntil = now + cool;
+  return row;
 }
 
 function supabaseConfigured() {
@@ -336,76 +437,109 @@ async function sb(path, init = {}) {
   }
 }
 
-async function budgetPeek(now) {
+async function budgetPeek(now, opts = {}) {
+  const bucketId = opts.bucketId || "global";
+  const limit = opts.limit || TOKEN_BUDGET;
+  const cooldownMs = opts.cooldownMs || COOLDOWN_MS;
   if (!supabaseConfigured()) {
     budgetMode = "memory";
-    const state = memoryBudgetState(now);
-    return { ...state, used: budget.used, mode: "memory" };
+    const state = memoryBudgetState(now, bucketId, limit, cooldownMs);
+    return { ...state, mode: "memory", bucketId, limit, cooldownMs };
   }
   try {
-    const res = await sb("rpc/chopsticks_ai_budget_peek", {
+    let res = await sb("rpc/chopsticks_ai_budget_peek", {
       method: "POST",
-      body: JSON.stringify({ p_limit: TOKEN_BUDGET, p_cooldown_ms: COOLDOWN_MS }),
+      body: JSON.stringify({
+        p_limit: limit,
+        p_cooldown_ms: cooldownMs,
+        p_id: bucketId,
+      }),
     });
+    // Older schemas only had the 2-arg global RPC — fall back for free tier.
+    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId === "global") {
+      res = await sb("rpc/chopsticks_ai_budget_peek", {
+        method: "POST",
+        body: JSON.stringify({ p_limit: limit, p_cooldown_ms: cooldownMs }),
+      });
+    }
     if (!res.ok || !res.body || typeof res.body !== "object") {
       budgetMode = "memory";
-      const state = memoryBudgetState(now);
-      return { ...state, used: budget.used, mode: "memory" };
+      const state = memoryBudgetState(now, bucketId, limit, cooldownMs);
+      return { ...state, mode: "memory", bucketId, limit, cooldownMs };
     }
     budgetMode = "supabase";
-    budget.used = Number(res.body.used) || 0;
+    const used = Number(res.body.used) || 0;
+    budgetBucket(bucketId).used = used;
     if (res.body.blocked) {
       return {
         blocked: true,
         retryInMs: Number(res.body.retry_in_ms) || 0,
-        used: budget.used,
+        used,
         mode: "supabase",
+        bucketId,
+        limit,
+        cooldownMs,
       };
     }
-    return { blocked: false, used: budget.used, mode: "supabase" };
+    return { blocked: false, used, mode: "supabase", bucketId, limit, cooldownMs };
   } catch {
     budgetMode = "memory";
-    const state = memoryBudgetState(now);
-    return { ...state, used: budget.used, mode: "memory" };
+    const state = memoryBudgetState(now, bucketId, limit, cooldownMs);
+    return { ...state, mode: "memory", bucketId, limit, cooldownMs };
   }
 }
 
-async function budgetSpend(tokens, now) {
+async function budgetSpend(tokens, now, opts = {}) {
   const spent = Math.max(0, Math.min(50000, Math.round(Number(tokens) || 0)));
+  const bucketId = opts.bucketId || "global";
+  const limit = opts.limit || TOKEN_BUDGET;
+  const cooldownMs = opts.cooldownMs || COOLDOWN_MS;
   if (!supabaseConfigured()) {
     budgetMode = "memory";
-    memorySpend(spent, now);
-    return { used: budget.used, mode: "memory" };
+    const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
+    return { used: row.used, mode: "memory", limit, bucketId };
   }
   try {
-    const res = await sb("rpc/chopsticks_ai_budget_spend", {
+    let res = await sb("rpc/chopsticks_ai_budget_spend", {
       method: "POST",
       body: JSON.stringify({
         p_tokens: spent,
-        p_limit: TOKEN_BUDGET,
-        p_cooldown_ms: COOLDOWN_MS,
+        p_limit: limit,
+        p_cooldown_ms: cooldownMs,
+        p_id: bucketId,
       }),
     });
-    if (!res.ok || !res.body || typeof res.body !== "object") {
-      memorySpend(spent, now);
-      return { used: budget.used, mode: "memory" };
+    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId === "global") {
+      res = await sb("rpc/chopsticks_ai_budget_spend", {
+        method: "POST",
+        body: JSON.stringify({
+          p_tokens: spent,
+          p_limit: limit,
+          p_cooldown_ms: cooldownMs,
+        }),
+      });
     }
-    budget.used = Number(res.body.used) || budget.used;
+    if (!res.ok || !res.body || typeof res.body !== "object") {
+      const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
+      return { used: row.used, mode: "memory", limit, bucketId };
+    }
+    const used = Number(res.body.used) || budgetBucket(bucketId).used;
+    budgetBucket(bucketId).used = used;
     budgetMode = "supabase";
-    if (res.body.blocked) budget.cooldownUntil = now + COOLDOWN_MS;
-    return { used: budget.used, mode: "supabase" };
+    if (res.body.blocked) budgetBucket(bucketId).cooldownUntil = now + cooldownMs;
+    return { used, mode: "supabase", limit, bucketId };
   } catch {
-    memorySpend(spent, now);
-    return { used: budget.used, mode: "memory" };
+    const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
+    return { used: row.used, mode: "memory", limit, bucketId };
   }
 }
 
-function budgetState(now) {
-  return memoryBudgetState(now);
+function budgetState(now, opts) {
+  return memoryBudgetState(now, opts && opts.bucketId, opts && opts.limit, opts && opts.cooldownMs);
 }
 
-function spend(tokens, now) {
-  memorySpend(tokens, now);
+function spend(tokens, now, opts) {
+  memorySpend(tokens, now, opts && opts.bucketId, opts && opts.limit, opts && opts.cooldownMs);
 }
 
 const env = (name) =>
@@ -906,11 +1040,12 @@ function selfFacts(tier) {
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in ChopsticksAI Lab); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
-    `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
+    `- Free usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
+    "- Upgrades are bought with Fathom Pro oi-pl API keys (not OpenRouter keys): 2 keys → 800k + 2h30m cooldown; 5 keys → 900k + 2h; 10 keys → 1m + 1h.",
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
     "- You search the web on every question — Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google/Brave when configured — then cite sources in your answer.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
-    "- You need no API key from the user, and nothing they type is stored.",
+    "- You need no OpenRouter API key from the user; Fathom Pro unlock keys can be redeemed as usage credits in the Usage tab.",
     "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside rNitro's Chat tab.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
   ].join("\n");
@@ -1027,14 +1162,57 @@ async function callModel({ model, messages, key, signal, maxTokens, temperature 
   };
 }
 
-async function healthHandler() {
+function usagePayload(credits, state) {
+  return {
+    used: state.used || 0,
+    limit: credits.limit,
+    cooldownMs: credits.cooldownMs,
+    cooldown: state.blocked
+      ? { blocked: true, retryInMs: state.retryInMs || 0 }
+      : null,
+    keysValid: credits.keysValid,
+    keysSubmitted: credits.keysSubmitted,
+    keysRejected: credits.keysRejected,
+    tier: {
+      id: credits.tier.id,
+      label: credits.tier.label,
+      detail: credits.tier.detail,
+      keysRequired: credits.tier.keysRequired,
+    },
+    upgrades: credits.upgrades,
+    free: {
+      limit: FREE_USAGE.limit,
+      cooldownMs: FREE_USAGE.cooldownMs,
+      label: FREE_USAGE.label,
+      detail: FREE_USAGE.detail,
+    },
+    budgetMode: state.mode || budgetMode,
+    creditSource: "fathom-pro-oi-pl",
+  };
+}
+
+async function healthHandler(event) {
   const configured = Boolean(env("OPENROUTER_API_KEY"));
   const now = Date.now();
+  let unlockKeys = [];
+  try {
+    const q = (event && event.queryStringParameters) || {};
+    if (q.unlockKeys) {
+      unlockKeys = String(q.unlockKeys).split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  } catch (e) { /* ignore */ }
+  const credits = resolveCredits(unlockKeys);
   let cooldown = null;
   let budgetModeNow = "memory";
+  let used = 0;
   try {
-    const state = await budgetPeek(now);
+    const state = await budgetPeek(now, {
+      bucketId: credits.bucketId,
+      limit: credits.limit,
+      cooldownMs: credits.cooldownMs,
+    });
     budgetModeNow = state.mode || budgetMode;
+    used = state.used || 0;
     if (state.blocked) {
       cooldown = { blocked: true, retryInMs: state.retryInMs || 0 };
     }
@@ -1047,6 +1225,13 @@ async function healthHandler() {
     service: "chopsticks-ai",
     configured,
     cooldown,
+    budget: { used, limit: credits.limit },
+    usage: usagePayload(credits, {
+      used,
+      blocked: Boolean(cooldown && cooldown.blocked),
+      retryInMs: cooldown && cooldown.retryInMs,
+      mode: budgetModeNow,
+    }),
     budgetMode: budgetModeNow,
     search: SEARCH_ENABLED,
     time: new Date(now).toISOString(),
@@ -1056,7 +1241,7 @@ async function healthHandler() {
 async function handler(event) {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, body: "" };
   if (event.httpMethod === "GET") {
-    return healthHandler();
+    return healthHandler(event);
   }
   if (event.httpMethod !== "POST") {
     return json(405, { error: "GET or POST only" });
@@ -1081,6 +1266,27 @@ async function handler(event) {
 
   const tier = tierOf(payload.tier);
   const apiKey = key;
+  const unlockKeys = Array.isArray(payload.unlockKeys)
+    ? payload.unlockKeys
+    : (Array.isArray(payload.fathomProKeys) ? payload.fathomProKeys : []);
+  const credits = resolveCredits(unlockKeys);
+  const budgetOpts = {
+    bucketId: credits.bucketId,
+    limit: credits.limit,
+    cooldownMs: credits.cooldownMs,
+  };
+
+  // Usage / upgrade status without spending a chat turn.
+  if (payload.action === "usage" || payload.mode === "usage") {
+    const nowU = Date.now();
+    const stateU = await budgetPeek(nowU, budgetOpts);
+    return json(200, {
+      mode: "usage",
+      usage: usagePayload(credits, stateU),
+      budget: { used: stateU.used || 0, limit: credits.limit },
+      budgetMode: stateU.mode || budgetMode,
+    });
+  }
 
   const headers = event.headers || {};
   const who =
@@ -1108,16 +1314,23 @@ async function handler(event) {
   if (!lastUser) return json(400, { error: "no user message" });
 
   const now = Date.now();
-  const state = await budgetPeek(now);
+  const state = await budgetPeek(now, budgetOpts);
   if (state.blocked) {
     const mins = Math.ceil(state.retryInMs / 60000);
+    const next = credits.upgrades.find((u) => !u.unlocked);
+    const tip = next
+      ? ` Redeem ${next.keysRequired} Fathom Pro API keys in Usage to raise your limit (${next.detail}).`
+      : "";
     return json(200, {
       reply:
-        "chopsticksAI has used up its free allowance for now and is cooling down " +
-        `(about ${mins} minute${mins === 1 ? "" : "s"} left). ` +
-        "Everything it knows is still on chopstickshq.com in the meantime.",
+        "chopsticksAI has used up its allowance for now and is cooling down " +
+        `(about ${mins} minute${mins === 1 ? "" : "s"} left).` +
+        tip +
+        " Everything it knows is still on chopstickshq.com in the meantime.",
       mode: "cooldown",
       retryInMs: state.retryInMs,
+      usage: usagePayload(credits, state),
+      budget: { used: state.used || 0, limit: credits.limit },
     });
   }
 
@@ -1284,7 +1497,7 @@ async function handler(event) {
       }
     }
 
-    const spentResult = await budgetSpend(spent, now);
+    const spentResult = await budgetSpend(spent, now, budgetOpts);
 
     if (!reply) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
@@ -1300,7 +1513,12 @@ async function handler(event) {
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: searchOn,
       sources: webBundle.sources,
-      budget: { used: spentResult.used, limit: TOKEN_BUDGET },
+      budget: { used: spentResult.used, limit: credits.limit },
+      usage: usagePayload(credits, {
+        used: spentResult.used,
+        blocked: false,
+        mode: spentResult.mode,
+      }),
       budgetMode: spentResult.mode,
     });
   } catch (e) {
@@ -1320,6 +1538,8 @@ module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   measureMessages, contextWindowUsage,
   wantsSearch, parseSearchRequest, webSearch, selfFacts, verifyFathomProUnlock,
+  resolveCredits, usagePayload,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
+  FREE_USAGE, CREDIT_TIERS,
 };

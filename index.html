@@ -1584,17 +1584,42 @@
 
     (function () {
       var lastCode = '';
+      var SCAVENGER_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+      var SCAVENGER_NEXT_KEY = 'chq.scavenger.nextAt';
       var el = document.getElementById('easter-l');
       var toast = document.getElementById('easter-toast');
       var codeEl = document.getElementById('easter-code');
       var copyBtn = document.getElementById('easter-copy');
       var dismissBtn = document.getElementById('easter-dismiss');
+      function remainingMs() {
+        try {
+          var next = Number(localStorage.getItem(SCAVENGER_NEXT_KEY) || 0);
+          return Math.max(0, next - Date.now());
+        } catch (e) { return 0; }
+      }
+      function formatWait(ms) {
+        var total = Math.ceil(ms / 1000);
+        var m = Math.floor(total / 60);
+        var s = total % 60;
+        if (m <= 0) return s + 's';
+        return m + 'm ' + String(s).padStart(2, '0') + 's';
+      }
       function showEaster() {
         if (!toast || !codeEl) return;
+        var wait = remainingMs();
+        if (wait > 0) {
+          codeEl.textContent = 'Scavenger cooldown — try again in ' + formatWait(wait);
+          toast.classList.add('is-show');
+          return;
+        }
+        if (typeof window.FathomProMintKey !== 'function') return;
         lastCode = window.FathomProMintKey(lastCode);
         codeEl.textContent = lastCode;
         toast.classList.add('is-show');
-        try { localStorage.setItem('fathomProLastKey', lastCode); } catch (e) {}
+        try {
+          localStorage.setItem('fathomProLastKey', lastCode);
+          localStorage.setItem(SCAVENGER_NEXT_KEY, String(Date.now() + SCAVENGER_COOLDOWN_MS));
+        } catch (e) {}
       }
       function hideEaster() {
         if (toast) toast.classList.remove('is-show');

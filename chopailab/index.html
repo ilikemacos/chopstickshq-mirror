@@ -367,6 +367,13 @@
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     return String(Math.round(n));
   }
+  function unlockKeys() {
+    try {
+      var raw = localStorage.getItem('chq.aiUnlockKeys');
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(function (k) { return /^oi-pl-/i.test(String(k || '')); }) : [];
+    } catch (e) { return []; }
+  }
   function showUsage(d) {
     if (!usageEl) return;
     var parts = [];
@@ -377,6 +384,11 @@
     if (d && d.budget && typeof d.budget.used === 'number' && d.budget.limit) {
       parts.push('Allowance ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
     }
+    if (d && d.usage && d.usage.tier && d.usage.tier.label) {
+      parts.push(d.usage.tier.label);
+    }
+    var n = unlockKeys().length;
+    if (n) parts.push(n + ' Fathom Pro key' + (n === 1 ? '' : 's'));
     usageEl.textContent = parts.join(' · ');
   }
   tierSel.addEventListener('change', function () {
@@ -600,7 +612,8 @@
       messages: history.slice(-12),
       mode: 'agent',
       tier: tierSel.value,
-      maxTokens: effortInfo().maxTokens
+      maxTokens: effortInfo().maxTokens,
+      unlockKeys: unlockKeys()
     };
     if (sr.hadPrefix) {
       payload.messages = payload.messages.slice();
