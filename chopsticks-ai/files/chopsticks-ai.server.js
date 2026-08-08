@@ -1583,6 +1583,44 @@ async function handler(event) {
   const lastUser = [...turns].reverse().find((m) => m.role === "user");
   if (!lastUser) return json(400, { error: "no user message" });
 
+  // Attachments uploaded to Supabase Storage (signed URLs + optional text previews).
+  // Large binaries are not inlined into the model context — only metadata + small text.
+  const rawAtt = Array.isArray(payload.attachments) ? payload.attachments : [];
+  const attachments = rawAtt.slice(0, 40).map((a) => ({
+    name: String((a && a.name) || "file").slice(0, 200),
+    mime: String((a && a.mime) || "").slice(0, 120),
+    size: Number(a && a.size) || 0,
+    url: String((a && a.url) || "").slice(0, 2000),
+    path: String((a && a.path) || "").slice(0, 500),
+    text: typeof (a && a.text) === "string" ? String(a.text).slice(0, 200000) : "",
+  })).filter((a) => a.name);
+  if (attachments.length) {
+    const lines = attachments.map((a, i) => {
+      const sz = a.size >= 1024 * 1024 * 1024
+        ? (a.size / (1024 * 1024 * 1024)).toFixed(2) + " GB"
+        : a.size >= 1024 * 1024
+          ? (a.size / (1024 * 1024)).toFixed(1) + " MB"
+          : a.size >= 1024
+            ? Math.round(a.size / 1024) + " KB"
+            : a.size + " B";
+      let block = `${i + 1}. ${a.name} (${a.mime || "file"}, ${sz})`;
+      if (a.url) block += `\n   URL: ${a.url}`;
+      if (a.text) {
+        block += `\n   --- file text preview ---\n${a.text}\n   --- end preview ---`;
+      } else if (/^image\//i.test(a.mime)) {
+        block += "\n   (image attached — describe using the filename/URL; do not invent pixel details)";
+      } else {
+        block += "\n   (binary/large file — use the URL/name; contents not inlined)";
+      }
+      return block;
+    });
+    // Attachments are appended after the normal per-message slice so text
+    // previews are not cut to MAX_CHARS_PER_MSG (still bounded for context fit).
+    lastUser.content = (String(lastUser.content || "") +
+      "\n\nATTACHED FILES (uploaded by the user for this turn):\n" + lines.join("\n"))
+      .slice(0, 220000);
+  }
+
   const now = Date.now();
   const state = await budgetPeek(now, budgetOpts);
   if (state.blocked) {

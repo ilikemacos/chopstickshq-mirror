@@ -168,6 +168,31 @@
   .usage.warn { color: #e8a25a; }
   .usage.critical { color: #e86a5a; }
   .usage.cooldown { color: #e8a25a; }
+  .attach-row {
+    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .45rem;
+    display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  }
+  .attach-chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-family: var(--mono); font-size: .68rem; color: var(--text);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 999px; padding: .28rem .55rem .28rem .7rem; max-width: 100%;
+  }
+  .attach-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem; }
+  .attach-chip button {
+    border: none; background: transparent; color: var(--muted); cursor: pointer;
+    font-size: .85rem; line-height: 1; padding: 0 .15rem;
+  }
+  .attach-chip.busy { color: var(--muted); }
+  .composer.drag {
+    outline: 2px dashed rgba(255,113,57,.55); outline-offset: -4px;
+  }
+  .attach-btn {
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    border-radius: 12px; height: 2.9rem; padding: 0 .85rem; font-size: .8rem;
+    font-family: inherit; cursor: pointer; flex: 0 0 auto;
+  }
+  .attach-btn:hover { color: var(--text); border-color: var(--muted); }
   .sources { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
   .sources-label {
     font-family: var(--mono); font-size: .64rem; letter-spacing: .08em;
@@ -281,18 +306,22 @@
   </div>
 </div>
 
-<div class="composer">
+<div class="composer" id="composer">
   <div class="hint">
-    <span>Enter to send · Shift+Enter for new line · <code>/compact</code> toggles compact UI</span>
+    <span>Enter to send · Attach files/images (≤10 GB batch, sign in) · <code>/compact</code></span>
     <span id="status">ChopsticksAI</span>
   </div>
   <div class="usage" id="usage" aria-live="polite"></div>
+  <div class="attach-row" id="attach-row" hidden></div>
   <div class="composer-inner">
-    <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
+    <input type="file" id="file-input" multiple hidden>
+    <button type="button" class="attach-btn" id="attach-btn" title="Attach files or images (up to 10 GB)">Attach</button>
+    <textarea id="input" rows="1" placeholder="Ask anything, or attach files / images…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js" defer></script>
 <script src="/js/theme.js"></script>
 <script src="/js/chopsticks-ai-kb.js" defer></script>
 <script src="/js/chopsticks-ai-cloud.js"></script>
@@ -432,7 +461,146 @@
   var status = document.getElementById('status');
   var usageEl = document.getElementById('usage');
   var tierSel = document.getElementById('tier');
+  var attachBtn = document.getElementById('attach-btn');
+  var fileInput = document.getElementById('file-input');
+  var attachRow = document.getElementById('attach-row');
+  var composerEl = document.getElementById('composer');
+  var pendingAttach = []; // { id, name, mime, size, path, url, text, uploading, error }
+  var MAX_BATCH = 10 * 1024 * 1024 * 1024;
+  var TEXT_PREVIEW = 200000;
   var compact = false;
+
+  function fmtBytes(n) {
+    if (n >= 1024 * 1024 * 1024) return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
+    return n + ' B';
+  }
+  function batchBytes() {
+    return pendingAttach.reduce(function (s, a) { return s + (a.size || 0); }, 0);
+  }
+  function renderAttachRow() {
+    if (!attachRow) return;
+    if (!pendingAttach.length) {
+      attachRow.hidden = true;
+      attachRow.innerHTML = '';
+      return;
+    }
+    attachRow.hidden = false;
+    attachRow.innerHTML = pendingAttach.map(function (a) {
+      var label = a.name + ' · ' + fmtBytes(a.size || 0);
+      if (a.uploading) label += ' · ' + Math.round((a.progress || 0) * 100) + '%';
+      if (a.error) label += ' · ' + a.error;
+      return '<div class="attach-chip' + (a.uploading ? ' busy' : '') + '" data-id="' + a.id + '">' +
+        '<span title="' + label.replace(/"/g, '&quot;') + '">' + label.replace(/</g, '&lt;') + '</span>' +
+        '<button type="button" aria-label="Remove" data-rm="' + a.id + '">×</button></div>';
+    }).join('') +
+      '<span style="font-family:var(--mono);font-size:.64rem;color:var(--muted)">' +
+      fmtBytes(batchBytes()) + ' / 10 GB</span>';
+  }
+  attachRow && attachRow.addEventListener('click', function (e) {
+    var id = e.target && e.target.getAttribute('data-rm');
+    if (!id) return;
+    pendingAttach = pendingAttach.filter(function (a) { return a.id !== id; });
+    renderAttachRow();
+  });
+  async function readTextPreview(file) {
+    var mime = file.type || '';
+    var name = (file.name || '').toLowerCase();
+    var texty = /^text\//.test(mime) || /\.(txt|md|json|js|ts|tsx|jsx|py|swift|html|css|csv|xml|yml|yaml|toml|sh|rs|go|java|c|cpp|h|m|rb|php|sql)$/i.test(name);
+    if (!texty || file.size > 512 * 1024) return '';
+    try {
+      var t = await file.text();
+      return String(t).slice(0, TEXT_PREVIEW);
+    } catch (e) { return ''; }
+  }
+  async function queueFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    if (!Cloud || !Cloud.isSignedIn()) {
+      status.textContent = 'Sign in (Account) to attach files up to 10 GB';
+      return;
+    }
+    var add = 0;
+    for (var i = 0; i < files.length; i++) add += files[i].size || 0;
+    if (batchBytes() + add > MAX_BATCH) {
+      status.textContent = 'Batch would exceed 10 GB — remove some files';
+      return;
+    }
+    for (var j = 0; j < files.length; j++) {
+      var f = files[j];
+      if (!f.size) continue;
+      if (f.size > MAX_BATCH) {
+        status.textContent = f.name + ' is over 10 GB';
+        continue;
+      }
+      var item = {
+        id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name: f.name,
+        mime: f.type || 'application/octet-stream',
+        size: f.size,
+        uploading: true,
+        progress: 0,
+        file: f
+      };
+      pendingAttach.push(item);
+      renderAttachRow();
+      try {
+        var text = await readTextPreview(f);
+        var up = await Cloud.uploadAttachment(f, {
+          chatId: cloudChatId || null,
+          onProgress: function (p) {
+            item.progress = p;
+            renderAttachRow();
+          }
+        });
+        item.uploading = false;
+        item.path = up.path;
+        item.url = up.signedUrl;
+        item.text = text;
+        item.progress = 1;
+        delete item.file;
+      } catch (err) {
+        item.uploading = false;
+        item.error = (err && err.message) || 'upload failed';
+      }
+      renderAttachRow();
+    }
+    status.textContent = pendingAttach.some(function (a) { return a.error; })
+      ? 'Some uploads failed'
+      : (pendingAttach.length ? pendingAttach.length + ' attachment(s) ready' : 'ChopsticksAI');
+  }
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener('click', function () {
+      if (!Cloud || !Cloud.isSignedIn()) {
+        status.textContent = 'Sign in (Account) to attach files up to 10 GB';
+        document.getElementById('account-btn') && document.getElementById('account-btn').click();
+        return;
+      }
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function () {
+      queueFiles(fileInput.files);
+      fileInput.value = '';
+    });
+  }
+  if (composerEl) {
+    ;['dragenter', 'dragover'].forEach(function (ev) {
+      composerEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        composerEl.classList.add('drag');
+      });
+    });
+    ;['dragleave', 'drop'].forEach(function (ev) {
+      composerEl.addEventListener(ev, function (e) {
+        e.preventDefault();
+        composerEl.classList.remove('drag');
+        if (ev === 'drop' && e.dataTransfer && e.dataTransfer.files) {
+          queueFiles(e.dataTransfer.files);
+        }
+      });
+    });
+  }
 
   try {
     compact = localStorage.getItem('chq.aiCompact') === '1';
@@ -821,18 +989,28 @@
 
   function submit(text) {
     text = (text || '').trim();
-    if (!text || busy) return;
+    if (busy) return;
+    if (pendingAttach.some(function (a) { return a.uploading; })) {
+      status.textContent = 'Wait for uploads to finish…';
+      return;
+    }
+    var ready = pendingAttach.filter(function (a) { return a.url && !a.error; });
+    if (!text && !ready.length) return;
     if (handleSlash(text)) {
       input.value = '';
       addTurn('bot', plain(compact ? 'Compact mode on.' : 'Compact mode off.'));
       return;
     }
 
-    addTurn('user', plain(text));
+    var attachNote = ready.length
+      ? '\n\n[' + ready.length + ' attachment' + (ready.length === 1 ? '' : 's') + ': ' +
+        ready.map(function (a) { return a.name; }).join(', ') + ']'
+      : '';
+    addTurn('user', plain((text || '(attachments)') + attachNote));
     input.value = '';
     input.style.height = 'auto';
-    var sr = parseSearch(text);
-    history.push({ role: 'user', content: sr.raw });
+    var sr = parseSearch(text || 'Please review the attached files.');
+    history.push({ role: 'user', content: sr.raw || text || 'Please review the attached files.' });
 
     busy = true;
     send.disabled = true;
@@ -843,8 +1021,20 @@
       mode: 'agent',
       tier: tierSel.value,
       maxTokens: effortInfo().maxTokens,
-      unlockKeys: unlockKeys()
+      unlockKeys: unlockKeys(),
+      attachments: ready.map(function (a) {
+        return {
+          name: a.name,
+          mime: a.mime,
+          size: a.size,
+          url: a.url,
+          path: a.path,
+          text: a.text || undefined
+        };
+      })
     };
+    pendingAttach = [];
+    renderAttachRow();
     if (sr.hadPrefix) {
       payload.messages = payload.messages.slice();
       payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };

@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.0.2",
+  "latest": "cs.AI 2.0.3",
   "entries": [
+    {
+      "version": "cs.AI 2.0.3",
+      "date": "2026-08-08",
+      "title": "File & image attachments (10 GB)",
+      "changes": [
+        "Attach files and images in Lab and the macOS app — up to 10 GB per batch when signed in",
+        "Uploads go to private Supabase Storage (resumable for large files); text previews reach the model, large binaries by link"
+      ]
+    },
     {
       "version": "cs.AI 2.0.2",
       "date": "2026-08-08",

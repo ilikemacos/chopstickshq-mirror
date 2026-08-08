@@ -4,6 +4,11 @@
   "auth": true,
   "tables": [
     "chats",
-    "chat_messages"
-  ]
+    "chat_messages",
+    "chat_attachments"
+  ],
+  "storageBuckets": [
+    "cs-ai-attachments"
+  ],
+  "attachMaxBytes": 10737418240
 }
