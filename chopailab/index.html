@@ -6,13 +6,13 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>C.ai — chopsticksAI web agent · Chopsticks HQ</title>
-<meta name="description" content="C.ai is the chopsticksAI web agent: pick Low, Medium, High, Xhigh, or Chopsticks effort, generate complete files and code, and download them from the chat.">
+<title>ChopsticksAI — web agent · Chopsticks HQ</title>
+<meta name="description" content="ChopsticksAI web agent: pick Low through Insane effort, generate complete files and code, and download them from the chat.">
 <link rel="canonical" href="https://chopstickshq.com/chopailab/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
-<meta property="og:title" content="C.ai — chopsticksAI web agent">
+<meta property="og:title" content="ChopsticksAI — web agent">
 <meta property="og:description" content="Ask anything, pick your effort level, generate complete files, download them from the chat.">
 <meta property="og:url" content="https://chopstickshq.com/chopailab/">
 <meta name="twitter:card" content="summary">
@@ -174,26 +174,6 @@
   html.compact .bubble { font-size: .88rem; }
   html.compact nav { min-height: 2.75rem; }
   html.compact .inner { padding-top: .75rem; }
-  .pro-keys {
-    display: none; flex-direction: column; gap: .45rem;
-    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .65rem;
-    padding: .65rem .75rem; border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--card);
-  }
-  .pro-keys.is-on { display: flex; }
-  .pro-keys-label {
-    font-family: var(--mono); font-size: .62rem; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .pro-keys-row { display: flex; gap: .5rem; flex-wrap: wrap; }
-  .pro-keys input {
-    flex: 1 1 12rem; min-width: 0; background: var(--bg2); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px; padding: .45rem .6rem;
-    font-family: var(--mono); font-size: .72rem;
-  }
-  .pro-keys input:focus { outline: none; border-color: var(--muted); }
-  .pro-keys-note { font-size: .72rem; color: var(--muted); line-height: 1.45; }
-  .pro-keys-note a { text-decoration: underline; text-underline-offset: 2px; }
   .resumed {
     font-family: var(--mono); font-size: .66rem; color: var(--muted);
     border: 1px dashed var(--border); border-radius: 999px;
@@ -205,15 +185,15 @@
 </head>
 <body>
 <nav>
-  <a class="brand" href="/">Chopsticks HQ <span>· C.ai</span></a>
+  <a class="brand" href="/">Chopsticks HQ <span>· ChopsticksAI</span></a>
   <div class="nav-right">
-    <select class="nbtn" id="tier" aria-label="Effort level" title="Low: fastest. Medium: balanced. High: deeper answers. Xhigh: max effort. Chopsticks: product expert.">
+    <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps.">
       <option value="low">Low · quick</option>
       <option value="medium">Medium · balanced</option>
       <option value="high" selected>High · default</option>
-      <option value="xhigh">Xhigh · max free</option>
-      <option value="xhighplus">Xhigh+ · Fathom Pro</option>
-      <option value="insane">Insane · Fathom Pro</option>
+      <option value="xhigh">Xhigh · large</option>
+      <option value="xhighplus">Xhigh+ · deeper</option>
+      <option value="insane">Insane · max</option>
       <option value="chopsticks">Chopsticks · HQ apps</option>
     </select>
     <button type="button" class="nbtn" id="export">Export chat</button>
@@ -226,13 +206,12 @@
 <div class="stage" id="stage">
   <div class="inner" id="log">
     <div class="intro" id="intro">
-      <div class="kicker">chopsticksAI 1.0 · C.ai</div>
-      <h1>C.ai</h1>
+      <div class="kicker">chopsticksAI 1.0 · Lab</div>
+      <h1>ChopsticksAI</h1>
       <p>
-        Ask anything, or have it build something. Pick an effort level — Low through
-        Xhigh are free. <strong>Xhigh+</strong> and <strong>Insane</strong> are Fathom Pro
-        only: paste your oi-pl unlock key and OpenRouter API key below. Files come back
-        as complete, downloadable documents. Keys stay in your browser only.
+        Ask anything, or have it build something. Pick an effort level — Low, Medium, High,
+        Xhigh, Xhigh+, Insane, or Chopsticks for HQ apps. Files and code come back as
+        complete, downloadable documents. Nothing you type is stored.
       </p>
       <div class="suggest" id="suggest"></div>
     </div>
@@ -242,21 +221,9 @@
 <div class="composer">
   <div class="hint">
     <span>Enter to send · Shift+Enter for new line · <code>/compact</code> toggles compact UI</span>
-    <span id="status">C.ai</span>
+    <span id="status">ChopsticksAI</span>
   </div>
   <div class="usage" id="usage" aria-live="polite"></div>
-  <div class="pro-keys" id="proKeys">
-    <div class="pro-keys-label">Fathom Pro · your keys (browser only)</div>
-    <div class="pro-keys-row">
-      <input type="text" id="fathomKey" placeholder="oi-pl unlock key" autocomplete="off" spellcheck="false" aria-label="Fathom Pro unlock key">
-      <input type="password" id="apiKey" placeholder="OpenRouter sk-or-…" autocomplete="off" spellcheck="false" aria-label="OpenRouter API key">
-    </div>
-    <div class="pro-keys-note">
-      Xhigh+ and Insane bill your <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter</a>
-      account — same as Fathom Pro AI. Get an oi-pl key at
-      <a href="/vault/">the vault</a> or <a href="/fathom-pro/?tab=unlock">Fathom Pro unlock</a>.
-    </div>
-  </div>
   <div class="composer-inner">
     <textarea id="input" rows="1" placeholder="Ask anything, or describe a file to generate…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
@@ -270,18 +237,16 @@
   'use strict';
 
   var EFFORT = {
-    low: { label: 'Low', maxTokens: 400, pro: false },
-    medium: { label: 'Medium', maxTokens: 600, pro: false },
-    high: { label: 'High', maxTokens: 1000, pro: false },
-    xhigh: { label: 'Xhigh', maxTokens: 2000, pro: false },
-    xhighplus: { label: 'Xhigh+', maxTokens: 3000, pro: true },
-    insane: { label: 'Insane', maxTokens: 4000, pro: true },
-    chopsticks: { label: 'Chopsticks', maxTokens: 800, pro: false },
-    ultra: { label: 'Xhigh', maxTokens: 2000, pro: false },
-    super: { label: 'Medium', maxTokens: 600, pro: false }
+    low: { label: 'Low', maxTokens: 400 },
+    medium: { label: 'Medium', maxTokens: 600 },
+    high: { label: 'High', maxTokens: 1000 },
+    xhigh: { label: 'Xhigh', maxTokens: 2000 },
+    xhighplus: { label: 'Xhigh+', maxTokens: 3000 },
+    insane: { label: 'Insane', maxTokens: 4000 },
+    chopsticks: { label: 'Chopsticks', maxTokens: 800 },
+    ultra: { label: 'Xhigh', maxTokens: 2000 },
+    super: { label: 'Medium', maxTokens: 600 }
   };
-  var FATHOM_STORE = 'chq.cai.fathomKey';
-  var APIKEY_STORE = 'chq.cai.apiKey';
   var API = '/api/chopsticks-ai';
   var STORE = 'chq.lab.session';
   var history = [];
@@ -318,34 +283,7 @@
   var status = document.getElementById('status');
   var usageEl = document.getElementById('usage');
   var tierSel = document.getElementById('tier');
-  var proKeysEl = document.getElementById('proKeys');
-  var fathomKeyEl = document.getElementById('fathomKey');
-  var apiKeyEl = document.getElementById('apiKey');
   var compact = false;
-
-  try {
-    var lk = localStorage.getItem(FATHOM_STORE) || localStorage.getItem('fathomProLastKey') || '';
-    if (lk && fathomKeyEl) fathomKeyEl.value = lk;
-    var ak = localStorage.getItem(APIKEY_STORE) || '';
-    if (ak && apiKeyEl) apiKeyEl.value = ak;
-  } catch (e) {}
-
-  function saveProKeys() {
-    try {
-      if (fathomKeyEl) localStorage.setItem(FATHOM_STORE, fathomKeyEl.value.trim());
-      if (apiKeyEl) localStorage.setItem(APIKEY_STORE, apiKeyEl.value.trim());
-    } catch (e) {}
-  }
-  if (fathomKeyEl) fathomKeyEl.addEventListener('change', saveProKeys);
-  if (apiKeyEl) apiKeyEl.addEventListener('change', saveProKeys);
-
-  function isProTier() {
-    var e = effortInfo();
-    return !!(e && e.pro);
-  }
-  function toggleProKeys() {
-    if (proKeysEl) proKeysEl.classList.toggle('is-on', isProTier());
-  }
 
   try {
     compact = localStorage.getItem('chq.aiCompact') === '1';
@@ -412,8 +350,7 @@
   }
   function showTier() {
     var e = effortInfo();
-    status.textContent = 'C.ai · ' + e.label + ' effort' + (compact ? ' · compact' : '');
-    toggleProKeys();
+    status.textContent = 'ChopsticksAI · ' + e.label + ' effort' + (compact ? ' · compact' : '');
   }
   function fmt(n) {
     if (!isFinite(n)) return '?';
@@ -428,9 +365,7 @@
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
-    if (d && d.budget && d.budget.note) {
-      parts.push('Your OpenRouter key');
-    } else if (d && d.budget && typeof d.budget.used === 'number' && d.budget.limit) {
+    if (d && d.budget && typeof d.budget.used === 'number' && d.budget.limit) {
       parts.push('Allowance ' + fmt(d.budget.used) + '/' + fmt(d.budget.limit));
     }
     usageEl.textContent = parts.join(' · ');
@@ -516,7 +451,7 @@
       var bits = head.split(/\s+/);
       var lang = (bits[0] || 'text').toLowerCase();
       var name = bits.slice(1).join(' ').trim();
-      if (!name) name = 'cai-file.' + (EXT[lang] || 'txt');
+      if (!name) name = 'chopsticksai-file.' + (EXT[lang] || 'txt');
 
       var card = document.createElement('div');
       card.className = 'file';
@@ -553,7 +488,7 @@
     t.className = 'turn ' + who;
     var label = document.createElement('div');
     label.className = 'who';
-    label.textContent = who === 'user' ? 'You' : 'C.ai';
+    label.textContent = who === 'user' ? 'You' : 'ChopsticksAI';
     t.appendChild(label);
     t.appendChild(node);
     log.appendChild(t);
@@ -606,43 +541,14 @@
       payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
     }
 
-    if (isProTier()) {
-      saveProKeys();
-      var fp = (fathomKeyEl && fathomKeyEl.value || '').trim();
-      var ak = (apiKeyEl && apiKeyEl.value || '').trim();
-      if (!fp || !/^oi-pl-/i.test(fp)) {
-        busy = false;
-        send.disabled = false;
-        thinking.replaceChild(plain('Paste your Fathom Pro oi-pl unlock key above first.'), thinking.lastChild);
-        toggleProKeys();
-        return;
-      }
-      if (!ak || !/^sk-or-/i.test(ak)) {
-        busy = false;
-        send.disabled = false;
-        thinking.replaceChild(plain('Add your OpenRouter API key (sk-or-…) above for this effort level.'), thinking.lastChild);
-        toggleProKeys();
-        return;
-      }
-      payload.fathomProKey = fp;
-      payload.apiKey = ak;
-    }
-
     fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-      .then(function (res) {
-        var d = res.d;
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
         if (!d || !d.reply) throw new Error('empty');
-        if (!res.ok && (d.mode === 'fathom_pro_required' || d.mode === 'api_key_required')) {
-          history.pop();
-          thinking.replaceChild(plain(d.reply), thinking.lastChild);
-          toggleProKeys();
-          return;
-        }
         if (d.mode === 'error' && window.chopsticksAI && window.chopsticksAI.ask) {
           var off = window.chopsticksAI.ask(text);
           if (off.confident) {
@@ -722,11 +628,11 @@
 
   document.getElementById('export').addEventListener('click', function () {
     if (!history.length) return;
-    var md = '# C.ai conversation\n\n' + history.map(function (m) {
-      return (m.role === 'user' ? '## You\n\n' : '## C.ai\n\n') + m.content;
+    var md = '# ChopsticksAI conversation\n\n' + history.map(function (m) {
+      return (m.role === 'user' ? '## You\n\n' : '## ChopsticksAI\n\n') + m.content;
     }).join('\n\n');
     var d = new Date().toISOString().slice(0, 10);
-    download('cai-' + d + '.md', md);
+    download('chopsticksai-' + d + '.md', md);
   });
 
   input.focus();

@@ -103,18 +103,17 @@ const TIERS = {
   },
   xhighplus: {
     label: "Xhigh+",
-    requiresUserKey: true,
-    requiresFathomPro: true,
     models: [
-      "anthropic/claude-3.5-haiku",
-      "google/gemini-2.5-flash-preview",
-      "openai/gpt-4.1-mini",
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     longModels: [
-      "anthropic/claude-3.5-haiku",
-      "google/gemini-2.5-flash-preview",
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
-    refineModel: "anthropic/claude-3.5-haiku",
     context: 64000,
     refine: true,
     maxReply: 3000,
@@ -123,18 +122,17 @@ const TIERS = {
   },
   insane: {
     label: "Insane",
-    requiresUserKey: true,
-    requiresFathomPro: true,
     models: [
-      "anthropic/claude-sonnet-4",
-      "openai/gpt-4.1",
-      "google/gemini-2.5-pro-preview",
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     longModels: [
-      "anthropic/claude-sonnet-4",
-      "openai/gpt-4.1-mini",
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-3-nano-30b-a3b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ],
-    refineModel: "anthropic/claude-3.5-haiku",
     context: 96000,
     refine: true,
     maxReply: 4000,
@@ -900,17 +898,16 @@ function selfFacts(tier) {
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
     `- You are chopsticksAI v1.0, built and run by Chopsticks HQ.`,
-    `- You run on selectable effort levels in C.ai: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks.`,
-    `- Xhigh+ and Insane are Fathom Pro only — they use the visitor's own OpenRouter API key.`,
+    `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks.`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
-    `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in C.ai); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
+    `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in ChopsticksAI Lab); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
     "- You search the web on every question — Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google/Brave when configured — then cite sources in your answer.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
     "- You need no API key from the user, and nothing they type is stored.",
-    "- You are available on every page of chopstickshq.com, in C.ai at /chopailab, and inside rNitro's Chat tab.",
+    "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside rNitro's Chat tab.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
   ].join("\n");
 }
@@ -919,7 +916,7 @@ function systemPrompt(grounding, mode, web, tier) {
   // The agent at /chopailab produces files and code; the sidebar widget answers
   // conversationally. Same knowledge, different output contract.
   const agent = mode === "agent" ? [
-    "\n\nYou are running as the C.ai agent. The user may ask you to ",
+    "\n\nYou are running as the ChopsticksAI agent. The user may ask you to ",
     "write code, config, scripts, documents or data files.\n",
     "- Put every file you produce in its own fenced code block.\n",
     "- Start the fence with the language, then a space, then the filename, ",
@@ -1050,27 +1047,7 @@ async function handler(event) {
   }
 
   const tier = tierOf(payload.tier);
-  let apiKey = key;
-  if (tier.requiresUserKey) {
-    if (tier.requiresFathomPro && !verifyFathomProUnlock(payload.fathomProKey)) {
-      return json(403, {
-        reply:
-          "Xhigh+ and Insane are for Fathom Pro users. Paste a valid oi-pl unlock key " +
-          "from chopstickshq.com/vault/ or Fathom Pro → Activate, then add your OpenRouter API key.",
-        mode: "fathom_pro_required",
-      });
-    }
-    const userKey = normalizeOpenRouterKey(payload.apiKey);
-    if (!userKey) {
-      return json(403, {
-        reply:
-          "This effort level runs on your OpenRouter API key (same as Fathom Pro AI). " +
-          "Add a key that starts with sk-or- from openrouter.ai/keys — you pay OpenRouter directly.",
-        mode: "api_key_required",
-      });
-    }
-    apiKey = userKey;
-  }
+  const apiKey = key;
 
   const headers = event.headers || {};
   const who =
@@ -1098,19 +1075,17 @@ async function handler(event) {
   if (!lastUser) return json(400, { error: "no user message" });
 
   const now = Date.now();
-  if (!tier.requiresUserKey) {
-    const state = await budgetPeek(now);
-    if (state.blocked) {
-      const mins = Math.ceil(state.retryInMs / 60000);
-      return json(200, {
-        reply:
-          "chopsticksAI has used up its free allowance for now and is cooling down " +
-          `(about ${mins} minute${mins === 1 ? "" : "s"} left). ` +
-          "Everything it knows is still on chopstickshq.com in the meantime.",
-        mode: "cooldown",
-        retryInMs: state.retryInMs,
-      });
-    }
+  const state = await budgetPeek(now);
+  if (state.blocked) {
+    const mins = Math.ceil(state.retryInMs / 60000);
+    return json(200, {
+      reply:
+        "chopsticksAI has used up its free allowance for now and is cooling down " +
+        `(about ${mins} minute${mins === 1 ? "" : "s"} left). ` +
+        "Everything it knows is still on chopstickshq.com in the meantime.",
+      mode: "cooldown",
+      retryInMs: state.retryInMs,
+    });
   }
 
   const wanted = Number(payload.maxTokens);
@@ -1276,9 +1251,7 @@ async function handler(event) {
       }
     }
 
-    const spentResult = tier.requiresUserKey
-      ? { used: 0, mode: "user_key" }
-      : await budgetSpend(spent, now);
+    const spentResult = await budgetSpend(spent, now);
 
     if (!reply) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
@@ -1294,9 +1267,7 @@ async function handler(event) {
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
       searched: searchOn,
       sources: webBundle.sources,
-      budget: tier.requiresUserKey
-        ? { used: 0, limit: 0, note: "your OpenRouter key" }
-        : { used: spentResult.used, limit: TOKEN_BUDGET },
+      budget: { used: spentResult.used, limit: TOKEN_BUDGET },
       budgetMode: spentResult.mode,
     });
   } catch (e) {

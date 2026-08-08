@@ -49,7 +49,6 @@ mkdir -p "$HOME/Applications"
 rm -rf "$HOME/Applications/${APP:?}"
 ditto "${TMP}/out/${APP}" "${HOME}/Applications/${APP}"
 xattr -cr "${HOME}/Applications/${APP}" 2>/dev/null || true
-codesign --force --sign - "${HOME}/Applications/${APP}" 2>/dev/null || true
 
 echo "Installed $VER to ~/Applications/$APP"
 open "${HOME}/Applications/${APP}"
