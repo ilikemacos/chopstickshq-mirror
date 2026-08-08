@@ -148,13 +148,22 @@
   }
   .send:disabled { opacity: .5; cursor: default; }
   .hint {
-    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .7rem;
+    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .35rem;
     font-family: var(--mono); font-size: .64rem; color: var(--muted);
-    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: .75rem 1.25rem; flex-wrap: wrap;
   }
+  .hint > span {
+    min-width: 0; max-width: 100%;
+    overflow-wrap: anywhere; word-break: break-word; white-space: normal;
+  }
+  .hint #status { text-align: right; flex: 1 1 10rem; }
   .usage {
+    width: min(52rem, calc(100% - 2rem)); margin: 0 auto .55rem;
     font-family: var(--mono); font-size: .64rem; color: var(--muted);
     text-align: right; line-height: 1.5;
+    overflow-wrap: anywhere; word-break: break-word; white-space: normal;
+    box-sizing: border-box; padding: 0 2px;
   }
   .sources { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
   .sources-label {
@@ -605,7 +614,9 @@
     var saved = loadSession();
     if (!saved) return;
     history = saved.history;
-    if (usageEl && saved.usage) usageEl.textContent = saved.usage;
+    if (usageEl && saved.usage) {
+      usageEl.textContent = String(saved.usage).replace(/\s*·?\s*Your OpenRouter key/gi, '').trim();
+    }
     if (saved.tier && EFFORT[saved.tier]) tierSel.value = saved.tier;
     intro.remove();
 
