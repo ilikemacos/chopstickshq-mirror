@@ -1894,11 +1894,14 @@ async function handler(event) {
   // forced `/search …` — search was starving the model deadline.
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
   const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix);
-  const webBundle = searchOn ? await webSearch(searchQuery, tier.searchMax) : { context: "", sources: [] };
+  const webBundle = searchOn
+    ? await webSearch(searchQuery, Math.min(tier.searchMax || 6, 6))
+    : { context: "", sources: [] };
   let webSection = "";
   if (searchOn) {
-    webSection = webBundle.context
-      ? "\n\nWEB SEARCH RESULTS (retrieved just now for this question — weave in anything useful; cite URLs when you rely on one, and add a **Sources** section at the end with markdown links when you used them):\n" + webBundle.context
+    const clipped = String(webBundle.context || "").slice(0, 2800);
+    webSection = clipped
+      ? "\n\nWEB SEARCH RESULTS (retrieved just now for this question — weave in anything useful; cite URLs when you rely on one, and add a **Sources** section at the end with markdown links when you used them):\n" + clipped
       : "\n\nWEB SEARCH: no snippets returned for this query — answer from your knowledge and the reference material below.";
   }
 
@@ -2053,24 +2056,36 @@ async function handler(event) {
       if (ci === 0 && Date.now() - attemptStart > 8000) break;
     }
 
-    // Last-chance short completion — reserved time, no tools, small token cap.
+    // Last-chance short completion — reserved time, no tools, slim prompt.
+    // Drop the web blob so a hung search-grounded call can still answer.
     if (!draft) {
+      const slimSystem = {
+        role: "system",
+        content: systemPrompt(
+          retrieve(retrievalQuery(modelTurns), Math.min(3, tier.grounding || 3)),
+          payload.mode, "", tier
+        ),
+      };
+      const slimMessages = fitContext(slimSystem, modelTurns, 12000);
       const rescues = [
-        "google/gemma-4-26b-a4b-it:free",
+        "cohere/north-mini-code:free",
         "nvidia/nemotron-3-nano-30b-a3b:free",
-      ];
+        "google/gemma-4-26b-a4b-it:free",
+      ].filter((m, i, arr) => arr.indexOf(m) === i && !chain.slice(0, 1).includes(m));
+      // Always keep at least one rescue model even if it was the primary.
+      if (!rescues.length) rescues.push("nvidia/nemotron-3-nano-30b-a3b:free");
       for (const rescue of rescues) {
         const left = deadline - Date.now() - 200;
-        if (left < 2500) break;
-        const gR = withTimeout(Math.min(RESCUE_RESERVE_MS, left));
+        if (left < 2200) break;
+        const gR = withTimeout(Math.min(RESCUE_RESERVE_MS - 500, left));
         try {
           const r = await callModel({
             model: rescue,
-            messages,
+            messages: slimMessages,
             key: apiKey,
             signal: gR.signal,
-            maxTokens: Math.min(500, replyTokens),
-            temperature: tier.temperature ?? 0.3,
+            maxTokens: Math.min(400, replyTokens),
+            temperature: 0.3,
           });
           if (r.ok && r.text) {
             draft = r;

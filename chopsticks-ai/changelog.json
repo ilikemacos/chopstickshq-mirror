@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.2",
+  "latest": "cs.AI 2.2.3",
   "entries": [
+    {
+      "version": "cs.AI 2.2.3",
+      "date": "2026-08-08",
+      "title": "Slim rescue for search-heavy answers",
+      "changes": [
+        "If the main model times out after web search, a slim rescue call answers without the search blob",
+        "Tighter search snippets so grounded questions stop starving the model"
+      ]
+    },
     {
       "version": "cs.AI 2.2.2",
       "date": "2026-08-08",
