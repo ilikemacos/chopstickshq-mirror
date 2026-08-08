@@ -10,5 +10,5 @@
   "storageBuckets": [
     "cs-ai-attachments"
   ],
-  "attachMaxBytes": 10737418240
+  "attachMaxBytes": 524288000
 }

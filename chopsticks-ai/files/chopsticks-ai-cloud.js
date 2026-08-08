@@ -284,8 +284,8 @@
       return saved;
     },
 
-    /** 10 GiB per object / per attach batch. */
-    MAX_ATTACH_BYTES: 10 * 1024 * 1024 * 1024,
+    /** 500 MiB per object / per attach batch. */
+    MAX_ATTACH_BYTES: 500 * 1024 * 1024,
     ATTACH_BUCKET: 'cs-ai-attachments',
 
     /**
@@ -298,11 +298,11 @@
       opts = opts || {};
       await refreshIfNeeded();
       if (!session || !session.user || !session.user.id) {
-        throw new Error('Sign in to upload files (up to 10 GB).');
+        throw new Error('Sign in to upload files (up to 500 MB).');
       }
       if (!file || !file.size) throw new Error('Empty file');
       if (file.size > Cloud.MAX_ATTACH_BYTES) {
-        throw new Error('Each file must be 10 GB or smaller.');
+        throw new Error('Each file must be 500 MB or smaller.');
       }
       var c = await ensureConfig();
       var safeName = String(file.name || 'file').replace(/[^\w.\-()+ ]+/g, '_').slice(0, 180);

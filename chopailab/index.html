@@ -308,14 +308,14 @@
 
 <div class="composer" id="composer">
   <div class="hint">
-    <span>Enter to send · Attach files/images (≤10 GB batch, sign in) · <code>/compact</code></span>
+    <span>Enter to send · Attach files/images (≤500 MB, sign in) · <code>/compact</code></span>
     <span id="status">ChopsticksAI</span>
   </div>
   <div class="usage" id="usage" aria-live="polite"></div>
   <div class="attach-row" id="attach-row" hidden></div>
   <div class="composer-inner">
     <input type="file" id="file-input" multiple hidden>
-    <button type="button" class="attach-btn" id="attach-btn" title="Attach files or images (up to 10 GB)">Attach</button>
+    <button type="button" class="attach-btn" id="attach-btn" title="Attach files or images (up to 500 MB)">Attach</button>
     <textarea id="input" rows="1" placeholder="Ask anything, or attach files / images…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
   </div>
@@ -466,7 +466,7 @@
   var attachRow = document.getElementById('attach-row');
   var composerEl = document.getElementById('composer');
   var pendingAttach = []; // { id, name, mime, size, path, url, text, uploading, error }
-  var MAX_BATCH = 10 * 1024 * 1024 * 1024;
+  var MAX_BATCH = 500 * 1024 * 1024;
   var TEXT_PREVIEW = 200000;
   var compact = false;
 
@@ -496,7 +496,7 @@
         '<button type="button" aria-label="Remove" data-rm="' + a.id + '">×</button></div>';
     }).join('') +
       '<span style="font-family:var(--mono);font-size:.64rem;color:var(--muted)">' +
-      fmtBytes(batchBytes()) + ' / 10 GB</span>';
+      fmtBytes(batchBytes()) + ' / 500 MB</span>';
   }
   attachRow && attachRow.addEventListener('click', function (e) {
     var id = e.target && e.target.getAttribute('data-rm');
@@ -518,20 +518,20 @@
     var files = Array.prototype.slice.call(fileList || []);
     if (!files.length) return;
     if (!Cloud || !Cloud.isSignedIn()) {
-      status.textContent = 'Sign in (Account) to attach files up to 10 GB';
+      status.textContent = 'Sign in (Account) to attach files up to 500 MB';
       return;
     }
     var add = 0;
     for (var i = 0; i < files.length; i++) add += files[i].size || 0;
     if (batchBytes() + add > MAX_BATCH) {
-      status.textContent = 'Batch would exceed 10 GB — remove some files';
+      status.textContent = 'Batch would exceed 500 MB — remove some files';
       return;
     }
     for (var j = 0; j < files.length; j++) {
       var f = files[j];
       if (!f.size) continue;
       if (f.size > MAX_BATCH) {
-        status.textContent = f.name + ' is over 10 GB';
+        status.textContent = f.name + ' is over 500 MB';
         continue;
       }
       var item = {
@@ -573,7 +573,7 @@
   if (attachBtn && fileInput) {
     attachBtn.addEventListener('click', function () {
       if (!Cloud || !Cloud.isSignedIn()) {
-        status.textContent = 'Sign in (Account) to attach files up to 10 GB';
+        status.textContent = 'Sign in (Account) to attach files up to 500 MB';
         document.getElementById('account-btn') && document.getElementById('account-btn').click();
         return;
       }
