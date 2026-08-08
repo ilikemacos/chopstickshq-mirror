@@ -6,14 +6,14 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>chopsticksAI v1.0 — the Chopsticks HQ assistant</title>
-<meta name="description" content="chopsticksAI v1.0 is a general-purpose assistant grounded in a knowledge base of every Chopsticks app. Ask it anything. Full source, open.">
+<title>chopsticksAI v1.0.14 — the Chopsticks HQ assistant</title>
+<meta name="description" content="chopsticksAI v1.0.14 is a general-purpose assistant grounded in a knowledge base of every Chopsticks app. Accounts, Usage upgrades, Cursor-style Agents UI. Full source, open.">
 <link rel="canonical" href="https://chopstickshq.com/chopsticks-ai/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
-<meta property="og:title" content="chopsticksAI v1.0 — the Chopsticks HQ assistant">
-<meta property="og:description" content="The Chopsticks HQ assistant, grounded in a 2,285-term knowledge base. Full source available.">
+<meta property="og:title" content="chopsticksAI v1.0.14 — the Chopsticks HQ assistant">
+<meta property="og:description" content="The Chopsticks HQ assistant — v1.0.14 with accounts, Usage upgrades, and a Cursor-style Agents Window.">
 <meta property="og:url" content="https://chopstickshq.com/chopsticks-ai/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -172,6 +172,20 @@
   }
   .btn-primary { background: var(--soft); color: var(--bg); border-color: transparent; }
   .btn-outline { background: transparent; color: var(--text); }
+
+  .changelog { list-style: none; }
+  .changelog li {
+    padding: 1rem 0; border-bottom: 1px solid var(--border);
+  }
+  .changelog li:last-child { border-bottom: none; }
+  .changelog .ver {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    color: var(--text); margin-bottom: .25rem;
+  }
+  .changelog .ver span { color: var(--muted); font-weight: 400; margin-left: .5rem; }
+  .changelog h3 { font-size: .98rem; margin-bottom: .45rem; }
+  .changelog ul { padding-left: 1.15rem; color: var(--muted); font-size: .9rem; }
+  .changelog ul li { border: none; padding: .2rem 0; list-style: disc; }
 </style>
 </head>
 <body>
@@ -191,23 +205,22 @@
 
   <main>
     <div class="wrap">
-      <div class="kicker">Assistant · On every page · In rNitro</div>
+      <div class="kicker">Assistant · On every page · In rNitro · macOS app</div>
       <h1>chopsticksAI</h1>
       <p class="lead">
         A general-purpose assistant that answers anything you ask &mdash; and the in-house
-        expert on every Chopsticks app. <strong>chopsticksAI v1.0</strong>, reachable from any page here
-        and inside rNitro's Chat tab.
+        expert on every Chopsticks app. <strong>chopsticksAI v1.0.14</strong>, reachable from any page here,
+        ChopsticksAI Lab, and the native macOS Agents Window.
       </p>
 
       <div class="badge-row">
-        <span class="badge">Version <strong>chopsticksAI v1.0</strong></span>
-        <span class="badge">Drafts with <strong>NVIDIA Nemotron 3 Ultra 550B</strong></span>
-        <span class="badge">Reviewed by <strong>Google Gemma 4 26B (a4b)</strong></span>
-        
-        <span class="badge">Context <strong>48K tokens</strong></span>
-        <span class="badge">Limit <strong>775K tokens · 3-hour cooldown</strong></span>
+        <span class="badge">Version <strong>v1.0.14</strong></span>
+        <span class="badge">Accounts <strong>optional · Supabase sync</strong></span>
+        <span class="badge">Usage upgrades <strong>Fathom Pro oi-pl keys</strong></span>
+        <span class="badge">Free <strong>775K · 48K context · 3h cooldown</strong></span>
+        <span class="badge">Credit tiers <strong>64K / 96K / 128K context</strong></span>
         <span class="badge">Knowledge base <strong>60 topics · 2,285 terms</strong></span>
-        <span class="badge">Your key <strong>never needed</strong></span>
+        <span class="badge">OpenRouter key <strong>never needed from you</strong></span>
       </div>
 
       <section class="install-card" id="macos-app">
@@ -218,17 +231,38 @@
         </p>
         <pre class="curl" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash</pre>
         <div class="install-btns">
-          <a class="btn btn-primary" id="zip-btn" href="#">Download macOS app</a>
+          <a class="btn btn-primary" id="zip-btn" href="#">Download macOS app v1.0.14</a>
           <a class="btn btn-outline" href="install-chopsticks-ai.sh" download>Download .sh</a>
+          <a class="btn btn-outline" href="#changelog">Changelog</a>
+        </div>
+      </section>
+
+      <section id="changelog">
+        <h2>Changelog</h2>
+        <div class="card">
+          <ul class="changelog" id="changelog-list">
+            <li>
+              <div class="ver">v1.0.14 <span>2026-08-08</span></div>
+              <h3>Accounts, Usage, and Cursor-style Agents</h3>
+              <ul>
+                <li>Cursor-style Agents Window (Agents, Automations, Repos, Marketplace, Usage, Account, Settings)</li>
+                <li>Optional Supabase accounts — sync chats across Lab and macOS when signed in</li>
+                <li>Usage tab with Fathom Pro oi-pl credit upgrades (not OpenRouter keys)</li>
+                <li>Credit tiers: 2 → 800k / 64k context; 5 → 900k / 96k; 10 → 1m / 128k</li>
+                <li>Homepage scavenger mint cooldown: 10 minutes</li>
+                <li>Safer auto-update (main-thread alerts, ~/Applications install)</li>
+              </ul>
+            </li>
+          </ul>
         </div>
       </section>
 
       <section>
         <h2>How it answers</h2>
         <div class="card">
-          <h3>chopsticksAI v1.0</h3>
+          <h3>chopsticksAI v1.0.14</h3>
           <p>
-            <strong>chopsticksAI v1.0</strong> is the assistant built and run by
+            <strong>chopsticksAI v1.0.14</strong> is the assistant built and run by
             Chopsticks HQ. Every answer is generated on request and grounded in
             the knowledge base below, so product details come from real reference
             material rather than guesswork.</p>
@@ -314,12 +348,12 @@ fallback       the same knowledge base answers offline, on-device</div>
             <p>It searches Wikipedia, Wikidata, DuckDuckGo, Stack Overflow, Hacker News, GitHub, MDN, npm, arXiv, and Google when configured on every question, then cites what it used. Product facts also come from the built-in knowledge base.</p>
           </div>
           <div class="card">
-            <h3>Nothing stored</h3>
-            <p>No accounts, no chat logs, no analytics on what you ask. Consistent with every other Chopsticks app.</p>
+            <h3>Optional accounts</h3>
+            <p>Guests stay local. Sign in to sync chats to your private Supabase rows (RLS). No analytics on what you ask.</p>
           </div>
           <div class="card">
-            <h3>Budgeted</h3>
-            <p>A 775,000-token allowance with a 3-hour cooldown, plus per-visitor rate limiting, so a traffic spike can't exhaust the quota.</p>
+            <h3>Budgeted + upgrades</h3>
+            <p>Free: 775k tokens · 48k context · 3h cooldown. Redeem Fathom Pro oi-pl keys for higher allowance and larger context windows.</p>
           </div>
         </div>
       </section>
@@ -443,6 +477,18 @@ fallback       the same knowledge base answers offline, on-device</div>
           btn.href = rel.zip;
           btn.textContent = 'Download ' + (v.latest || 'macOS app');
         }
+      }).catch(function () {});
+      fetch('changelog.json').then(function (r) { return r.json(); }).then(function (d) {
+        var list = document.getElementById('changelog-list');
+        if (!list || !d.entries || !d.entries.length) return;
+        list.innerHTML = d.entries.map(function (e) {
+          var items = (e.changes || []).map(function (c) {
+            return '<li>' + c.replace(/</g, '&lt;') + '</li>';
+          }).join('');
+          return '<li><div class="ver">' + e.version +
+            (e.date ? ' <span>' + e.date + '</span>' : '') +
+            '</div><h3>' + (e.title || '') + '</h3><ul>' + items + '</ul></li>';
+        }).join('');
       }).catch(function () {});
     })();
   </script>

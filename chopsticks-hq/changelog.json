@@ -1,0 +1,25 @@
+{
+  "product": "Chopsticks HQ",
+  "latest": "v1.0.14",
+  "entries": [
+    {
+      "version": "v1.0.14",
+      "date": "2026-08-08",
+      "title": "Shared update engine + chopsticksAI v1.0.14",
+      "changes": [
+        "Ships with the same safer auto-update engine used by chopsticksAI (main-thread alerts, ~/Applications install, staging keep-path)",
+        "Product pages and launcher links updated for chopsticksAI v1.0.14 (accounts, Usage upgrades, Agents Window UI)",
+        "Version bump aligned with the chopsticksAI macOS release train"
+      ]
+    },
+    {
+      "version": "v1.0.3",
+      "date": "2026-08-07",
+      "title": "Launcher polish",
+      "changes": [
+        "macOS launcher for chopstickshq.com with sidebar app launchers",
+        "Auto-update check against chopsticks-hq/version.json"
+      ]
+    }
+  ]
+}

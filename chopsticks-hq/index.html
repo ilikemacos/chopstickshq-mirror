@@ -6,8 +6,8 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chopsticks HQ App — macOS launcher · Chopsticks HQ</title>
-<meta name="description" content="Chopsticks HQ for macOS — the website in a native app. Browse projects, launch rNitro, Fathom, ARENA, and more. Free. No Xcode required to install.">
+<title>Chopsticks HQ App v1.0.14 — macOS launcher · Chopsticks HQ</title>
+<meta name="description" content="Chopsticks HQ for macOS v1.0.14 — the website in a native app. Browse projects, launch rNitro, Fathom, ARENA, and more. Free. No Xcode required to install.">
 <link rel="canonical" href="https://chopstickshq.com/chopsticks-hq/">
 <link rel="icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -85,6 +85,19 @@
   }
   .card h3 { font-size: 0.95rem; margin-bottom: 0.35rem; }
   .card p { font-size: 0.85rem; color: var(--muted); }
+  .changelog { list-style: none; margin: 2rem 0 3rem; }
+  .changelog > li {
+    padding: 1rem 0; border-bottom: 1px solid var(--border);
+  }
+  .changelog > li:last-child { border-bottom: none; }
+  .changelog .ver {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em;
+    color: var(--text); margin-bottom: 0.25rem;
+  }
+  .changelog .ver span { color: var(--muted); font-weight: 400; margin-left: 0.5rem; }
+  .changelog h3 { font-size: 0.98rem; margin-bottom: 0.45rem; }
+  .changelog ul { padding-left: 1.15rem; color: var(--muted); font-size: 0.9rem; }
+  .changelog ul li { border: none; padding: 0.2rem 0; list-style: disc; }
   footer {
     padding: 2rem 0; border-top: 1px solid var(--border);
     color: var(--muted); font-size: 0.85rem; text-align: center;
@@ -97,19 +110,21 @@
     <div class="nav-links">
       <a href="/">Home</a>
       <a href="#install">Install</a>
+      <a href="#changelog">Changelog</a>
       <a href="/rnitro/">rNitro</a>
     </div>
   </nav>
 
   <main class="wrap">
     <section class="hero">
-      <div class="kicker">macOS app</div>
+      <div class="kicker">macOS app · v1.0.14</div>
       <h1>Chopsticks HQ</h1>
       <p>
         The website in a native macOS app — browse chopstickshq.com, launch rNitro,
         Fathom Air, Fathom Pro, and ARENA from the sidebar. No account, no telemetry.
       </p>
       <div class="tags">
+        <span class="tag">v1.0.14</span>
         <span class="tag">macOS 14+</span>
         <span class="tag">Apple Silicon</span>
         <span class="tag">No Xcode to install</span>
@@ -122,8 +137,9 @@
       <p>Recommended — Terminal one-liner. Resolves the latest version, verifies SHA-256, installs to ~/Applications, clears quarantine.</p>
       <pre class="curl" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/chopsticks-hq/install-chopsticks-hq.sh | bash</pre>
       <div class="btns">
-        <a class="btn btn-primary" id="zip-btn" href="#">Download App ZIP</a>
+        <a class="btn btn-primary" id="zip-btn" href="#">Download v1.0.14</a>
         <a class="btn btn-outline" href="install-chopsticks-hq.sh" download>Download .sh</a>
+        <a class="btn btn-outline" href="#changelog">Changelog</a>
       </div>
     </section>
 
@@ -141,6 +157,22 @@
         <p>No account. Installs to ~/Applications. Same privacy stance as every Chopsticks app.</p>
       </div>
     </div>
+
+    <section id="changelog">
+      <h2 style="font-size:1.25rem;margin-bottom:0.75rem">Changelog</h2>
+      <div class="card">
+        <ul class="changelog" id="changelog-list" style="margin:0">
+          <li>
+            <div class="ver">v1.0.14 <span>2026-08-08</span></div>
+            <h3>Shared update engine + chopsticksAI v1.0.14</h3>
+            <ul>
+              <li>Safer auto-update (main-thread alerts, ~/Applications install)</li>
+              <li>Aligned with chopsticksAI v1.0.14 product pages and launcher links</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
   </main>
 
   <footer>&copy; Chopsticks HQ 2026 · <a href="/">chopstickshq.com</a></footer>
@@ -156,6 +188,18 @@
         document.getElementById('zip-btn').href = rel.zip;
         document.getElementById('zip-btn').textContent = 'Download ' + (v.latest || 'App ZIP');
       }
+    }).catch(function () {});
+    fetch('changelog.json').then(function (r) { return r.json(); }).then(function (d) {
+      var list = document.getElementById('changelog-list');
+      if (!list || !d.entries || !d.entries.length) return;
+      list.innerHTML = d.entries.map(function (e) {
+        var items = (e.changes || []).map(function (c) {
+          return '<li>' + c.replace(/</g, '&lt;') + '</li>';
+        }).join('');
+        return '<li><div class="ver">' + e.version +
+          (e.date ? ' <span>' + e.date + '</span>' : '') +
+          '</div><h3>' + (e.title || '') + '</h3><ul>' + items + '</ul></li>';
+      }).join('');
     }).catch(function () {});
   </script>
   <script src="/js/theme.js" defer></script>

@@ -1,0 +1,53 @@
+{
+  "product": "chopsticksAI",
+  "latest": "v1.0.14",
+  "entries": [
+    {
+      "version": "v1.0.14",
+      "date": "2026-08-08",
+      "title": "Accounts, Usage, and Cursor-style Agents",
+      "changes": [
+        "Cursor-style Agents Window UI (Agents, Automations, Repos, Marketplace, Usage, Account, Settings)",
+        "Optional Supabase accounts — sign in to sync chats across Lab and the macOS app",
+        "Usage tab with Fathom Pro oi-pl credit upgrades (not OpenRouter keys)",
+        "Credit tiers: 2 keys → 800k / 64k context; 5 → 900k / 96k; 10 → 1m / 128k",
+        "Homepage scavenger mint cooldown: 10 minutes",
+        "Auto-update crash fix (NSAlert on main thread) and safer install staging"
+      ]
+    },
+    {
+      "version": "v1.0.13",
+      "date": "2026-08-08",
+      "title": "Cloud chat sync",
+      "changes": [
+        "Account rail and email/password auth via Supabase",
+        "Chats saved to private RLS-backed tables when signed in"
+      ]
+    },
+    {
+      "version": "v1.0.12",
+      "date": "2026-08-08",
+      "title": "Usage upgrades",
+      "changes": [
+        "Usage tab and Fathom Pro API key redemption for higher allowances"
+      ]
+    },
+    {
+      "version": "v1.0.10",
+      "date": "2026-08-08",
+      "title": "Stability",
+      "changes": [
+        "Fixed launch crash when checking for updates"
+      ]
+    },
+    {
+      "version": "v1.0.9",
+      "date": "2026-08-08",
+      "title": "Safer auto-update",
+      "changes": [
+        "Install updates only under ~/Applications",
+        "Staging path fix so updates cannot delete the app mid-install"
+      ]
+    }
+  ]
+}
