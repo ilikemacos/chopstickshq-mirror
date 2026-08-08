@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.4",
+  "latest": "cs.AI 2.2.5",
   "entries": [
+    {
+      "version": "cs.AI 2.2.5",
+      "date": "2026-08-08",
+      "title": "Rescue path actually fires after search",
+      "changes": [
+        "After web search, rescue uses the fast nano model in short slices instead of one hung attempt",
+        "Model budget shrinks when search used part of the platform time limit"
+      ]
+    },
     {
       "version": "cs.AI 2.2.4",
       "date": "2026-08-08",

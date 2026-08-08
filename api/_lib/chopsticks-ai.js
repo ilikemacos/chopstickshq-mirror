@@ -1960,9 +1960,13 @@ async function handler(event) {
   // forced `/search …` — search was starving the model deadline.
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
   const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix);
+  // Bound wall-clock search so Netlify's ~26s function limit still leaves
+  // room for the model phase.
+  const searchStarted = Date.now();
   const webBundle = searchOn
-    ? await webSearch(searchQuery, Math.min(tier.searchMax || 6, 6))
+    ? await webSearch(searchQuery, Math.min(tier.searchMax || 6, 5))
     : { context: "", sources: [] };
+  const searchMs = Date.now() - searchStarted;
   let webSection = "";
   if (searchOn) {
     const clipped = String(webBundle.context || "").slice(0, 2800);
@@ -1988,12 +1992,15 @@ async function handler(event) {
 
   // Model deadline starts AFTER search so Mozilla lookups can't starve the LLM.
   // Keep a hard rescue slice so a busy primary model cannot burn the whole window.
-  const RESCUE_RESERVE_MS = 8000;
-  const deadline = Date.now() + TIMEOUT_MS;
+  const RESCUE_RESERVE_MS = 9000;
+  // Shrink model budget if search already ate into the platform window.
+  const platformLeft = Math.max(8000, 25000 - searchMs);
+  const modelWindow = Math.min(TIMEOUT_MS, platformLeft);
+  const deadline = Date.now() + modelWindow;
   const modelDeadline = deadline - RESCUE_RESERVE_MS;
   // Cap each attempt — datacenter IPs to OpenRouter free models often hang
   // until abort; failing fast lets the rescue path answer.
-  const ATTEMPT_CAP_MS = 8000;
+  const ATTEMPT_CAP_MS = 7000;
   const withTimeout = (ms) => {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), Math.max(500, ms));
@@ -2136,24 +2143,24 @@ async function handler(event) {
         ),
       };
       const slimMessages = fitContext(slimSystem, modelTurns, 12000);
+      // Prefer nano — it answers quickly from Netlify. Avoid burning the
+      // rescue window on a single hung free model.
       const rescues = [
-        "cohere/north-mini-code:free",
         "nvidia/nemotron-3-nano-30b-a3b:free",
         "google/gemma-4-26b-a4b-it:free",
-      ].filter((m, i, arr) => arr.indexOf(m) === i && !chain.slice(0, 1).includes(m));
-      // Always keep at least one rescue model even if it was the primary.
-      if (!rescues.length) rescues.push("nvidia/nemotron-3-nano-30b-a3b:free");
+      ];
       for (const rescue of rescues) {
         const left = deadline - Date.now() - 200;
-        if (left < 2200) break;
-        const gR = withTimeout(Math.min(RESCUE_RESERVE_MS - 500, left));
+        if (left < 2000) break;
+        const slice = Math.min(4500, left);
+        const gR = withTimeout(slice);
         try {
           const r = await callModel({
             model: rescue,
             messages: slimMessages,
             key: apiKey,
             signal: gR.signal,
-            maxTokens: Math.min(400, replyTokens),
+            maxTokens: Math.min(350, replyTokens),
             temperature: 0.3,
           });
           if (r.ok && r.text) {
@@ -2164,7 +2171,7 @@ async function handler(event) {
           lastStatus = r.status || lastStatus;
           lastDetail = (r.detail || lastDetail || "") + ` [rescue:${rescue.split("/")[1]}]`;
         } catch (e) {
-          lastDetail = String(e && e.name) + " [rescue]";
+          lastDetail = String(e && e.name) + ` [rescue:${rescue.split("/")[1]}]`;
         } finally {
           gR.done();
         }
