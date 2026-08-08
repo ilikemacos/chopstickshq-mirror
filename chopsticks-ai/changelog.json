@@ -1,7 +1,16 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.0.1",
+  "latest": "cs.AI 2.0.2",
   "entries": [
+    {
+      "version": "cs.AI 2.0.2",
+      "date": "2026-08-08",
+      "title": "ChopCode mode",
+      "changes": [
+        "New ChopCode effort — coding specialist mode in Lab and the macOS app",
+        "SEO keywords for cs.AI / ChopCode on HQ homepage and product page"
+      ]
+    },
     {
       "version": "cs.AI 2.0.1",
       "date": "2026-08-08",

@@ -225,7 +225,7 @@
 <nav>
   <a class="brand" href="/">Chopsticks HQ <span>· ChopsticksAI</span></a>
   <div class="nav-right">
-    <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps.">
+    <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps. ChopCode is for coding.">
       <option value="low">Low · quick</option>
       <option value="medium">Medium · balanced</option>
       <option value="high" selected>High · default</option>
@@ -233,6 +233,7 @@
       <option value="xhighplus">Xhigh+ · deeper</option>
       <option value="insane">Insane · max</option>
       <option value="chopsticks">Chopsticks · HQ apps</option>
+      <option value="chopcode">ChopCode · coding</option>
     </select>
     <select class="nbtn" id="chat-list" aria-label="Saved chats" title="Cloud chats (sign in to sync)" hidden>
       <option value="">Local chat</option>
@@ -307,6 +308,7 @@
     xhighplus: { label: 'Xhigh+', maxTokens: 3000 },
     insane: { label: 'Insane', maxTokens: 4000 },
     chopsticks: { label: 'Chopsticks', maxTokens: 800 },
+    chopcode: { label: 'ChopCode', maxTokens: 4000 },
     ultra: { label: 'Xhigh', maxTokens: 2000 },
     super: { label: 'Medium', maxTokens: 600 }
   };

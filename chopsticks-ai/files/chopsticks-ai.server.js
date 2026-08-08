@@ -143,8 +143,27 @@ const TIERS = {
     grounding: 12,
     searchMax: 16,
   },
+  /** Coding specialist mode — Poolside Laguna S 2.1. Do not expose provider/pricing in UI. */
+  chopcode: {
+    label: "ChopCode",
+    models: ["poolside/laguna-s-2.1:free"],
+    longModels: ["poolside/laguna-s-2.1:free"],
+    context: 64000,
+    refine: false,
+    maxReply: 4000,
+    grounding: 4,
+    searchMax: 10,
+    temperature: 0.2,
+    chopCode: true,
+  },
 };
-const TIER_ALIASES = { ultra: "xhigh", super: "medium", "xhigh+": "xhighplus" };
+const TIER_ALIASES = {
+  ultra: "xhigh",
+  super: "medium",
+  "xhigh+": "xhighplus",
+  chopcode: "chopcode",
+  "chop-code": "chopcode",
+};
 const DEFAULT_TIER = "high";
 const tierOf = (name) => {
   const key = String(name || "").toLowerCase().replace(/\s+/g, "");
@@ -1196,8 +1215,11 @@ function selfFacts(tier) {
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
     `- You are cs.AI 2.0 (chopsticksAI), built and run by Chopsticks HQ.`,
-    `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, and Chopsticks.`,
+    `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, and ChopCode (coding specialist).`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
+    t.chopCode
+      ? "- ChopCode mode: prioritise complete, runnable code, clear file fences, and practical engineering answers."
+      : null,
     `- Longest single reply: ${MAX_REPLY_TOKENS_CEILING.toLocaleString()} tokens (in ChopsticksAI Lab); ${MAX_REPLY_TOKENS} in the sidebar widget.`,
     `- Conversation memory: the last ${MAX_MESSAGES} turns.`,
     `- Free usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
@@ -1210,14 +1232,16 @@ function selfFacts(tier) {
     "- Signed-in account plans come from the user's Supabase profile (token_budget / context_limit), not hard-coded emails.",
     "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside rNitro's Chat tab.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function systemPrompt(grounding, mode, web, tier) {
   // The agent at /chopailab produces files and code; the sidebar widget answers
   // conversationally. Same knowledge, different output contract.
-  const agent = mode === "agent" ? [
-    "\n\nYou are running as the ChopsticksAI agent. The user may ask you to ",
+  const agent = mode === "agent" || tier.chopCode ? [
+    "\n\nYou are running as the ChopsticksAI agent",
+    tier.chopCode ? " in ChopCode mode (coding specialist)" : "",
+    ". The user may ask you to ",
     "write code, config, scripts, documents or data files.\n",
     "- Put every file you produce in its own fenced code block.\n",
     "- Start the fence with the language, then a space, then the filename, ",
@@ -1228,22 +1252,35 @@ function systemPrompt(grounding, mode, web, tier) {
     tier.chopsticksFocus
       ? "\n- Chopsticks effort: prioritise accurate answers about Chopsticks HQ software from the reference material; still help with general tasks when asked."
       : "",
+    tier.chopCode
+      ? "\n- ChopCode: prefer correct, idiomatic code; include imports and edge-case handling; add short usage notes only when helpful; do not pad with long essays."
+      : "",
   ].join("") : "";
 
   const facts = grounding.length
     ? grounding.map((i) => `### ${i.label}\n${i.answer}`).join("\n\n")
     : "(no specific reference material matched this question)";
 
+  const persona = tier.chopCode
+    ? [
+        "You are cs.AI ChopCode — the coding mode of chopsticksAI, made by Chopsticks HQ.\n\n",
+        "Focus on software engineering: write, debug, refactor, and explain code. ",
+        "Be precise and practical. Prefer working solutions over theory.\n\n",
+      ].join("")
+    : [
+        "You are cs.AI 2.0 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
+        "made by Chopsticks HQ.\n\n",
+        "Answer ANY question the user asks — general knowledge, science, history, coding, ",
+        "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
+        "full assistant, not a support bot, and you should never refuse a question simply ",
+        "because it is unrelated to Chopsticks HQ.\n\n",
+        "Answer naturally and conversationally. Be concise by default — a short paragraph — ",
+        "and go longer only when the question genuinely needs it. Plain text reads best; ",
+        "use markdown only when structure really helps, such as code blocks for code.\n\n",
+      ].join("");
+
   return [
-    "You are cs.AI 2.0 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
-    "made by Chopsticks HQ.\n\n",
-    "Answer ANY question the user asks — general knowledge, science, history, coding, ",
-    "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
-    "full assistant, not a support bot, and you should never refuse a question simply ",
-    "because it is unrelated to Chopsticks HQ.\n\n",
-    "Answer naturally and conversationally. Be concise by default — a short paragraph — ",
-    "and go longer only when the question genuinely needs it. Plain text reads best; ",
-    "use markdown only when structure really helps, such as code blocks for code.\n\n",
+    persona,
     "You are also the in-house expert on Chopsticks HQ's own software: rNitro (macOS menu ",
     "bar system monitor), Fathom Air (battery monitor), Fathom Pro (battery, weather and AI ",
     "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
@@ -1262,8 +1299,8 @@ function systemPrompt(grounding, mode, web, tier) {
     "steer the conversation back to Chopsticks HQ, and do not mention the reference material ",
     "when it isn't relevant.\n",
     "- If you are genuinely unsure of a fact, say so rather than inventing one.\n",
-    "- You are cs.AI 2.0 (chopsticksAI), made by Chopsticks HQ. If asked what model, ",
-    "engine or company is behind you, say you are cs.AI 2.0 by Chopsticks ",
+    "- You are cs.AI (chopsticksAI), made by Chopsticks HQ. If asked what model, ",
+    "engine or company is behind you, say you are cs.AI by Chopsticks ",
     "HQ. Never name or speculate about any underlying model, provider or vendor.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
     agent,
@@ -1635,7 +1672,14 @@ async function handler(event) {
       const attemptStart = Date.now();
       const g = withTimeout(budgetMs);
       try {
-        r = await callModel({ model: candidate, messages, key: apiKey, signal: g.signal, maxTokens: replyTokens });
+        r = await callModel({
+          model: candidate,
+          messages,
+          key: apiKey,
+          signal: g.signal,
+          maxTokens: replyTokens,
+          temperature: tier.temperature,
+        });
       } catch (e) {
         r = { ok: false, status: 0, detail: String(e && e.name) };
       } finally {
@@ -1645,7 +1689,14 @@ async function handler(event) {
         await sleep(700);
         const g2 = withTimeout(Math.min(budgetMs, 12000));
         try {
-          r = await callModel({ model: candidate, messages, key: apiKey, signal: g2.signal, maxTokens: replyTokens });
+          r = await callModel({
+            model: candidate,
+            messages,
+            key: apiKey,
+            signal: g2.signal,
+            maxTokens: replyTokens,
+            temperature: tier.temperature,
+          });
         } catch (e) {
           r = { ok: false, status: 0, detail: String(e && e.name) };
         } finally {
