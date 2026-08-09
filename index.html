@@ -1145,11 +1145,11 @@
                 <span class="tag">In rNitro</span>
                 <span class="tag">Web agent</span>
               </div>
-              <h3>cs.AI 2.2.8-Final</h3>
+              <h3>cs.AI 2.2.9</h3>
               <p>
-                The Chopsticks HQ assistant — <strong>cs.AI 2.2.8-Final</strong> (chopsticksAI) —
-                with StickerCoder+ coding mode, tool-call file creation, Mozilla Search,
-                and a Cursor-style Agents Window.
+                The Chopsticks HQ assistant — <strong>cs.AI 2.2.9</strong> (chopsticksAI) —
+                security update with end-to-end encrypted messages, Keychain sessions,
+                StickerCoder+ coding, and a Cursor-style Agents Window.
               </p>
               <div class="project-meta">
                 <a class="btn btn-primary btn-sm" href="/chopsticks-ai/">Open cs.AI</a>
@@ -1161,10 +1161,10 @@
               <div class="fake-menubar">
                 <div class="bar">
                   <span>cs.AI</span>
-                  <span class="pulse">● 2.2.8-Final</span>
+                  <span class="pulse">● 2.2.9</span>
                 </div>
                 <div class="panel">
-                  <div class="row"><span>Version</span><span>cs.AI 2.2.8-Final</span></div>
+                  <div class="row"><span>Version</span><span>cs.AI 2.2.9</span></div>
                   <div class="row"><span>Search</span><span>Mozilla</span></div>
                   <div class="row"><span>Context</span><span>48K–128K</span></div>
                   <div class="row"><span>Key</span><span>not needed</span></div>
@@ -1540,47 +1540,15 @@
       });
     })();
 
-    // Shared unlock key mint (random every time) — must match FathomProLicense |web
-    window.FathomProMintKey = (function () {
-      var SECRET = 'chopstickshq.fathompro.unlock.v1';
-      function fnv1a32(str) {
-        var h = 0x811c9dc5;
-        for (var i = 0; i < str.length; i++) {
-          h ^= str.charCodeAt(i);
-          h = Math.imul(h, 0x01000193) >>> 0;
-        }
-        return h >>> 0;
-      }
-      function randomHex(len) {
-        var out = '';
-        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-          var bytes = new Uint8Array(Math.ceil(len / 2) + 8);
-          crypto.getRandomValues(bytes);
-          for (var i = 0; i < bytes.length && out.length < len; i++) {
-            out += bytes[i].toString(16).padStart(2, '0');
-          }
-          return out.slice(0, len);
-        }
-        // entropy mix if crypto missing
-        while (out.length < len) {
-          out += Math.floor(Math.random() * 0x100000000).toString(16).padStart(8, '0');
-          out += Date.now().toString(16);
-        }
-        return out.slice(0, len);
-      }
-      return function mintKey(notEqualTo) {
-        var key = '';
-        for (var t = 0; t < 16; t++) {
-          var n1 = randomHex(12);
-          var n2 = randomHex(12);
-          var body = n1 + n2;
-          var sig = fnv1a32(SECRET + '|' + body + '|web').toString(16).padStart(8, '0');
-          key = 'oi-pl-' + n1 + '-' + n2 + '-' + sig;
-          if (key !== notEqualTo) break;
-        }
-        return key;
-      };
-    })();
+    window.FathomProMintKey = function mintFromServer() {
+      return fetch('/api/chopsticks-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mintUnlockKey', source: 'scavenger' }),
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        return (data && data.key) ? data.key : '';
+      }).catch(function () { return ''; });
+    };
 
     (function () {
       var lastCode = '';
@@ -1613,13 +1581,20 @@
           return;
         }
         if (typeof window.FathomProMintKey !== 'function') return;
-        lastCode = window.FathomProMintKey(lastCode);
-        codeEl.textContent = lastCode;
+        codeEl.textContent = 'Minting key…';
         toast.classList.add('is-show');
-        try {
-          localStorage.setItem('fathomProLastKey', lastCode);
-          localStorage.setItem(SCAVENGER_NEXT_KEY, String(Date.now() + SCAVENGER_COOLDOWN_MS));
-        } catch (e) {}
+        window.FathomProMintKey().then(function (key) {
+          if (!key) {
+            codeEl.textContent = 'Could not mint a key right now — try again later.';
+            return;
+          }
+          lastCode = key;
+          codeEl.textContent = lastCode;
+          try {
+            localStorage.setItem('fathomProLastKey', lastCode);
+            localStorage.setItem(SCAVENGER_NEXT_KEY, String(Date.now() + SCAVENGER_COOLDOWN_MS));
+          } catch (e) {}
+        });
       }
       function hideEaster() {
         if (toast) toast.classList.remove('is-show');
@@ -1639,7 +1614,7 @@
       if (copyBtn) {
         copyBtn.addEventListener('click', function () {
           var CODE = lastCode || (codeEl && codeEl.textContent) || '';
-          if (!/^oi-pl-/i.test(CODE)) return;
+          if (!/^oi-pl2-/i.test(CODE)) return;
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(CODE).then(function () {
               copyBtn.textContent = 'Copied';
@@ -1652,8 +1627,8 @@
     })();
 
     (function () {
-      var PASS = 'sk-or0415';
       var KEY = 'chopstickshq.vault.unlocked.v1';
+      var vaultPassword = '';
       var section = document.getElementById('vault');
       var form = document.getElementById('vault-form');
       var input = document.getElementById('vault-pw');
@@ -1668,6 +1643,7 @@
           try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
         } else {
           section.classList.remove('is-unlocked');
+          vaultPassword = '';
           try { sessionStorage.removeItem(KEY); } catch (e) {}
         }
       }
@@ -1680,14 +1656,27 @@
         e.preventDefault();
         err.textContent = '';
         var pw = (input.value || '').trim();
-        if (pw === PASS) {
-          setUnlocked(true);
-          input.value = '';
-          // Fresh random key every unlock
-          if (typeof window.__vaultMintFresh === 'function') window.__vaultMintFresh();
-        } else {
-          err.textContent = 'Wrong password.';
+        if (!pw) {
+          err.textContent = 'Enter the vault password.';
+          return;
         }
+        fetch('/api/chopsticks-ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'vaultCheck', vaultPassword: pw }),
+        }).then(function (r) { return r.json().then(function (d) { return { status: r.status, body: d }; }); })
+          .then(function (res) {
+            if (res.status === 200 && res.body && res.body.ok) {
+              vaultPassword = pw;
+              setUnlocked(true);
+              input.value = '';
+              if (typeof window.__vaultMintFresh === 'function') window.__vaultMintFresh();
+            } else {
+              err.textContent = 'Wrong password.';
+            }
+          }).catch(function () {
+            err.textContent = 'Could not verify password.';
+          });
       });
 
       if (showBtn) {
@@ -1713,7 +1702,10 @@
       var histEl = document.getElementById('vault-history');
 
       function loadHist() {
-        try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch (e) { return []; }
+        try {
+          var arr = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+          return arr.filter(function (k) { return /^oi-pl2-/i.test(String(k || '')); });
+        } catch (e) { return []; }
       }
       function saveHist(arr) {
         try { localStorage.setItem(HIST_KEY, JSON.stringify(arr.slice(0, 20))); } catch (e) {}
@@ -1736,32 +1728,30 @@
           return '<div class="vault-hist-row" data-i="' + i + '"><code>' + k + '</code> <button type="button" class="vault-hist-del" data-i="' + i + '" title="Remove this key">×</button></div>';
         }).join('');
       }
-      function mintUnique() {
-        var prev = (out && out.textContent) || '';
-        var hist = loadHist().filter(function (k) {
-          return String(k).toLowerCase().indexOf('c0ffee') < 0;
-        });
-        var key = '';
-        for (var i = 0; i < 16; i++) {
-          key = window.FathomProMintKey(prev);
-          if (hist.indexOf(key) < 0 && key !== prev && key.toLowerCase().indexOf('c0ffee') < 0) break;
-          prev = key;
-        }
-        return key;
-      }
       function mintFresh() {
-        if (!out || typeof window.FathomProMintKey !== 'function') return;
-        var key = mintUnique();
-        out.textContent = key;
-        out.style.opacity = '0.4';
-        requestAnimationFrame(function () { out.style.opacity = '1'; });
-        try { localStorage.setItem('fathomProLastKey', key); } catch (e) {}
-        var arr = loadHist().filter(function (k) {
-          return k !== key && String(k).toLowerCase().indexOf('c0ffee') < 0;
-        });
-        arr.unshift(key);
-        saveHist(arr);
-        renderHist();
+        if (!out) return;
+        fetch('/api/chopsticks-ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'mintUnlockKey', vaultPassword: vaultPassword }),
+        }).then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data || !data.key) {
+              out.textContent = (data && data.error) ? 'Could not mint key (' + data.error + ')' : 'Could not mint key';
+              return;
+            }
+            var key = data.key;
+            out.textContent = key;
+            out.style.opacity = '0.4';
+            requestAnimationFrame(function () { out.style.opacity = '1'; });
+            try { localStorage.setItem('fathomProLastKey', key); } catch (e) {}
+            var arr = loadHist().filter(function (k) { return k !== key; });
+            arr.unshift(key);
+            saveHist(arr);
+            renderHist();
+          }).catch(function () {
+            out.textContent = 'Network error minting key';
+          });
       }
       window.__vaultMintFresh = mintFresh;
       // Drop old fixed keys from history
@@ -1794,7 +1784,7 @@
       }
       if (clearBtn) {
         clearBtn.addEventListener('click', function () {
-          if (!loadHist().length && !(out && /^oi-pl-/i.test((out.textContent || '').trim()))) {
+          if (!loadHist().length && !(out && /^oi-pl2-/i.test((out.textContent || '').trim()))) {
             clearAllKeys();
             clearBtn.textContent = 'Cleared';
             setTimeout(function () { clearBtn.textContent = 'Clear keys'; }, 1200);
@@ -1816,11 +1806,11 @@
       if (copyBtn && out) {
         copyBtn.addEventListener('click', function () {
           var key = (out.textContent || '').trim();
-          if (!/^oi-pl-/i.test(key) || key.toLowerCase().indexOf('c0ffee') >= 0) {
+          if (!/^oi-pl2-/i.test(key) || key.toLowerCase().indexOf('c0ffee') >= 0) {
             mintFresh();
             key = (out.textContent || '').trim();
           }
-          if (!/^oi-pl-/i.test(key)) {
+          if (!/^oi-pl2-/i.test(key)) {
             copyBtn.textContent = 'Generate first';
             setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1200);
             return;

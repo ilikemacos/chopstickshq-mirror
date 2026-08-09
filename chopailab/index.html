@@ -386,7 +386,8 @@
         v: 2, at: Date.now(), tier: tierSel.value,
         usage: usageEl ? usageEl.textContent : '',
         history: history.slice(-40),
-        cloudChatId: cloudChatId
+        cloudChatId: cloudChatId,
+        authUserId: Cloud && Cloud.getSession() && Cloud.getSession().user ? Cloud.getSession().user.id : null
       }));
     } catch (e) {}
     if (Cloud && Cloud.isSignedIn() && history.length) {
@@ -404,6 +405,34 @@
   function clearSession() {
     try { localStorage.removeItem(STORE); } catch (e) {}
     cloudChatId = null;
+  }
+  function switchAccountSession() {
+    history = [];
+    cloudChatId = null;
+    log.innerHTML = '';
+    if (intro) log.appendChild(intro);
+    clearSession();
+    if (usageEl) usageEl.textContent = '';
+    if (typeof lastUsageData !== 'undefined') lastUsageData = null;
+    pollUsage();
+    refreshChatList();
+  }
+  async function loadAccountChats() {
+    switchAccountSession();
+    if (!Cloud || !Cloud.isSignedIn()) {
+      return;
+    }
+    try {
+      var chats = await Cloud.listChats();
+      refreshChatList();
+      if (!chats.length) {
+        return;
+      }
+      await openCloudChat(chats[0].id);
+      pollUsage();
+    } catch (e) {
+      switchAccountSession();
+    }
   }
   async function cloudSync() {
     if (!Cloud || !Cloud.isSignedIn() || cloudSyncing) return;
@@ -708,11 +737,15 @@
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     return String(Math.round(n));
   }
+  function unlockStorageKey() {
+    var uid = Cloud && Cloud.getSession() && Cloud.getSession().user && Cloud.getSession().user.id;
+    return uid ? ('chq.aiUnlockKeys.' + uid) : 'chq.aiUnlockKeys.guest';
+  }
   function unlockKeys() {
     try {
-      var raw = localStorage.getItem('chq.aiUnlockKeys');
+      var raw = localStorage.getItem(unlockStorageKey());
       var arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr.filter(function (k) { return /^oi-pl-/i.test(String(k || '')); }) : [];
+      return Array.isArray(arr) ? arr.filter(function (k) { return /^oi-pl2-/i.test(String(k || '')); }) : [];
     } catch (e) { return []; }
   }
   var cooldownTimer = null;
@@ -846,7 +879,6 @@
     try {
       if (Cloud && Cloud.session && Cloud.session.access_token) {
         headers.Authorization = 'Bearer ' + Cloud.session.access_token;
-        body.accessToken = Cloud.session.access_token;
       }
     } catch (e) {}
     fetch(API, { method: 'POST', headers: headers, body: JSON.stringify(body) })
@@ -1141,7 +1173,6 @@
     try {
       if (Cloud && Cloud.isSignedIn() && Cloud.getSession() && Cloud.getSession().access_token) {
         headers.Authorization = 'Bearer ' + Cloud.getSession().access_token;
-        payload.accessToken = Cloud.getSession().access_token;
       }
     } catch (e) {}
     fetch(API, {
@@ -1265,9 +1296,12 @@
       ok.textContent = '';
       Cloud.signIn(email.value.trim(), pass.value)
         .then(function () {
-          ok.textContent = 'Signed in. Chats will sync to your account.';
+          ok.textContent = 'Signed in. Loading your account…';
           updateAccountUI();
-          if (history.length) cloudSync();
+          return loadAccountChats();
+        })
+        .then(function () {
+          ok.textContent = 'Signed in.';
           setTimeout(close, 700);
         })
         .catch(function (e) { err.textContent = e.message || 'Sign in failed'; });
@@ -1280,9 +1314,14 @@
           if (r && r.needsConfirm) {
             ok.textContent = 'Check your email to confirm, then sign in.';
           } else {
-            ok.textContent = 'Account created. Chats will sync.';
+            ok.textContent = 'Account created. Loading…';
             updateAccountUI();
-            if (history.length) cloudSync();
+            return loadAccountChats();
+          }
+        })
+        .then(function () {
+          if (ok.textContent.indexOf('Loading') >= 0) {
+            ok.textContent = 'Account ready.';
             setTimeout(close, 700);
           }
         })
@@ -1290,16 +1329,22 @@
     });
     document.getElementById('auth-signout').addEventListener('click', function () {
       Cloud.signOut().then(function () {
+        switchAccountSession();
         updateAccountUI();
-        ok.textContent = 'Signed out. Local draft kept on this device.';
+        ok.textContent = 'Signed out.';
       });
     });
   })();
 
   
-  (function restore() {
+  function restoreGuestSession() {
+    if (Cloud && Cloud.isSignedIn()) return;
     var saved = loadSession();
     if (!saved) return;
+    if (saved.authUserId) {
+      clearSession();
+      return;
+    }
     history = saved.history;
     cloudChatId = saved.cloudChatId || null;
     if (usageEl && saved.usage) {
@@ -1324,7 +1369,7 @@
     showTier();
     pollUsage();
     stage.scrollTop = stage.scrollHeight;
-  })();
+  }
 
   document.getElementById('export').addEventListener('click', function () {
     if (!history.length) return;
@@ -1336,9 +1381,20 @@
   });
 
   if (Cloud) {
-    Cloud.init().then(function () {
+    var lastCloudUserId = null;
+    Cloud.onChange(function (s) {
+      var uid = s && s.user && s.user.id;
+      if (uid === lastCloudUserId) return;
+      lastCloudUserId = uid || null;
       updateAccountUI();
-      if (Cloud.isSignedIn() && history.length && !cloudChatId) cloudSync();
+      if (uid) loadAccountChats();
+      else switchAccountSession();
+    });
+    Cloud.init().then(function () {
+      lastCloudUserId = Cloud.getSession() && Cloud.getSession().user ? Cloud.getSession().user.id : null;
+      updateAccountUI();
+      if (Cloud.isSignedIn()) loadAccountChats();
+      else restoreGuestSession();
     }).catch(function () {});
   }
 

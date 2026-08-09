@@ -138,6 +138,12 @@
     },
 
     signUp: async function (email, password) {
+      if (session) {
+        try { await authFetch('/auth/v1/logout', { method: 'POST', body: '{}' }); } catch (e) {}
+        session = null;
+        saveLocalSession(null);
+        emit();
+      }
       var body = await authFetch('/auth/v1/signup', {
         method: 'POST',
         body: JSON.stringify({ email: email, password: password })

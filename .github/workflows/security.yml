@@ -1,0 +1,28 @@
+name: Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node syntax check — chopsticks-ai API
+        run: node --check api/_lib/chopsticks-ai.js
+
+      - name: Node syntax check — Netlify function entry
+        run: node --check netlify/functions/chopsticks-ai.js
+
+      - name: Scan for committed secrets
+        run: |
+          set -e
+          ! rg -n 'sk-or-[a-zA-Z0-9_-]{10,}' --glob '!*.md' --glob '!.github/**' || \
+            (echo 'Possible OpenRouter key in tree' && exit 1)
+          ! rg -n 'chopstickshq\.fathompro\.unlock\.v1' --glob '!SECURITY.md' --glob '!docs/**' || \
+            (echo 'Hardcoded unlock secret found' && exit 1)
+          ! rg -n 'FATHOM_PRO_SECRET\s*=' api/ chopsticks-ai/files/ netlify/ || \
+            (echo 'Hardcoded FATHOM_PRO_SECRET assignment' && exit 1)

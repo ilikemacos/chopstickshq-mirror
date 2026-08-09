@@ -1,3 +1,5 @@
+const crypto = require("node:crypto");
+const { queueUsageEmail, AI_EMAIL } = require("./usage-email.js");
 
 const TIERS = {
   low: {
@@ -180,39 +182,40 @@ const tierOf = (name) => {
   return TIERS[id] || TIERS[DEFAULT_TIER];
 };
 
-const FATHOM_PRO_SECRET = "chopstickshq.fathompro.unlock.v1";
-const FATHOM_PRO_LEGACY = "chopstickshq.fathomplus.unlock.v1";
-const FATHOM_PRO_SITE_KEYS = new Set([
-  "oi-pl-c0ffee-faded1-358dc51a",
-  "oi-pl-c0ffee-faded1-21657207",
+const AUTH_REQUIRED_TIERS = new Set([
+  "insane", "xhighplus", "stickercoderplus", "chopcode",
 ]);
 
-function fnv1a32(str) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h >>> 0;
+function hmacUnlockSig(body, tag) {
+  const secret = env("FATHOM_PRO_HMAC_SECRET");
+  if (!secret) return "";
+  return crypto.createHmac("sha256", secret).update(`${body}|${tag}`).digest("hex").slice(0, 16);
+}
+
+function mintFathomProUnlockKey() {
+  const n1 = crypto.randomBytes(6).toString("hex");
+  const n2 = crypto.randomBytes(6).toString("hex");
+  const body = n1 + n2;
+  const sig = hmacUnlockSig(body, "web");
+  if (!sig) return "";
+  return `oi-pl2-${n1}-${n2}-${sig}`;
 }
 
 function verifyFathomProUnlock(raw) {
   const key = String(raw || "").trim().toLowerCase();
   if (!key) return false;
-  if (FATHOM_PRO_SITE_KEYS.has(key)) return true;
   if (key.includes("c0ffee")) return false;
   if (/^sk-or-/i.test(key) || /^sk-[a-z0-9]/i.test(key)) return false;
-  const m = key.match(/^oi-pl-([0-9a-f]{6,16})-([0-9a-f]{6,16})-([0-9a-f]{8})$/);
+  const m = key.match(/^oi-pl2-([0-9a-f]{12})-([0-9a-f]{12})-([0-9a-f]{16})$/);
   if (!m) return false;
-  const body = m[1] + m[2];
-  const sig = m[3];
-  for (const sec of [FATHOM_PRO_SECRET, FATHOM_PRO_LEGACY]) {
-    for (const tag of ["web", "3", "5"]) {
-      const expect = fnv1a32(sec + "|" + body + "|" + tag).toString(16).padStart(8, "0");
-      if (sig === expect) return true;
-    }
-  }
-  return false;
+  const expect = hmacUnlockSig(m[1] + m[2], "web");
+  return expect.length > 0 && expect === m[3];
+}
+
+function hashClientBucket(clientId) {
+  const salt = env("CHOPSTICKS_AI_BUCKET_SALT") || "chopsticks-ai-bucket-v1";
+  const id = String(clientId || "anon").slice(0, 128);
+  return "ip-" + crypto.createHmac("sha256", salt).update(id).digest("hex").slice(0, 16);
 }
 
 const FREE_USAGE = {
@@ -274,7 +277,7 @@ function entitlementDetail(limit, contextLimit, cooldownMs) {
   return `${toks(limit)} tokens · ${toks(contextLimit)} context · ${cool}`;
 }
 
-function resolveCredits(rawKeys) {
+function resolveCredits(rawKeys, clientId) {
   const list = Array.isArray(rawKeys) ? rawKeys : [];
   const valid = [];
   const seen = new Set();
@@ -295,8 +298,8 @@ function resolveCredits(rawKeys) {
     if (valid.length >= t.keysRequired) tier = t;
   }
   const bucketId = tier.keysRequired === 0
-    ? "global"
-    : ("credits-" + fnv1a32(valid.slice().sort().join("|")).toString(16).padStart(8, "0"));
+    ? hashClientBucket(clientId)
+    : ("credits-" + crypto.createHash("sha256").update(valid.slice().sort().join("|")).digest("hex").slice(0, 16));
   return {
     keysSubmitted: seen.size,
     keysValid: valid.length,
@@ -319,15 +322,20 @@ function resolveCredits(rawKeys) {
   };
 }
 
-function extractAccessToken(event, payload) {
+function extractAccessToken(event) {
   const headers = (event && event.headers) || {};
   const auth = headers.authorization || headers.Authorization || "";
   const m = String(auth).match(/^Bearer\s+(.+)$/i);
   if (m && m[1] && m[1].length > 40) return m[1].trim();
-  if (payload && typeof payload.accessToken === "string" && payload.accessToken.length > 40) {
-    return payload.accessToken.trim();
-  }
   return "";
+}
+
+function clientWho(event) {
+  const headers = (event && event.headers) || {};
+  return headers["x-nf-client-connection-ip"] ||
+    headers["cf-connecting-ip"] ||
+    (headers["x-forwarded-for"] || "").split(",")[0].trim() ||
+    "anon";
 }
 
 async function resolveAccount(accessToken) {
@@ -346,19 +354,14 @@ async function resolveAccount(accessToken) {
 
     let entitlement = null;
     try {
-      const profRes = await fetch(
-        `${env("SUPABASE_URL")}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=email,token_budget,context_limit,plan_label,cooldown_ms`,
-        {
-          headers: {
-            apikey: env("SUPABASE_ANON_KEY"),
-            authorization: `Bearer ${accessToken}`,
-            accept: "application/json",
-          },
-        }
+      const profRes = await sb(
+        `profiles?id=eq.${encodeURIComponent(user.id)}&select=email,token_budget,context_limit,plan_label,cooldown_ms`,
+        { method: "GET", headers: { accept: "application/json" } },
+        { service: true }
       );
       if (profRes.ok) {
-        const rows = await profRes.json();
-        const row = Array.isArray(rows) ? rows[0] : null;
+        const rows = Array.isArray(profRes.body) ? profRes.body : [];
+        const row = rows[0] || null;
         if (row) {
           const tb = Number(row.token_budget);
           const cl = Number(row.context_limit);
@@ -393,10 +396,22 @@ async function resolveAccount(accessToken) {
 }
 
 /** Merge Fathom Pro credit tier with signed-in account entitlements (best wins). */
-function resolvePlan(rawKeys, account) {
-  const credits = resolveCredits(rawKeys);
+function userBucketId(account) {
+  if (!account || !account.id) return null;
+  return "user-" + String(account.id).replace(/-/g, "").slice(0, 12);
+}
+
+function resolvePlan(rawKeys, account, clientId) {
+  const credits = resolveCredits(rawKeys, clientId);
+  const signedInBucket = userBucketId(account);
   const ent = account && account.entitlement;
-  if (!ent) return { ...credits, account: account ? { email: account.email, id: account.id } : null };
+  if (!ent) {
+    return {
+      ...credits,
+      bucketId: signedInBucket || credits.bucketId,
+      account: account ? { email: account.email, id: account.id } : null,
+    };
+  }
 
   const limit = Math.max(credits.limit, ent.limit || 0);
   const contextLimit = Math.max(credits.contextLimit || 0, ent.contextLimit || 0);
@@ -407,7 +422,7 @@ function resolvePlan(rawKeys, account) {
     limit,
     contextLimit,
     cooldownMs,
-    bucketId: ent.bucketId || credits.bucketId,
+    bucketId: signedInBucket || ent.bucketId || credits.bucketId,
     tier: fromAccount
       ? {
           id: ent.id,
@@ -481,8 +496,13 @@ const budget = budgetBucket("global");
 let budgetMode = "memory";
 
 const RATE_WINDOW_MS = 60000;
-const RATE_MAX = 20;
+const RATE_MAX = 8;
+const DAILY_RATE_MAX = 120;
+const SCAVENGER_COOLDOWN_MS = 10 * 60 * 1000;
 const hits = new Map();
+const dailyHits = new Map();
+const scavengerHits = new Map();
+const DEBUG_ENABLED = (process.env.CHOPSTICKS_AI_DEBUG || "0") === "1";
 
 /** ~4 chars per token, deliberately an over-estimate so trimming fires early
  *  rather than letting OpenRouter reject an oversized request. */
@@ -542,10 +562,16 @@ function memorySpend(tokens, now, bucketId, limit, cooldownMs) {
 }
 
 function supabaseConfigured() {
-  return Boolean(env("SUPABASE_URL") && env("SUPABASE_ANON_KEY"));
+  return Boolean(env("SUPABASE_URL") && (env("SUPABASE_SERVICE_ROLE_KEY") || env("SUPABASE_ANON_KEY")));
 }
 
-async function sb(path, init = {}) {
+function supabaseAuthKey(useService) {
+  if (useService && env("SUPABASE_SERVICE_ROLE_KEY")) return env("SUPABASE_SERVICE_ROLE_KEY");
+  return env("SUPABASE_ANON_KEY");
+}
+
+async function sb(path, init = {}, opts = {}) {
+  const useService = opts.service !== false && Boolean(env("SUPABASE_SERVICE_ROLE_KEY"));
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), SB_TIMEOUT_MS);
   try {
@@ -553,8 +579,8 @@ async function sb(path, init = {}) {
       ...init,
       signal: ctrl.signal,
       headers: {
-        apikey: env("SUPABASE_ANON_KEY"),
-        authorization: `Bearer ${env("SUPABASE_ANON_KEY")}`,
+        apikey: supabaseAuthKey(useService),
+        authorization: `Bearer ${supabaseAuthKey(useService)}`,
         "content-type": "application/json",
         ...(init.headers || {}),
       },
@@ -589,12 +615,12 @@ async function budgetPeek(now, opts = {}) {
         p_cooldown_ms: cooldownMs,
         p_id: bucketId,
       }),
-    });
-    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId === "global") {
+    }, { service: true });
+    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId.startsWith("ip-")) {
       res = await sb("rpc/chopsticks_ai_budget_peek", {
         method: "POST",
-        body: JSON.stringify({ p_limit: limit, p_cooldown_ms: cooldownMs }),
-      });
+        body: JSON.stringify({ p_limit: limit, p_cooldown_ms: cooldownMs, p_id: bucketId }),
+      }, { service: true });
     }
     if (!res.ok || !res.body || typeof res.body !== "object") {
       budgetMode = "memory";
@@ -628,10 +654,15 @@ async function budgetSpend(tokens, now, opts = {}) {
   const bucketId = opts.bucketId || "global";
   const limit = opts.limit || TOKEN_BUDGET;
   const cooldownMs = opts.cooldownMs || COOLDOWN_MS;
+  const finish = (used, mode, blocked) => {
+    const row = budgetBucket(bucketId);
+    const retryInMs = blocked ? Math.max(0, (row.cooldownUntil || 0) - now) : 0;
+    return { used, mode, limit, bucketId, blocked: Boolean(blocked), retryInMs };
+  };
   if (!supabaseConfigured()) {
     budgetMode = "memory";
     const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
-    return { used: row.used, mode: "memory", limit, bucketId };
+    return finish(row.used, "memory", row.used >= limit);
   }
   try {
     let res = await sb("rpc/chopsticks_ai_budget_spend", {
@@ -642,29 +673,30 @@ async function budgetSpend(tokens, now, opts = {}) {
         p_cooldown_ms: cooldownMs,
         p_id: bucketId,
       }),
-    });
-    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId === "global") {
+    }, { service: true });
+    if ((!res.ok || !res.body || typeof res.body !== "object") && bucketId.startsWith("ip-")) {
       res = await sb("rpc/chopsticks_ai_budget_spend", {
         method: "POST",
         body: JSON.stringify({
           p_tokens: spent,
           p_limit: limit,
           p_cooldown_ms: cooldownMs,
+          p_id: bucketId,
         }),
-      });
+      }, { service: true });
     }
     if (!res.ok || !res.body || typeof res.body !== "object") {
       const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
-      return { used: row.used, mode: "memory", limit, bucketId };
+      return finish(row.used, "memory", row.used >= limit);
     }
     const used = Number(res.body.used) || budgetBucket(bucketId).used;
     budgetBucket(bucketId).used = used;
     budgetMode = "supabase";
     if (res.body.blocked) budgetBucket(bucketId).cooldownUntil = now + cooldownMs;
-    return { used, mode: "supabase", limit, bucketId };
+    return finish(used, "supabase", res.body.blocked);
   } catch {
     const row = memorySpend(spent, now, bucketId, limit, cooldownMs);
-    return { used: row.used, mode: "memory", limit, bucketId };
+    return finish(row.used, "memory", row.used >= limit);
   }
 }
 
@@ -1185,7 +1217,7 @@ function selfFacts(tier) {
   const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
-    `- You are cs.AI 2.2.8-Final (chopsticksAI), built and run by Chopsticks HQ.`,
+    `- You are cs.AI 2.2.9 (chopsticksAI), built and run by Chopsticks HQ.`,
     `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, ChopCode, and StickerCoder+ (coding specialists).`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     t.stickerCoder
@@ -1249,7 +1281,7 @@ function systemPrompt(grounding, mode, web, tier) {
         "Be precise and practical. Prefer working solutions over theory.\n\n",
       ].join("")
     : [
-        "You are cs.AI 2.2.8-Final (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
+        "You are cs.AI 2.2.9 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
         "made by Chopsticks HQ.\n\n",
         "Answer ANY question the user asks — general knowledge, science, history, coding, ",
         "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
@@ -1300,6 +1332,50 @@ function rateLimited(key) {
   }
   rec.n += 1;
   return rec.n > RATE_MAX;
+}
+
+function dailyRateLimited(key) {
+  const day = new Date().toISOString().slice(0, 10);
+  const recKey = `${key}|${day}`;
+  const n = (dailyHits.get(recKey) || 0) + 1;
+  dailyHits.set(recKey, n);
+  if (dailyHits.size > 3000) {
+    for (const k of dailyHits.keys()) {
+      if (!k.endsWith(`|${day}`)) dailyHits.delete(k);
+    }
+  }
+  return n > DAILY_RATE_MAX;
+}
+
+function scavengerRateLimited(key) {
+  const now = Date.now();
+  const until = scavengerHits.get(key) || 0;
+  if (now < until) return true;
+  scavengerHits.set(key, now + SCAVENGER_COOLDOWN_MS);
+  if (scavengerHits.size > 500) {
+    for (const [k, v] of scavengerHits) if (v < now) scavengerHits.delete(k);
+  }
+  return false;
+}
+
+async function handleMintUnlockKey(event, payload) {
+  const who = clientWho(event);
+  if (rateLimited(who)) {
+    return json(429, { error: "rate limited", retryInMs: 60000 });
+  }
+  const scavenger = payload.source === "scavenger";
+  const vaultPw = env("FATHOM_VAULT_PASSWORD");
+  const supplied = String(payload.vaultPassword || payload.password || "").trim();
+  if (scavenger) {
+    if (scavengerRateLimited(who)) {
+      return json(429, { error: "scavenger cooldown", retryInMs: SCAVENGER_COOLDOWN_MS });
+    }
+  } else if (!vaultPw || supplied !== vaultPw) {
+    return json(403, { error: "forbidden" });
+  }
+  const key = mintFathomProUnlockKey();
+  if (!key) return json(503, { error: "unlock signing not configured" });
+  return json(200, { mode: "mint", key, prefix: "oi-pl2" });
 }
 
 const json = (status, body) => ({
@@ -1656,6 +1732,7 @@ function usagePayload(plan, state) {
 async function healthHandler(event) {
   const configured = Boolean(env("OPENROUTER_API_KEY"));
   const now = Date.now();
+  const who = clientWho(event);
   let unlockKeys = [];
   try {
     const q = (event && event.queryStringParameters) || {};
@@ -1663,9 +1740,9 @@ async function healthHandler(event) {
       unlockKeys = String(q.unlockKeys).split(",").map((s) => s.trim()).filter(Boolean);
     }
   } catch (e) { /* ignore */ }
-  const accessToken = extractAccessToken(event, null);
+  const accessToken = extractAccessToken(event);
   const account = await resolveAccount(accessToken);
-  const plan = resolvePlan(unlockKeys, account);
+  const plan = resolvePlan(unlockKeys, account, who);
   let cooldown = null;
   let budgetModeNow = "memory";
   let used = 0;
@@ -1716,7 +1793,7 @@ async function handler(event) {
     return json(200, {
       reply:
         "chopsticksAI isn't configured on this host yet. " +
-        "Ask on chopstickshq.com or email mzx+chopsticks@lam.ws.",
+        "Ask on chopstickshq.com or email " + AI_EMAIL + ".",
       mode: "unconfigured",
     });
   }
@@ -1729,13 +1806,38 @@ async function handler(event) {
   }
 
   const tier = tierOf(payload.tier);
+  const tierKey = String(payload.tier || DEFAULT_TIER).toLowerCase().replace(/\s+/g, "");
+  const tierId = TIER_ALIASES[tierKey] || tierKey || DEFAULT_TIER;
   const apiKey = key;
   const unlockKeys = Array.isArray(payload.unlockKeys)
     ? payload.unlockKeys
     : (Array.isArray(payload.fathomProKeys) ? payload.fathomProKeys : []);
-  const accessToken = extractAccessToken(event, payload);
+  const who = clientWho(event);
+  const accessToken = extractAccessToken(event);
   const account = await resolveAccount(accessToken);
-  const plan = resolvePlan(unlockKeys, account);
+
+  if (payload.action === "mintUnlockKey") {
+    return handleMintUnlockKey(event, payload);
+  }
+
+  if (payload.action === "vaultCheck") {
+    const vaultPw = env("FATHOM_VAULT_PASSWORD");
+    const supplied = String(payload.vaultPassword || payload.password || "").trim();
+    if (!vaultPw || supplied !== vaultPw) {
+      return json(403, { error: "forbidden" });
+    }
+    return json(200, { ok: true });
+  }
+
+  if (AUTH_REQUIRED_TIERS.has(tierId) && !account) {
+    return json(403, {
+      error: "sign in required for this tier",
+      mode: "auth_required",
+      tier: tier.label,
+    });
+  }
+
+  const plan = resolvePlan(unlockKeys, account, who);
   const budgetOpts = {
     bucketId: plan.bucketId,
     limit: plan.limit,
@@ -1767,7 +1869,7 @@ async function handler(event) {
       headersS["cf-connecting-ip"] ||
       (headersS["x-forwarded-for"] || "").split(",")[0].trim() ||
       "anon";
-    if (rateLimited(whoS)) {
+    if (rateLimited(whoS) || dailyRateLimited(whoS)) {
       return json(429, { error: "rate limited", retryInMs: 60000 });
     }
     const cap = Math.max(1, Math.min(MAX_SOURCES, Number(payload.max) || 8));
@@ -1797,12 +1899,7 @@ async function handler(event) {
   }
 
   const headers = event.headers || {};
-  const who =
-    headers["x-nf-client-connection-ip"] ||
-    headers["cf-connecting-ip"] ||
-    (headers["x-forwarded-for"] || "").split(",")[0].trim() ||
-    "anon";
-  if (rateLimited(who)) {
+  if (rateLimited(who) || dailyRateLimited(who)) {
     return json(429, {
       reply: "That's a lot of questions at once — give it a minute and try again.",
       mode: "limited",
@@ -1858,7 +1955,9 @@ async function handler(event) {
   const now = Date.now();
   const state = await budgetPeek(now, budgetOpts);
   if (state.blocked) {
+    queueUsageEmail(plan, state, account);
     const mins = Math.ceil(state.retryInMs / 60000);
+    const willEmail = account && account.email && env("RESEND_API_KEY") && env("CHOPSTICKS_AI_USAGE_EMAIL") !== "off";
     const next = plan.upgrades.find((u) => !u.unlocked);
     const tip = next
       ? ` Redeem ${next.keysRequired} Fathom Pro API keys in Usage to raise your limit (${next.detail}).`
@@ -1867,6 +1966,7 @@ async function handler(event) {
       reply:
         "chopsticksAI has used up its allowance for now and is cooling down " +
         `(about ${mins} minute${mins === 1 ? "" : "s"} left).` +
+        (willEmail ? " We emailed you at " + account.email + "." : "") +
         tip +
         " Everything it knows is still on chopstickshq.com in the meantime.",
       mode: "cooldown",
@@ -2098,7 +2198,7 @@ async function handler(event) {
           "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
           "or browse chopstickshq.com for the answer.",
         mode: "error",
-        ...(payload.debug ? {
+        ...(DEBUG_ENABLED && payload.debug ? {
           diag: {
             status: lastStatus,
             detail: String(lastDetail || "").slice(0, 400),
@@ -2156,6 +2256,7 @@ async function handler(event) {
     }
 
     const spentResult = await budgetSpend(spent, now, budgetOpts);
+    queueUsageEmail(plan, spentResult, account);
 
     if (!reply && !producedFiles.length) {
       return json(200, { reply: "I didn't get a usable answer back — try rephrasing?", mode: "empty" });
@@ -2168,7 +2269,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "cs.AI 2.2.8-Final",
+      model: "cs.AI 2.2.9",
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),
@@ -2203,6 +2304,7 @@ module.exports = {
   handler, retrieve, retrievalQuery, systemPrompt, normalise, fitContext,
   measureMessages, contextWindowUsage,
   wantsSearch, parseSearchRequest, webSearch, selfFacts, verifyFathomProUnlock,
+  mintFathomProUnlockKey, handleMintUnlockKey,
   resolveCredits, resolvePlan, resolveAccount, usagePayload,
   budgetPeek, budgetSpend, budgetState, spend,
   _budget: budget, budgetMode, MAX_CONTEXT_TOKENS, TOKEN_BUDGET, COOLDOWN_MS,
