@@ -161,10 +161,37 @@
   .usage {
     width: min(52rem, calc(100% - 2rem)); margin: 0 auto .55rem;
     font-family: var(--mono); font-size: .64rem; color: var(--muted);
-    text-align: right; line-height: 1.5;
-    overflow-wrap: anywhere; word-break: break-word; white-space: normal;
+    text-align: center; line-height: 1.5;
     box-sizing: border-box; padding: 0 2px;
   }
+  .usage-panel { display: flex; flex-direction: column; align-items: center; gap: .45rem; max-width: 26rem; margin-inline: auto; }
+  .usage-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .62rem; letter-spacing: .04em; padding: .22rem .65rem;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+  }
+  .usage-chip.on { color: #ff7139; border-color: rgba(255,113,57,.35); background: rgba(255,113,57,.1); }
+  .usage-chip.off { color: var(--muted); }
+  .usage-meter { width: 100%; }
+  .usage-meter-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: .5rem; margin-bottom: .22rem; font-size: .62rem;
+  }
+  .usage-meter-head span:last-child { color: var(--soft); font-variant-numeric: tabular-nums; }
+  .usage-track {
+    height: 6px; border-radius: 999px; background: var(--card2); overflow: hidden;
+  }
+  .usage-fill {
+    height: 100%; border-radius: 999px; width: 0;
+    transition: width .45s cubic-bezier(.34, 1.2, .64, 1);
+  }
+  .usage-fill.ctx { background: rgba(96, 165, 250, .85); }
+  .usage-fill.allow { background: rgba(180, 180, 195, .85); }
+  .usage-fill.allow.warn { background: #e8a25a; }
+  .usage-fill.allow.critical { background: #e86a5a; }
+  .usage-meta { font-size: .58rem; color: var(--muted); margin-top: .15rem; }
+  .search-toggle.on { color: #ff7139; border-color: rgba(255,113,57,.35); background: rgba(255,113,57,.1); }
+  .search-toggle.off { color: var(--muted); }
   .usage.warn { color: #e8a25a; }
   .usage.critical { color: #e86a5a; }
   .usage.cooldown { color: #e8a25a; }
@@ -316,6 +343,7 @@
   <div class="attach-row" id="attach-row" hidden></div>
   <div class="composer-inner">
     <input type="file" id="file-input" multiple hidden>
+    <button type="button" class="attach-btn search-toggle on" id="search-toggle" title="Automatic Mozilla web search on each question">Search</button>
     <button type="button" class="attach-btn" id="attach-btn" title="Attach files or images (up to 500 MB)">Attach</button>
     <textarea id="input" rows="1" placeholder="Ask anything, or attach files / images…" aria-label="Message"></textarea>
     <button class="send" id="send">Send</button>
@@ -462,6 +490,9 @@
   var send = document.getElementById('send');
   var status = document.getElementById('status');
   var usageEl = document.getElementById('usage');
+  var searchToggle = document.getElementById('search-toggle');
+  var WEB_SEARCH_KEY = 'chq.webSearch';
+  var lastUsageData = null;
   var tierSel = document.getElementById('tier');
   var attachBtn = document.getElementById('attach-btn');
   var fileInput = document.getElementById('file-input');
@@ -697,6 +728,81 @@
     return sec + 's';
   }
 
+  function webSearchOn() {
+    try { return localStorage.getItem(WEB_SEARCH_KEY) !== 'off'; } catch (e) { return true; }
+  }
+
+  function setWebSearch(on) {
+    try { localStorage.setItem(WEB_SEARCH_KEY, on ? 'on' : 'off'); } catch (e) {}
+    updateSearchToggleUI();
+    if (input) {
+      input.placeholder = on
+        ? 'Ask anything, or attach files / images…'
+        : 'Ask anything (search off · /search forces lookup)…';
+    }
+    if (!cooldownEndsAt) renderUsagePanel(lastUsageData);
+  }
+
+  function updateSearchToggleUI() {
+    if (!searchToggle) return;
+    var on = webSearchOn();
+    searchToggle.textContent = on ? 'Search' : 'Search off';
+    searchToggle.classList.toggle('on', on);
+    searchToggle.classList.toggle('off', !on);
+    searchToggle.title = on
+      ? 'Automatic Mozilla web search on each question. Click to turn off.'
+      : 'Web search is off. Click to re-enable, or use /search … for one-off lookups.';
+  }
+
+  function usageRatio(used, limit) {
+    if (!limit) return 0;
+    return Math.min(1, used / limit);
+  }
+
+  function usageMeter(title, used, limit, ratio, kind) {
+    var pct = Math.max(2, Math.round(ratio * 100));
+    var fillClass = kind === 'ctx' ? 'ctx' : 'allow';
+    if (kind === 'allow') {
+      if (ratio >= 0.95) fillClass += ' critical';
+      else if (ratio >= 0.8) fillClass += ' warn';
+    }
+    return '<div class="usage-meter">' +
+      '<div class="usage-meter-head"><span>' + title + '</span><span>' +
+      fmt(used) + ' / ' + fmt(limit) + '</span></div>' +
+      '<div class="usage-track"><div class="usage-fill ' + fillClass + '" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+  }
+
+  function renderUsagePanel(d) {
+    if (!usageEl || cooldownEndsAt) return;
+    var html = '<div class="usage-panel">';
+    if (d && d.searched) {
+      html += '<div class="usage-chip on">Mozilla search</div>';
+    } else if (!webSearchOn()) {
+      html += '<div class="usage-chip off">Web search off</div>';
+    }
+    if (d && d.contextWindow && typeof d.contextWindow.used === 'number' && d.contextWindow.limit) {
+      html += usageMeter('Context', d.contextWindow.used, d.contextWindow.limit,
+        usageRatio(d.contextWindow.used, d.contextWindow.limit), 'ctx');
+    }
+    var used = d && d.usage && typeof d.usage.used === 'number' ? d.usage.used
+      : (d && d.budget && d.budget.used);
+    var limit = d && d.usage && d.usage.limit ? d.usage.limit
+      : (d && d.budget && d.budget.limit);
+    if (typeof used === 'number' && limit) {
+      html += usageMeter('Allowance', used, limit, usageRatio(used, limit), 'allow');
+    }
+    var meta = [];
+    if (d && d.usage && d.usage.tier && d.usage.tier.label) meta.push(d.usage.tier.label);
+    var n = unlockKeys().length;
+    if (n) meta.push(n + ' Fathom Pro key' + (n === 1 ? '' : 's'));
+    var warn = d && d.usage && d.usage.warning;
+    if (warn && warn.message) meta.push(warn.message);
+    if (meta.length) html += '<div class="usage-meta">' + meta.join(' · ') + '</div>';
+    html += '</div>';
+    usageEl.innerHTML = html;
+  }
+
   function tickCooldown() {
     if (!usageEl || !cooldownEndsAt) return;
     var left = cooldownEndsAt - Date.now();
@@ -704,16 +810,17 @@
       cooldownEndsAt = 0;
       if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
       usageEl.className = 'usage';
-      usageEl.textContent = 'Cooldown ended — ready again';
+      renderUsagePanel(lastUsageData);
       pollUsage();
       return;
     }
     usageEl.className = 'usage cooldown';
-    usageEl.textContent = 'Cooling down · ' + fmtCooldownLeft(left) + ' left';
+    usageEl.innerHTML = '<div class="usage-panel">Cooling down · ' + fmtCooldownLeft(left) + ' left</div>';
   }
 
   function showUsage(d) {
     if (!usageEl) return;
+    lastUsageData = d;
     if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
     cooldownEndsAt = 0;
     usageEl.className = 'usage';
@@ -726,30 +833,11 @@
       return;
     }
 
-    var parts = [];
-    if (d && d.searched) parts.push('Mozilla search');
-    if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
-      parts.push('Context ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
-    }
-    var used = d && d.usage && typeof d.usage.used === 'number' ? d.usage.used
-      : (d && d.budget && d.budget.used);
-    var limit = d && d.usage && d.usage.limit ? d.usage.limit
-      : (d && d.budget && d.budget.limit);
-    if (typeof used === 'number' && limit) {
-      parts.push('Allowance ' + fmt(used) + '/' + fmt(limit));
-    }
-    if (d && d.usage && d.usage.tier && d.usage.tier.label) {
-      parts.push(d.usage.tier.label);
-    }
-    var n = unlockKeys().length;
-    if (n) parts.push(n + ' Fathom Pro key' + (n === 1 ? '' : 's'));
-
     var warn = d && d.usage && d.usage.warning;
     if (warn && warn.message) {
       usageEl.className = 'usage ' + (warn.level === 'critical' ? 'critical' : 'warn');
-      parts.push(warn.message);
     }
-    usageEl.textContent = parts.join(' · ');
+    renderUsagePanel(d);
   }
 
   function pollUsage() {
@@ -771,6 +859,13 @@
     showTier();
   });
   showTier();
+  updateSearchToggleUI();
+  if (input && !webSearchOn()) {
+    input.placeholder = 'Ask anything (search off · /search forces lookup)…';
+  }
+  if (searchToggle) {
+    searchToggle.addEventListener('click', function () { setWebSearch(!webSearchOn()); });
+  }
   pollUsage();
 
   var SUGGESTIONS = [
@@ -1025,6 +1120,7 @@
       maxTokens: effortInfo().maxTokens,
       unlockKeys: unlockKeys(),
       enableTools: true,
+      disableSearch: !webSearchOn(),
       attachments: ready.map(function (a) {
         return {
           name: a.name,

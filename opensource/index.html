@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open source · Chopsticks HQ</title>
+<meta name="description" content="Chopsticks HQ open-source software — cs.AI, rNitro, Fathom, and this site. MIT licensed.">
+<link rel="canonical" href="https://chopstickshq.com/opensource/">
+<link rel="icon" href="/favicon.ico">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#0a0a0c; --card:#121216; --border:#26262e; --text:#f2f2f5; --muted:#8b8b9a; --accent:#ff7139; --mono: ui-monospace, Menlo, monospace; --sans: system-ui, -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; padding: 2rem 1.25rem 3rem; }
+  .wrap { max-width: 42rem; margin: 0 auto; }
+  a { color: var(--accent); }
+  h1 { font-size: 1.85rem; letter-spacing: -.03em; margin-bottom: .5rem; }
+  .lead { color: var(--muted); margin-bottom: 1.75rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .75rem; }
+  .card h2 { font-size: 1rem; margin-bottom: .35rem; }
+  .card p { font-size: .92rem; color: var(--muted); }
+  .badge { display: inline-block; font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .75rem; }
+  nav { margin-bottom: 1.5rem; font-size: .88rem; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--text); }
+  code { font-family: var(--mono); font-size: .85em; background: #18181e; padding: .1em .35em; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a href="/">← Chopsticks HQ</a></nav>
+  <div class="badge">MIT · fully open source</div>
+  <h1>Open source</h1>
+  <p class="lead">Chopsticks HQ publishes source for cs.AI, rNitro, Fathom, and this website. Inspect, fork, and ship your own builds — no account required to read the code.</p>
+
+  <div class="card">
+    <h2><a href="https://github.com/ilikemacos/ChopsticksAI">cs.AI / chopsticksAI</a></h2>
+    <p>macOS Agents app (Swift), offline KB, Lab HTML, and Netlify API handler. Latest: <strong>2.2.8-Final</strong>.</p>
+  </div>
+  <div class="card">
+    <h2><a href="https://github.com/ilikemacos/rNitro">rNitro</a></h2>
+    <p>Free menu bar system monitor for macOS — CPU, temperature, battery, GPU, RAM.</p>
+  </div>
+  <div class="card">
+    <h2><a href="https://github.com/ilikemacos/Fathom">Fathom</a></h2>
+    <p>Local-only menu bar battery drain attribution.</p>
+  </div>
+  <div class="card">
+    <h2><a href="https://github.com/ilikemacos/Fathom-Pro">Fathom Pro</a></h2>
+    <p>Fathom + weather + multi-provider AI chat.</p>
+  </div>
+  <div class="card">
+    <h2><a href="https://github.com/ilikemacos/chopstickshq-mirror">chopstickshq.com (this site)</a></h2>
+    <p>Static mirror of chopstickshq.com including <code>api/_lib/chopsticks-ai.js</code> and Lab. See <code>LICENSE</code> in repo root.</p>
+  </div>
+
+  <p style="margin-top:1.5rem;font-size:.88rem;color:var(--muted)">License: MIT — copyright Chopsticks HQ / ilikemacos. API keys and host secrets are never committed; run your own backend with environment variables.</p>
+</div>
+</body>
+</html>

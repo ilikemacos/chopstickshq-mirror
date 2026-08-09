@@ -38,11 +38,11 @@ const TIERS = {
   medium: {
     label: "Medium",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
     ],
     context: 24000,
@@ -55,12 +55,12 @@ const TIERS = {
     label: "High",
     models: [
       "nvidia/nemotron-3-nano-30b-a3b:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     longModels: [
       "nvidia/nemotron-3-nano-30b-a3b:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
     ],
     context: 36000,
     refine: true,
@@ -71,13 +71,13 @@ const TIERS = {
   xhigh: {
     label: "Xhigh",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
@@ -90,12 +90,12 @@ const TIERS = {
   chopsticks: {
     label: "Chopsticks",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
     ],
     context: 36000,
@@ -108,13 +108,13 @@ const TIERS = {
   xhighplus: {
     label: "Xhigh+",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
@@ -127,13 +127,13 @@ const TIERS = {
   insane: {
     label: "Insane",
     models: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-3-ultra-550b-a55b:free",
     ],
     longModels: [
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
       "nvidia/nemotron-3-nano-30b-a3b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
     ],
@@ -149,11 +149,11 @@ const TIERS = {
     models: [
       "poolside/laguna-s-2.1:free",
       "cohere/north-mini-code:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
     ],
     longModels: [
       "poolside/laguna-s-2.1:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
     ],
     context: 64000,
     refine: false,
@@ -169,11 +169,11 @@ const TIERS = {
     models: [
       "cohere/north-mini-code:free",
       "poolside/laguna-s-2.1:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
     ],
     longModels: [
       "cohere/north-mini-code:free",
-      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
     ],
     context: 96000,
     refine: false,
@@ -470,7 +470,7 @@ const MODEL = MODELS[0];
 // Two models collaborate on each answer: Nemotron Ultra drafts, Gemma
 // reviews and rewrites. Both are zero-cost tiers, so the second pass adds
 // quality without adding spend. Set CHOPSTICKS_AI_REFINE=off to disable.
-const REFINE_MODEL = process.env.CHOPSTICKS_AI_REFINE_MODEL || "google/gemma-4-26b-a4b-it:free";
+const REFINE_MODEL = process.env.CHOPSTICKS_AI_REFINE_MODEL || "openai/gpt-oss-20b:free";
 const REFINE_ENABLED = (process.env.CHOPSTICKS_AI_REFINE || "on") !== "off";
 
 const REFINE_SYSTEM = [
@@ -1246,7 +1246,7 @@ function selfFacts(tier) {
   const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
-    `- You are cs.AI 2.2 (chopsticksAI), built and run by Chopsticks HQ.`,
+    `- You are cs.AI 2.2.8-Final (chopsticksAI), built and run by Chopsticks HQ.`,
     `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, ChopCode, and StickerCoder+ (coding specialists).`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     t.stickerCoder
@@ -1312,7 +1312,7 @@ function systemPrompt(grounding, mode, web, tier) {
         "Be precise and practical. Prefer working solutions over theory.\n\n",
       ].join("")
     : [
-        "You are cs.AI 2.2 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
+        "You are cs.AI 2.2.8-Final (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
         "made by Chopsticks HQ.\n\n",
         "Answer ANY question the user asks — general knowledge, science, history, coding, ",
         "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
@@ -1959,7 +1959,8 @@ async function handler(event) {
   // Web search runs before the draft. Coding modes skip it unless the user
   // forced `/search …` — search was starving the model deadline.
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
-  const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix);
+  const clientSearchOff = payload.disableSearch === true;
+  const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix) && (!clientSearchOff || hadPrefix);
   // Bound wall-clock search so Netlify's ~26s function limit still leaves
   // room for the model phase.
   const searchStarted = Date.now();
@@ -2147,7 +2148,7 @@ async function handler(event) {
       // rescue window on a single hung free model.
       const rescues = [
         "nvidia/nemotron-3-nano-30b-a3b:free",
-        "google/gemma-4-26b-a4b-it:free",
+        "openai/gpt-oss-20b:free",
       ];
       for (const rescue of rescues) {
         const left = deadline - Date.now() - 200;
@@ -2274,7 +2275,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "cs.AI 2.2",
+      model: "cs.AI 2.2.8-Final",
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),

@@ -383,7 +383,7 @@
         "repo",
         "code"
       ],
-      "answer": "rNitro is open source: https://github.com/ilikemacos/rNitro\n\nThe shell installers also contain the full app source inline — you can read every line before running them.\n\nFathom and ARENA are distributed as builds rather than source."
+      "answer": "Chopsticks HQ publishes open-source software under the MIT license.\n\n• cs.AI / chopsticksAI (macOS app, API, Lab): https://github.com/ilikemacos/ChopsticksAI\n• rNitro: https://github.com/ilikemacos/rNitro\n• Fathom: https://github.com/ilikemacos/Fathom\n• This website mirror: https://github.com/ilikemacos/chopstickshq-mirror\n\nOverview: https://chopstickshq.com/opensource/\n\nShell installers embed readable source. ARENA game builds are distributed as binaries only."
     },
     {
       "id": "hq.terms",

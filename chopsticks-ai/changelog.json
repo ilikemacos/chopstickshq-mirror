@@ -1,7 +1,19 @@
 {
   "product": "cs.AI",
-  "latest": "cs.AI 2.2.5",
+  "latest": "cs.AI 2.2.8-Final",
   "entries": [
+    {
+      "version": "cs.AI 2.2.8-Final",
+      "date": "2026-08-09",
+      "title": "Final",
+      "changes": [
+        "Toggle web search off in Settings or from the composer Search chip",
+        "Dynamic usage meters — context and allowance progress bars update live",
+        "Web search off badge, placeholder, and header update when search is disabled",
+        "`/search …` still forces a one-off Mozilla lookup when search is off",
+        "Lab matches macOS: Search toggle and centered progress bars in the composer"
+      ]
+    },
     {
       "version": "cs.AI 2.2.5",
       "date": "2026-08-08",
