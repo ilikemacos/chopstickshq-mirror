@@ -38,6 +38,18 @@ Primary hosting is Netlify. GitHub Pages mirrors:
 - https://ilikemacos.github.io/chopstickshq-mirror/
 - https://ilikemacos.github.io/chopstickshq-backup/
 
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md) (v2.1).
+
+Unacceptable behavior can be reported to **[chopstickshq@lam.ws](mailto:chopstickshq@lam.ws)**. All reports are reviewed promptly and confidentially.
+
+GitHub also serves the same document at [`.github/CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md) for Community Standards.
+
 ## Contributing
 
 Issues and PRs welcome on the relevant repo. For cs.AI bugs, use [ChopsticksAI issues](https://github.com/ilikemacos/ChopsticksAI/issues).
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for quick guidelines.
+
+[![Deploys by Netlify](https://netlify.com)](https://www.netlify.com)
