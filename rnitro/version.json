@@ -56,14 +56,14 @@
       "sh": "rNitro-v1.1.0-Intel.sh"
     },
     "experimental": {
-      "id": "v1.4.0-Final",
-      "label": "v1.4.0",
-      "short": "v1.4.0",
-      "sh": "rNitro-v1.4.0-Final.sh",
+      "id": "v1.5.0",
+      "label": "v1.5.0",
+      "short": "v1.5.0",
+      "sh": "rNitro-v1.5.0.sh",
       "source_sh": "install-rNitro-experimental.sh",
-      "pkg": "rNitro-v1.4.0-Final.pkg",
-      "dmg": "rNitro-v1.4.0-Final.dmg",
-      "zip": "rNitro-v1.4.0-Final.zip"
+      "pkg": "rNitro-v1.5.0.pkg",
+      "dmg": "rNitro-v1.5.0.dmg",
+      "zip": "rNitro-v1.5.0.zip"
     }
   },
   "hashes": {
@@ -73,8 +73,8 @@
     "intel_stable_sh": "",
     "stable_zip": "1e05f5d3cee6c94105c291c0fe1bad339277636becf439d2fab89bbbacd4d803",
     "beta_zip": "cc22f0a56429f3af9a3b6fed86518ce00654e240a4017224eea66752b8694bec",
-    "experimental_zip": "23bdf7aa69a0c8d88b6efe96d7bfc3ce3ee4c61d038a1c240da34851e495df9d",
-    "experimental_sh": "95c9fa347481fd33084a939779e68b5534a7ca1b09c33ed0392989517fb3a131",
+    "experimental_zip": "18eda11e109de3739c0f9defdea6cb9b843f23aa0ad5d59fc21fac7068c6eeac",
+    "experimental_sh": "1d284a5446527bb6d93f7eee9082d1915c0027d7fda646faad51ddd3b167b3c9",
     "experimental_pkg": "00ba9991354cf3a8c28580e043a2614ed99d152672bfa2e758e75d7c46d09e9e",
     "experimental_dmg": "e37d1a291c523a56287b239c9493aa0e874dc8955f3d4888d646b88cd340300f",
     "windows_zip": "a9ff832f67b248c1dd6f071d917846be02e895812c659969407b641558fd60a1"
@@ -110,5 +110,5 @@
   ],
   "intel_beta": "v1.2.3-Intel",
   "intel_stable": "v1.1.0-Intel",
-  "experimental": "v1.4.0-Final"
+  "experimental": "v1.5.0"
 }

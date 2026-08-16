@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- @sync:hero-head -->
-<title>rNitro — Free Open Source macOS Menu Bar Monitor (formerly rNitro)</title>
-<meta name="description" content="rNitro — free open-source macOS menu bar system monitor (v1.4.0). Live CPU, temperature, MacBook battery %, GPU, RAM, network. Free iStat/Stats alternative · btop-style CLI. Linux v0.1 pre-release. No account, no telemetry. Apple Silicon.">
+<title>MacBar — Free Open Source macOS Menu Bar Monitor (formerly rNitro)</title>
+<meta name="description" content="MacBar (formerly rNitro) — free open-source macOS menu bar system monitor (v1.5.0). Live CPU, temperature, MacBook battery %, GPU, RAM, network. Free iStat/Stats alternative. No account, no telemetry. Apple Silicon.">
 <meta name="keywords" content="rNitro, rnitro, getrnitro, chopsticks hq rnitro, free macOS menu bar monitor, free mac system monitor, open source mac monitor, macOS system monitor, mac menu bar CPU monitor, Apple Silicon system monitor, M1 M2 M3 M4 CPU monitor, MacBook battery monitor, menu bar CPU temperature, mac GPU monitor, live cpu usage menubar, mac temp sensor app free, battery percent menu bar, mac thermal monitor, free istat alternative, stats app alternative mac, btop menu bar, activity monitor menu bar, open source menu bar app, no telemetry mac app, no account system monitor, offline sensors mac, arm64 mac monitor, intel mac monitor, macos 11 monitor, big sur menu bar monitor">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="author" content="chopsticks">
@@ -14,10 +14,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="rNitro">
+<meta property="og:site_name" content="MacBar">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="rNitro — Free Open Source macOS Menu Bar System Monitor">
-<meta property="og:description" content="rNitro — free open-source macOS menu bar system monitor (v1.4.0). Live CPU, temperature, MacBook battery %, GPU, RAM, network. Free iStat/Stats alternative · btop-style CLI. Linux v0.1 pre-release. No account, no telemetry. Apple Silicon.">
+<meta property="og:title" content="MacBar — Free Open Source macOS Menu Bar System Monitor">
+<meta property="og:description" content="MacBar (formerly rNitro) — free open-source macOS menu bar system monitor (v1.5.0). Live CPU, temperature, MacBook battery %, GPU, RAM, network.">
 <meta property="og:url" content="https://chopstickshq.com/rnitro/">
 <meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
 <meta property="og:image:alt" content="rNitro menu bar system monitor on macOS">
@@ -1382,7 +1382,7 @@
 </div>
 
 <nav>
-  <div class="nav-logo">rNitro</div>
+  <div class="nav-logo">MacBar</div>
 <!-- @sync:nav-right -->
   <div class="nav-right">
     <a class="nav-link nav-link-home" href="https://chopstickshq.com/">← Back to homepage</a>
@@ -1390,7 +1390,7 @@
     <a class="nav-link" href="/rnitro/faq.html">FAQ</a>
     <a class="nav-link" href="/rnitro/privacy.html">Privacy</a>
     <a class="nav-link" href="/rnitro/terms.html">Terms</a>
-    <div class="nav-badge">v1.4.0 · Apple Silicon</div>
+    <div class="nav-badge">v1.5.0 · Apple Silicon</div>
   </div>
 <!-- @end:nav-right -->
   <label class="theme-select-wrap" title="Display mode" style="display:inline-flex;align-items:center;gap:6px;">
@@ -1412,12 +1412,12 @@
 <section class="hero">
 <!-- @sync:hero-copy -->
   <p class="hero-eyebrow">Menu bar · Apple Silicon &amp; Intel · macOS 14+</p>
-  <h1 class="hero-title"><span>rNitro</span></h1>
+  <h1 class="hero-title"><span>MacBar</span></h1>
   <p class="hero-credit">Made by <strong>chopsticks</strong></p>
-  <p class="hero-sub">Real-time CPU, temperature, memory, battery, and more — right in your Mac menu bar. Current: <strong>v1.4.0</strong> · requires <strong>macOS 14+</strong> (Sonoma or later). Free · no account · no telemetry.</p>
+  <p class="hero-sub">Real-time CPU, temperature, memory, battery, and more — right in your Mac menu bar. Formerly rNitro. Current: <strong>v1.5.0</strong> · requires <strong>macOS 14+</strong> (Sonoma or later). Free · no account · no telemetry.</p>
   <p style="margin:14px 0 0; text-align:center; display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
     <button type="button" class="btn btn-primary btn-recommended" style="font-size:16px; padding:12px 28px;" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
-    <button type="button" class="btn btn-secondary" style="font-size:16px; padding:12px 28px;" onclick="requestDownload('rNitro-v1.4.0-Final.zip')">⬇ App ZIP</button>
+    <button type="button" class="btn btn-secondary" style="font-size:16px; padding:12px 28px;" onclick="requestDownload('rNitro-v1.5.0.zip')">⬇ App ZIP</button>
   </p>
   <p style="margin:8px 0 0; font-size:13px; color:var(--muted); text-align:center;">Terminal install skips Gatekeeper · Apple Silicon · Terms apply once per session</p>
 <!-- @end:hero-copy -->
@@ -1534,16 +1534,16 @@
 <!-- @end:hero-beta -->
 <!-- @sync:hero-experimental -->
     <div style="width:100%; background:var(--card); border:1px solid var(--green); border-radius:12px; padding:20px; text-align:center;">
-      <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--green); margin-bottom:4px;">v1.4.0-Final</div>
-      <div style="font-size:16px; color:var(--muted); margin-bottom:0;">rNitro for macOS — menu bar monitor, Lab tools, AI chat, New style UI. Requires <strong style="color:var(--green);">macOS 14.0+</strong> (Sonoma / Sequoia / later) · universal when available.</div>
+      <div style="font-family:var(--mono); font-size:16px; font-weight:700; color:var(--green); margin-bottom:4px;">MacBar v1.5.0</div>
+      <div style="font-size:16px; color:var(--muted); margin-bottom:0;">Formerly rNitro — menu bar monitor, Lab tools, cs.AI chat. Requires <strong style="color:var(--green);">macOS 14.0+</strong> · universal when available.</div>
       <div class="dl-recommended" style="border-color:rgba(200,200,208,0.4);">
         <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.45); background:rgba(200,200,208,0.1);">Recommended · No Xcode</div>
         <div class="dl-recommended-title" style="color:var(--green);">Terminal install</div>
         <p class="dl-recommended-steps">Paste in Terminal. Installs to <strong>~/Applications</strong> and clears the quarantine flag, so <strong>Gatekeeper never blocks it</strong>.</p>
-        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.3); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[######--------------] 1/3 Download\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.4.0-Final.zip -o /tmp/rnitro.zip && printf "\n[############--------] 2/3 Unzip\n" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf "[####################] 3/3 Install\n" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf "✓ Done → ~/Applications/rNitro.app\n"</div>
+        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.3); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[######--------------] 1/3 Download\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.5.0.zip -o /tmp/macbar.zip && printf "\n[############--------] 2/3 Unzip\n" && rm -rf /tmp/macbar-app && mkdir -p /tmp/macbar-app && unzip -qo /tmp/macbar.zip -d /tmp/macbar-app && printf "[####################] 3/3 Install\n" && mkdir -p ~/Applications && rm -rf ~/Applications/MacBar.app ~/Applications/rNitro.app && ditto /tmp/macbar-app/MacBar.app ~/Applications/MacBar.app && xattr -cr ~/Applications/MacBar.app && printf "✓ Done → ~/Applications/MacBar.app\n"</div>
         <button type="button" class="btn btn-primary btn-recommended" onclick="copyCurlCmd('experimental_zip')">⎘ Copy Terminal install</button>
         <p class="dl-recommended-steps" style="margin:14px 0 6px;"><strong>App ZIP</strong> — fallback. Unzip → Applications → <strong>Gatekeeper will block it</strong>, so right-click <strong>Open</strong>, then Open again.</p>
-        <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.4.0-Final.zip')">⬇ App ZIP · 4.9 MB</button>
+        <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.5.0.zip')">⬇ App ZIP · 4.9 MB</button>
       </div>
       <style>
         @keyframes expReveal { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
@@ -1561,7 +1561,7 @@
         <div class="dl-recommended-badge" style="color:var(--green); border-color:rgba(200,200,208,0.35); background:rgba(200,200,208,0.06);">Optional · Xcode</div>
         <div class="dl-recommended-title" style="color:var(--green);">Compile from source</div>
         <p class="dl-recommended-steps">Needs <a href="https://developer.apple.com/xcode/resources/" style="color:var(--cyan);">Xcode CLT</a>. Prefer App ZIP above.</p>
-        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.25); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[########------------] 1/2 Download installer\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.4.0-Final.sh -o /tmp/rnitro-install.sh && printf "\n[####################] 2/2 Compile & install (Xcode CLT)\n" && bash /tmp/rnitro-install.sh</div>
+        <div style="background:var(--card2); border:1px solid rgba(200,200,208,0.25); border-radius:8px; padding:10px 12px; font-family:var(--mono); font-size:11px; color:var(--green); word-break:break-all; line-height:1.4; margin-bottom:8px;">printf "\n[########------------] 1/2 Download installer\n" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.5.0.sh -o /tmp/macbar-install.sh && printf "\n[####################] 2/2 Compile & install (Xcode CLT)\n" && bash /tmp/macbar-install.sh</div>
         <button type="button" class="btn btn-secondary" style="" onclick="copyCurlCmd('experimental')">⎘ Copy compile install</button>
       </div>
       <div id="hero-exp-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
@@ -1571,9 +1571,9 @@
         </button>
         <div class="dl-other-body prev-versions-body">
           <div class="dl-other-grid">
-            <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.4.0-Final.pkg')">PKG installer · 4.9 MB</button>
-            <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.4.0-Final.dmg')">DMG disk image · 5.4 MB</button>
-            <button type="button" class="btn btn-sh btn-sh-green" onclick="requestDownload('rNitro-v1.4.0-Final.sh')">Shell installer (.sh) · 706 KB</button>
+            <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.5.0.pkg')">PKG installer</button>
+            <button type="button" class="btn btn-secondary" onclick="requestDownload('rNitro-v1.5.0.dmg')">DMG disk image</button>
+            <button type="button" class="btn btn-sh btn-sh-green" onclick="requestDownload('rNitro-v1.5.0.sh')">Shell installer (.sh)</button>
             <button class="btn btn-secondary" onclick="copyCurlCmd('experimental')">⎘ Copy curl install</button>
           </div>
           <div class="dl-other-note"><strong>PKG</strong> needs admin password. <strong>DMG</strong> — drag to Applications. <strong>.sh</strong> compiles from readable source (~30s). PKG may trigger a macOS security prompt — use System Settings → Privacy &amp; Security → Open.</div>
@@ -3016,16 +3016,16 @@
       "curlInstall": "printf \"\\n[########------------] 1/2 Download installer\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.2.3-Intel.sh -o /tmp/rnitro-install.sh && printf \"\\n[####################] 2/2 Compile & install (Xcode CLT)\\n\" && bash /tmp/rnitro-install.sh"
     },
     "experimental": {
-      "id": "v1.4.0-Final",
-      "label": "v1.4.0",
-      "short": "v1.4.0",
-      "sh": "rNitro-v1.4.0-Final.sh",
-      "pkg": "rNitro-v1.4.0-Final.pkg",
-      "dmg": "rNitro-v1.4.0-Final.dmg",
-      "zip": "rNitro-v1.4.0-Final.zip",
-      "hash": "f4c4f84b166bc6187987590d068af6b5903efe0c2a6070d3ed230d9a8182f690",
-      "curlInstall": "printf \"\\n[########------------] 1/2 Download installer\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.4.0-Final.sh -o /tmp/rnitro-install.sh && printf \"\\n[####################] 2/2 Compile & install (Xcode CLT)\\n\" && bash /tmp/rnitro-install.sh",
-      "curlZipInstall": "printf \"\\n[######--------------] 1/3 Download\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.4.0-Final.zip -o /tmp/rnitro.zip && printf \"\\n[############--------] 2/3 Unzip\\n\" && rm -rf /tmp/rnitro-app && mkdir -p /tmp/rnitro-app && unzip -qo /tmp/rnitro.zip -d /tmp/rnitro-app && printf \"[####################] 3/3 Install\\n\" && mkdir -p ~/Applications && rm -rf ~/Applications/rNitro.app && ditto /tmp/rnitro-app/rNitro.app ~/Applications/rNitro.app && xattr -cr ~/Applications/rNitro.app && printf \"\u2713 Done \u2192 ~/Applications/rNitro.app\\n\""
+      "id": "v1.5.0",
+      "label": "v1.5.0",
+      "short": "v1.5.0",
+      "sh": "rNitro-v1.5.0.sh",
+      "pkg": "rNitro-v1.5.0.pkg",
+      "dmg": "rNitro-v1.5.0.dmg",
+      "zip": "rNitro-v1.5.0.zip",
+      "hash": "3dbdf4f66b979b1566b8d81e3fe46e6167cf0e2f1e6178a90b0147998414d855",
+      "curlInstall": "printf \"\\n[########------------] 1/2 Download installer\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.5.0.sh -o /tmp/macbar-install.sh && printf \"\\n[####################] 2/2 Compile & install (Xcode CLT)\\n\" && bash /tmp/macbar-install.sh",
+      "curlZipInstall": "printf \"\\n[######--------------] 1/3 Download\\n\" && curl --progress-bar -fL https://chopstickshq.com/rnitro/rNitro-v1.5.0.zip -o /tmp/macbar.zip && printf \"\\n[############--------] 2/3 Unzip\\n\" && rm -rf /tmp/macbar-app && mkdir -p /tmp/macbar-app && unzip -qo /tmp/macbar.zip -d /tmp/macbar-app && printf \"[####################] 3/3 Install\\n\" && mkdir -p ~/Applications && rm -rf ~/Applications/MacBar.app ~/Applications/rNitro.app && ditto /tmp/macbar-app/MacBar.app ~/Applications/MacBar.app && xattr -cr ~/Applications/MacBar.app && printf \"\u2713 Done \u2192 ~/Applications/MacBar.app\\n\""
     }
   };
   // @end:js-versions
