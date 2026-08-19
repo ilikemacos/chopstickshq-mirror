@@ -1,28 +1,6 @@
-/**
- * rNitro download counter — aggregate only, backed by Supabase.
- *
- *   GET  /api/dl-count           -> { total, kinds, copies, mode }
- *   POST /api/dl-count {kind}    -> increments that kind, returns new totals
- *        kind: "zip" | "pkg" | "dmg" | "sh" | "copy"
- *
- * Counts every install route offered on /rnitro: App ZIP, PKG, DMG, the shell
- * installer (both the no-Xcode and compile-from-source paths), and "copy the
- * terminal command".
- *
- * Credentials come from Netlify env (SUPABASE_URL / SUPABASE_ANON_KEY), not
- * from this bundle, and are only ever used server-side — the key is never
- * shipped to a visitor's browser.
- *
- * Writes go through the bump_download() RPC rather than a table UPDATE, so the
- * anon role needs no write grant: it can read the counts and increment by
- * exactly one, and nothing else.
- *
- * Privacy: five integers. No IPs, user agents, cookies, or per-visitor rows,
- * and the browser only ever talks to chopstickshq.com — the site's
- * "no telemetry" claim stays accurate.
- */
-const FILE_KINDS = ["zip", "pkg", "dmg", "sh"];   // real file downloads
-const ALL_KINDS = [...FILE_KINDS, "copy"];        // + terminal-command copies
+
+const FILE_KINDS = ["zip", "pkg", "dmg", "sh"];
+const ALL_KINDS = [...FILE_KINDS, "copy"];
 const TIMEOUT_MS = 5000;
 
 const PRODUCTS = {
@@ -78,9 +56,6 @@ function shape(rows, product) {
   }
   return {
     kinds,
-    // Copying the terminal one-liner IS an install — it curls the app down and
-    // installs it — so it counts toward the headline number alongside the
-    // direct file downloads.
     total: product.kinds.reduce((n, k) => n + (kinds[k] || 0), 0),
     copies: kinds.copy || 0,
   };
@@ -137,7 +112,6 @@ exports.handler = async (event) => {
     }
     return json({ ...shape(read.body, product), mode: "live" });
   } catch (err) {
-    // a counter must never break the page
     return json({ ...empty(), mode: "error", error: String(err.message || err) }, 200);
   }
 };

@@ -1,0 +1,13 @@
+{
+  "latest": "3.3.8",
+  "product": "csai",
+  "base": "https://chopstickshq.com/chopsticks-ai/cli",
+  "files": [
+    "csai",
+    "csai.py",
+    "csai_tui.py",
+    "csai_client.py",
+    "csai_update.py",
+    "csai.cmd"
+  ]
+}

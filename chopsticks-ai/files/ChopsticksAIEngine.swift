@@ -1,8 +1,4 @@
-// chopsticksAI retrieval engine.
-//
-// Scoring must stay identical to js/chopsticks-ai.js: same normalisation, same
-// word-boundary matching, same weights, same tie-break. chopsticks-ai/fixtures.json
-// is run against both and they must agree.
+
 
 enum ChopsticksAI {
     static let confidenceFloor = 4
@@ -43,8 +39,8 @@ enum ChopsticksAI {
     private static func scored(_ query: String) -> [Scored] {
         let text = normalise(query)
         guard !text.isEmpty else { return [] }
-        // Padding lets a plain containment check act as a word-boundary check,
-        // which is what stops "unzip" matching the "zip" term.
+        
+        
         let padded = " " + text + " "
 
         var results: [Scored] = []
@@ -71,7 +67,7 @@ enum ChopsticksAI {
 
         guard let top = ranked.first, top.score >= confidenceFloor else {
             let hints = ranked.prefix(3).map { $0.intent }
-            var answer = "I'm not sure about that one.\n\nI know about rNitro, Fathom Air, Fathom Pro, ARENA, installing, and privacy. Try rephrasing"
+            var answer = "I'm not sure about that one.\n\nI know about MacBar, Fathom Air, Fathom Pro, ARENA, installing, and privacy. Try rephrasing"
             if hints.isEmpty {
                 answer += "."
             } else {

@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upscaler — AI image upscaling in your browser · Chopsticks HQ</title>
+<meta name="description" content="Real-ESRGAN upscaling that runs on your own GPU via WebGPU. Nothing is uploaded — images never leave the tab. Free, no account, ×2 and ×4.">
+<meta name="keywords" content="AI upscaler, Real-ESRGAN, WebGPU, ONNX Runtime, image upscaling, super resolution, video upscaling, macOS, Chopsticks HQ">
+<link rel="canonical" href="https://chopstickshq.com/upscaler/">
+<meta property="og:title" content="Upscaler — AI upscaling on your own GPU">
+<meta property="og:description" content="Real-ESRGAN in the browser via WebGPU. Your images never leave the tab.">
+<meta property="og:url" content="https://chopstickshq.com/upscaler/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Upscaler — AI upscaling on your own GPU">
+<meta name="twitter:description" content="Real-ESRGAN in the browser via WebGPU. Nothing uploaded.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  
+  :root, html[data-theme="dark"] {
+    --bg: #0a0a0c; --bg2: #0e0e12; --card: #121216; --card2: #18181e;
+    --border: #26262e; --text: #f2f2f5; --muted: #8b8b9a; --soft: #e8e8ed;
+    --nav-bg: rgba(10,10,12,0.72); --nav-border: rgba(255,255,255,0.08);
+  }
+  html[data-theme="light"] {
+    --bg: #f4f4f6; --bg2: #ebebef; --card: #ffffff; --card2: #f0f0f4;
+    --border: #d8d8e0; --text: #121218; --muted: #5c5c6a; --soft: #14141a;
+    --nav-bg: rgba(244,244,246,0.85); --nav-border: rgba(0,0,0,0.08);
+  }
+  .theme-toggle {
+    display: inline-flex; align-items: center; height: 2.15rem; padding: 0 0.75rem;
+    border-radius: 999px; border: 1px solid var(--border); background: transparent;
+    color: var(--text); cursor: pointer; font-size: 0.75rem; font-weight: 600; font-family: inherit;
+  }
+  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+  .gallery {
+    display: grid; gap: 1rem; margin-top: 1.25rem;
+  }
+  @media (min-width: 720px) { .gallery { grid-template-columns: 1fr 1fr; } }
+  .gallery-card {
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--card); box-shadow: var(--shadow, 0 4px 24px -4px rgba(0,0,0,.45));
+  }
+  .gallery-card .cap {
+    padding: 0.65rem 0.9rem; font-size: 0.75rem; color: var(--muted);
+    font-family: var(--mono); border-top: 1px solid var(--border);
+  }
+
+  :root {
+    
+    --bg:       #0a0a0c;
+    --bg2:      #0e0e12;
+    --card:     #121216;
+    --card2:    #18181e;
+    --border:   #26262e;
+    --text:     #f2f2f5;
+    --muted:    #8b8b9a;
+    --soft:     #e8e8ed;
+    --mono:     'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --sans:     'Inter', system-ui, -apple-system, sans-serif;
+    --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius:   .75rem;
+    --glow:     0 0 60px -15px rgba(230,230,230,.18);
+    --shadow:   0 4px 24px -4px rgba(0,0,0,.45);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .nav-logo { font-family: var(--display); letter-spacing: -0.03em; font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+  code, pre, .mono { font-family: var(--mono); }
+
+  
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: auto, 64px 64px, 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
+  }
+  .app { position: relative; z-index: 1; }
+
+  
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 20px;
+    min-height: 4rem;
+    background: var(--nav-bg);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--nav-border);
+  }
+  .nav-logo {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .nav-logo span { color: var(--muted); font-weight: 400; }
+  .nav-mid {
+    display: none;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  @media (min-width: 720px) { .nav-mid { display: flex; } }
+  .nav-link {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 0.45rem 0.95rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    transition: .15s color, .15s background, .15s border-color;
+  }
+  .nav-link:hover {
+    color: var(--text);
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+  }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 2.5rem;
+    padding: 0 1.15rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: var(--sans);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: .15s background, .15s border-color, .12s transform, .15s opacity;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-sm { height: 2.25rem; padding: 0 0.95rem; font-size: 0.8125rem; }
+  .btn-primary {
+    background: var(--soft);
+    color: var(--bg);
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-outline {
+    border-color: rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--text);
+  }
+  .btn-outline:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.22);
+  }
+
+  .wrap {
+    width: min(72rem, calc(100% - 2rem));
+    margin-inline: auto;
+  }
+
+  
+  .hero {
+    padding: 7.5rem 0 3.5rem;
+  }
+  @media (min-width: 768px) {
+    .hero { padding: 8.5rem 0 5rem; }
+  }
+  .hero-grid {
+    display: grid;
+    gap: 2.75rem;
+    align-items: center;
+  }
+  @media (min-width: 960px) {
+    .hero-grid { grid-template-columns: 1.25fr 0.95fr; gap: 3.5rem; }
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 1.25rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.9);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pill-dot {
+    width: 0.4rem; height: 0.4rem;
+    border-radius: 999px;
+    background: #c8c8d0;
+    box-shadow: 0 0 0 4px rgba(200,200,208,0.15);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.6rem, 6vw, 3.75rem);
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+    margin-bottom: 1.15rem;
+  }
+  .hero h1 .dim {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .hero-lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--muted);
+    max-width: 34rem;
+    margin-bottom: 1.75rem;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.35rem;
+  }
+  .hero-meta {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .hero-meta code {
+    color: var(--text);
+    background: rgba(255,255,255,0.05);
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.35rem;
+    border: 1px solid var(--border);
+  }
+
+  
+  .preview {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(24,24,30,0.98), rgba(14,14,18,0.98));
+    box-shadow: var(--shadow), var(--glow);
+    overflow: hidden;
+  }
+  .preview-menubar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    padding: 0.55rem 0.9rem;
+    background: rgba(0,0,0,0.35);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.75);
+  }
+  .mb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.3rem;
+  }
+  .mb-item.active {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+  }
+  .mb-batt {
+    width: 1.15rem; height: 0.55rem;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    position: relative;
+    opacity: 0.9;
+  }
+  .mb-batt::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: 50%;
+    transform: translateY(-50%);
+    width: 2px; height: 3px;
+    background: currentColor;
+    border-radius: 0 1px 1px 0;
+  }
+  .mb-batt i {
+    display: block;
+    height: 100%;
+    width: 78%;
+    background: currentColor;
+    border-radius: 0.5px;
+  }
+  .preview-body { padding: 1.15rem 1.15rem 1.25rem; }
+  .preview-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .preview-pct {
+    font-family: var(--display);
+    font-size: 2.35rem;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .preview-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+  }
+  .preview-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.6rem;
+  }
+  .preview-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.48rem 0;
+    font-size: 0.875rem;
+  }
+  .preview-row span:first-child { color: var(--muted); }
+  .preview-row span:last-child { font-weight: 500; }
+
+  
+  .sec { padding: 3rem 0; }
+  .sec-tight { padding-top: 1rem; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.65rem;
+  }
+  .sec h2 {
+    font-size: clamp(1.55rem, 3vw, 2.05rem);
+    margin-bottom: 0.75rem;
+  }
+  .sec-lead {
+    color: var(--muted);
+    max-width: 40rem;
+    margin-bottom: 1.75rem;
+    line-height: 1.65;
+  }
+
+  .grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) {
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
+  .card {
+    padding: 1.3rem 1.35rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.92);
+    box-shadow: var(--shadow);
+    transition: .15s border-color, .15s transform;
+  }
+  .card:hover {
+    border-color: rgba(255,255,255,0.16);
+    transform: translateY(-1px);
+  }
+  .card h3 {
+    font-size: 1.02rem;
+    margin-bottom: 0.45rem;
+  }
+  .card p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .card-ico {
+    width: 2rem; height: 2rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    display: grid;
+    place-items: center;
+    margin-bottom: 0.85rem;
+    font-size: 0.95rem;
+    color: var(--soft);
+  }
+
+  
+  .dl { display: grid; gap: 1rem; }
+  @media (min-width: 800px) { .dl { grid-template-columns: 1.15fr 0.85fr; } }
+  .dl-card {
+    padding: 1.4rem 1.45rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(18,18,22,0.92);
+    box-shadow: var(--shadow);
+  }
+  .dl-card h3 { font-size: 1.05rem; margin-bottom: 0.4rem; }
+  .dl-card p {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    line-height: 1.55;
+  }
+  .curl {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border);
+    border-radius: 0.65rem;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    color: var(--text);
+    margin-bottom: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    cursor: pointer;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .curl:hover { border-color: rgba(255,255,255,0.22); }
+  .dl-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+  .note {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.85rem;
+    line-height: 1.5;
+  }
+  .note a { text-decoration: underline; text-underline-offset: 2px; }
+  .note code { color: var(--text); font-size: 0.75rem; }
+
+  
+  .steps {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 700px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+  .step {
+    padding: 1.1rem 1.15rem;
+    border-radius: var(--radius);
+    border: 1px dashed rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.02);
+  }
+  .step n {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+  }
+  .step strong {
+    display: block;
+    font-family: var(--display);
+    font-size: 0.95rem;
+    margin-bottom: 0.3rem;
+  }
+  .step p { font-size: 0.85rem; color: var(--muted); }
+
+  
+  .foot {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 2rem 0 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .foot a:hover { color: var(--text); }
+  .foot-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .disclaimer {
+    margin: 0 0 1.25rem; padding: 0.9rem 1.1rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: rgba(18,18,22,0.75); color: var(--muted); font-size: 0.8rem; line-height: 1.55;
+  }
+  .disclaimer strong { color: var(--text); font-weight: 600; }
+  .disclaimer a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    opacity: 0;
+    transition: .25s;
+    z-index: 50;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+  .compare th, .compare td {
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .compare td:first-child { color: var(--muted); width: 36%; }
+  .compare .yes { color: #9effc0; }
+  .compare .no { color: var(--muted); }
+  .compare .name { color: var(--text); font-weight: 600; }
+
+  /* --- upscaler tool ------------------------------------------------------ */
+  .up-panel { border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 1.25rem; }
+  .up-drop {
+    display: grid; place-items: center; min-height: 140px; padding: 1.25rem; text-align: center;
+    border: 2px dashed var(--border); border-radius: 12px; color: var(--muted); cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .up-drop:hover, .up-drop.over { border-color: var(--accent, #ff6f2c); color: var(--text); }
+  .up-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+  .up-controls fieldset { border: 1px solid var(--border); border-radius: 10px; padding: .5rem .8rem; margin: 0; }
+  .up-controls legend { font-size: .7rem; color: var(--muted); padding: 0 .35rem; text-transform: uppercase; letter-spacing: .06em; }
+  .up-controls label { margin-right: .8rem; font-size: .85rem; white-space: nowrap; }
+  .up-controls select { background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .3rem .4rem; font: inherit; font-size: .85rem; }
+  .up-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+  .up-bar { height: 6px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 1rem; }
+  .up-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff6f2c, #ff9d5c); transition: width .12s linear; }
+  .up-status { margin: .6rem 0 0; font-size: .82rem; color: var(--muted); font-family: var(--mono); }
+  .up-views { display: grid; gap: 1rem; margin-top: 1.25rem; }
+  @media (min-width: 760px) { .up-views { grid-template-columns: 1fr 1fr; } }
+  .up-view { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg2); }
+  .up-view .cap { padding: .55rem .85rem; font-size: .72rem; color: var(--muted); font-family: var(--mono); border-bottom: 1px solid var(--border); }
+  .up-view canvas { display: block; width: 100%; height: auto; background: #000; }
+  .up-warn { border: 1px solid #6b3620; background: rgba(107,54,32,.22); border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; font-size: .88rem; }
+  .up-warn[hidden] { display: none; }
+  .up-warn strong { display: block; margin-bottom: .2rem; }
+  .up-warn span { color: var(--muted); font-size: .82rem; }
+</style>
+</head>
+
+<body>
+  <div class="app">
+    <nav>
+      <a class="nav-logo" href="/">Chopsticks HQ <span>&middot; Upscaler</span></a>
+      <div class="nav-mid">
+        <a class="nav-link" href="/">HQ</a>
+        <a class="nav-link" href="/macbar/">MacBar</a>
+        <a class="nav-link" href="/fathom/">Fathom</a>
+        <a class="nav-link" href="/chopsticks-ai/">chopsticksAI</a>
+        <a class="nav-link" href="#try">Try it</a>
+        <a class="nav-link" href="#how">How</a>
+        <a class="nav-link" href="#video">Video</a>
+        <a class="nav-link" href="#install">Install</a>
+        <a class="nav-link" href="#specs">Specs</a>
+      </div>
+      <div class="nav-right">
+        <a class="btn btn-primary btn-sm" href="#install">Install</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div>
+            <div class="kicker">WebGPU &middot; runs on your machine</div>
+            <h1>Upscaler <span class="dim">&mdash; sharper,<br>on your own GPU</span></h1>
+            <p class="hero-lead">
+              Real-ESRGAN super-resolution running entirely in the browser through WebGPU.
+              Your image is never uploaded, never queued, and never sees a server &mdash;
+              the model runs on your GPU, in your tab.
+            </p>
+
+            <pre class="curl" id="install-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/upscaler/install.sh | bash</pre>
+
+            <p class="hero-meta">
+              <span class="pill"><span class="pill-dot"></span>v0.1.0 &middot; Apple silicon</span>
+              &nbsp;&middot;&nbsp; no sudo &nbsp;&middot;&nbsp; no Xcode
+            </p>
+
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#try">Try it in the browser</a>
+              <a class="btn btn-outline" href="#install">Install for macOS</a>
+            </div>
+          </div>
+
+          <div>
+            <div class="preview">
+              <div class="preview-head">
+                <span class="preview-badge">webgpu</span>
+                <span class="preview-sub">Upscaler &mdash; local session</span>
+              </div>
+              <div class="preview-body">
+<pre class="mono" style="margin:0;font-size:.72rem;line-height:1.8;white-space:pre;overflow-x:auto">&gt; adapter      apple metal-3
+&gt; model        2x-ESRGAN.onnx
+&gt; backend      webgpu (local)
+&gt; upload       none &mdash; stays in tab
+&gt; in           300 &times; 180
+&gt; out          600 &times; 360
+&gt; status       done &block;</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="sec" id="try">
+      <div class="wrap">
+        <div class="kicker">Live</div>
+        <h2>Upscale something</h2>
+        <p class="sec-lead">
+          The first run downloads the model (~68&nbsp;MB) and your browser caches it.
+          Everything after that is local compute.
+        </p>
+
+        <div class="up-warn" id="up-unsupported" hidden>
+          <strong>WebGPU isn't available in this browser.</strong>
+          <span>Chrome or Edge 113+, or Safari 18+. Firefox needs <span class="mono">dom.webgpu.enabled</span>.</span>
+        </div>
+
+        <div class="up-panel">
+          <label class="up-drop" id="up-drop">
+            <input type="file" id="up-file" accept="image/*" hidden>
+            <span id="up-label">Drop an image here &mdash; or click to choose</span>
+          </label>
+
+          <div class="up-controls">
+            <fieldset>
+              <legend>Scale</legend>
+              <label><input type="radio" name="up-scale" value="2" checked> &times;2</label>
+              <label><input type="radio" name="up-scale" value="4"> &times;4</label>
+            </fieldset>
+            <fieldset>
+              <legend>Download as</legend>
+              <label><input type="radio" name="up-fmt" value="png" checked> PNG</label>
+              <label><input type="radio" name="up-fmt" value="jpeg"> JPG</label>
+              <label><input type="radio" name="up-fmt" value="webp"> WebP</label>
+            </fieldset>
+            <fieldset>
+              <legend>Tile</legend>
+              <select id="up-tile">
+                <option value="128">128 px</option>
+                <option value="192" selected>192 px</option>
+                <option value="256">256 px</option>
+              </select>
+            </fieldset>
+          </div>
+
+          <div class="up-actions">
+            <button class="btn btn-primary" id="up-run" disabled>Upscale</button>
+            <a class="btn btn-outline" id="up-dl" hidden download>Download result</a>
+          </div>
+
+          <div class="up-bar"><div class="up-fill" id="up-fill"></div></div>
+          <p class="up-status" id="up-status">Pick an image to start.</p>
+
+          <div class="up-views">
+            <div class="up-view"><div class="cap">source</div><canvas id="up-src"></canvas></div>
+            <div class="up-view"><div class="cap">result</div><canvas id="up-out"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="how">
+      <div class="wrap">
+        <div class="kicker">How it works</div>
+        <h2>The model runs on your hardware</h2>
+        <p class="sec-lead">
+          Most &ldquo;AI upscalers&rdquo; upload your photo to a GPU somewhere and bill per job.
+          This one ships the network to you instead.
+        </p>
+        <div class="grid grid-2">
+          <article class="card">
+            <div class="card-ico">&#9679;</div>
+            <h3>Nothing leaves the tab</h3>
+            <p>There is no upload endpoint. The image is decoded into a canvas and fed to the
+            model in page memory &mdash; no server ever receives a pixel.</p>
+          </article>
+          <article class="card">
+            <div class="card-ico">&#9889;</div>
+            <h3>WebGPU, not WASM</h3>
+            <p>ONNX Runtime Web executes the graph on your GPU. WebGPU needs static shapes, so
+            each tile is padded to one fixed size the session is compiled for.</p>
+          </article>
+          <article class="card">
+            <div class="card-ico">&#9635;</div>
+            <h3>Overlapped tiling</h3>
+            <p>Large images are cut into tiles with a 16&nbsp;px overlap so the network sees real
+            context past every edge, then the valid core of each tile is stitched back.</p>
+          </article>
+          <article class="card">
+            <div class="card-ico">&#9670;</div>
+            <h3>Real-ESRGAN</h3>
+            <p>The same ESRGAN weights the desktop build uses, so browser output is identical to
+            the CLI &mdash; verified pixel-for-pixel, not assumed.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec sec-tight" id="video">
+      <div class="wrap">
+        <div class="kicker">Video</div>
+        <h2>Video runs on the desktop build</h2>
+        <p class="sec-lead">
+          Browser upscaling is images only for now &mdash; a single 1080p frame takes long enough
+          that a video would run for days in a tab. The macOS build uses CoreML and is roughly
+          7&times; faster, with FFmpeg handling decode, audio and container.
+        </p>
+        <div class="steps">
+          <div class="step">
+            <div class="name">Resolution targets</div>
+            <p>720p, 1080p, 1440p and 4K. Height is exact; width follows the source aspect ratio.
+            8K is coming soon.</p>
+          </div>
+          <div class="step">
+            <div class="name">Audio and timing preserved</div>
+            <p>The original audio track is stream-copied and the frame rate is carried through,
+            so nothing drifts. MP4 or MOV out, regardless of what went in.</p>
+          </div>
+          <div class="step">
+            <div class="name">Hardware encode</div>
+            <p>Encoding goes through VideoToolbox on Apple silicon rather than a software encoder.</p>
+          </div>
+        </div>
+        <p class="note">
+          <strong>1080p &rarr; 4K is a clean &times;2.</strong> That means the whole jump is done by the
+          network, with no plain resize afterwards. Targets that aren't an exact &times;2 or &times;4
+          finish with a lanczos pass.
+        </p>
+      </div>
+    </section>
+
+    <section class="sec sec-tight" id="install">
+      <div class="wrap">
+        <div class="kicker">Install</div>
+        <h2>One line, no password</h2>
+        <pre class="curl" id="install-cmd-2" title="Click to copy">curl -fsSL https://chopstickshq.com/upscaler/install.sh | bash</pre>
+        <div class="steps">
+          <div class="step">
+            <div class="name">1 &middot; Checks your Mac</div>
+            <p>Apple silicon on macOS 13 or later, and roughly 1.5&nbsp;GB free. Intel Macs are
+            refused outright rather than installed and left broken &mdash; the model runs through
+            CoreML. A shell running under Rosetta is caught too.</p>
+          </div>
+          <div class="step">
+            <div class="name">2 &middot; Verifies the download</div>
+            <p>SHA-256 checked before anything is unpacked. A mismatch aborts with nothing
+            installed.</p>
+          </div>
+          <div class="step">
+            <div class="name">3 &middot; Builds a private environment</div>
+            <p>Everything lands in <span class="mono">~/.local/share/chopsticks-upscaler</span>.
+            If your Mac has no usable Python &mdash; the Xcode stub doesn't count &mdash; the script
+            fetches a checksum-verified one just for this app, without touching your PATH.</p>
+          </div>
+          <div class="step">
+            <div class="name">4 &middot; Adds one command</div>
+            <p><span class="mono">upscaler</span> in <span class="mono">~/.local/bin</span>, plus
+            <span class="mono">Upscaler.app</span> in <span class="mono">~/Applications</span> &mdash; a native
+            SwiftUI app with drag-and-drop, live progress and a video preview. No launch agents, no
+            login items, nothing running in the background.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:1.25rem">
+          <article class="card">
+            <h3>Using it</h3>
+            <table class="compare">
+              <tr><td class="name">upscaler</td><td>web UI on 127.0.0.1:7860</td></tr>
+              <tr><td class="name">upscaler image</td><td>&minus;i in.png &minus;o out.png &minus;s 4</td></tr>
+              <tr><td class="name">upscaler video</td><td>&minus;i in.mp4 &minus;o out.mp4 &minus;r 1080p</td></tr>
+              <tr><td class="name">upscaler uninstall</td><td>removes everything</td></tr>
+            </table>
+          </article>
+          <article class="card">
+            <h3>What it touches</h3>
+            <table class="compare">
+              <tr><td class="name">App</td><td>~/Applications/Upscaler.app</td></tr>
+              <tr><td class="name">Engine</td><td>~/.local/share/chopsticks-upscaler</td></tr>
+              <tr><td class="name">Command</td><td>~/.local/bin/upscaler</td></tr>
+              <tr><td class="name">Weights</td><td>~/.cache/video-upscaler</td></tr>
+              <tr><td class="name">sudo</td><td class="no">never asked</td></tr>
+              <tr><td class="name">Telemetry</td><td class="no">none</td></tr>
+            </table>
+          </article>
+        </div>
+
+        <p class="note">
+          <strong>FFmpeg is only needed for video.</strong> The installer checks for it and tells you
+          if it's missing; image upscaling works either way. Uninstalling is
+          <span class="mono">upscaler uninstall</span> &mdash; it removes the app, the command and the
+          cached weights.
+        </p>
+      </div>
+    </section>
+
+    <section class="sec" id="specs">
+      <div class="wrap">
+        <div class="kicker">Specs</div>
+        <h2>What you need</h2>
+        <div class="grid grid-2">
+          <article class="card">
+            <h3>Browser build</h3>
+            <table class="compare">
+              <tr><td class="name">Browser</td><td>Chrome / Edge 113+, Safari 18+</td></tr>
+              <tr><td class="name">GPU</td><td>Any WebGPU adapter</td></tr>
+              <tr><td class="name">Model download</td><td>~68 MB, cached after first run</td></tr>
+              <tr><td class="name">Input</td><td>PNG, JPG, WebP, GIF (first frame)</td></tr>
+              <tr><td class="name">Output</td><td>PNG, JPG, WebP at &times;2 or &times;4</td></tr>
+              <tr><td class="name">Account</td><td class="no">not required</td></tr>
+            </table>
+          </article>
+          <article class="card">
+            <h3>macOS build</h3>
+            <table class="compare">
+              <tr><td class="name">OS</td><td>macOS 13+, Apple silicon only</td></tr>
+              <tr><td class="name">Backend</td><td>ONNX Runtime + CoreML</td></tr>
+              <tr><td class="name">Video</td><td>FFmpeg decode / encode</td></tr>
+              <tr><td class="name">Interface</td><td>SwiftUI app, web UI, two CLIs</td></tr>
+              <tr><td class="name">Speed</td><td>~7&times; the browser build</td></tr>
+              <tr><td class="name">Install</td><td>one line, no sudo</td></tr>
+            </table>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec sec-tight" id="changelog">
+      <div class="wrap">
+        <div class="kicker">Changelog</div>
+        <h2>Releases</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="name">v0.1.0 &mdash; browser preview</div>
+            <p>WebGPU image upscaling at &times;2 and &times;4 with overlapped tiling, PNG/JPG/WebP
+            download, and output verified identical to the CoreML desktop build. The macOS install adds
+            a native SwiftUI app, video upscaling with 720p&ndash;4K targets, and the web UI.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="wrap foot">
+      <div>&copy; ChopsticksHQ 2026</div>
+      <div class="foot-links">
+        <a href="/">HQ</a>
+        <a href="/about/">About</a>
+        <a href="/disclaimer/">Disclaimer</a>
+        <a href="/macbar/">MacBar</a>
+        <a href="/fathom/">Fathom</a>
+        <a href="/cs0s/">cs-OS</a>
+        <a href="/upscaler/install.sh">install script</a>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast">Copied</div>
+  <script type="module" src="/upscaler/app.js"></script>
+  <script src="/js/clipboard.js"></script>
+  <script>
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

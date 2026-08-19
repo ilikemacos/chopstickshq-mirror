@@ -1,4 +1,4 @@
-/* Runs fixtures.json against the JS engine. Node, no dependencies. */
+
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +7,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const kbSrc = readFileSync(join(here, '../chopstickshq-site/js/chopsticks-ai-kb.js'), 'utf8');
 const engineSrc = readFileSync(join(here, '../chopstickshq-site/js/chopsticks-ai.js'), 'utf8');
 
-// Minimal DOM stubs so the widget half of the file is inert under Node.
 const noop = () => {};
 const fakeNode = new Proxy({}, {
   get: (_, k) => (k === 'style' || k === 'classList' || k === 'dataset'

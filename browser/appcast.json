@@ -1,0 +1,9 @@
+{
+  "version": "0.3.0",
+  "build": "1",
+  "min_macos": "13.0",
+  "url": "https://chopstickshq.com/browser/install.sh",
+  "method": "installer",
+  "sha256": "",
+  "notes": "Chromium cs.browser with auto-update, vertical tabs, workspaces, Glance, and cs.ai."
+}

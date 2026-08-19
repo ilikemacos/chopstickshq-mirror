@@ -7,17 +7,22 @@
 <script>
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
-<meta name="description" content="Chopsticks HQ — an independent software lab. Free local-first tools: cs.AI, rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
-<meta name="keywords" content="Chopsticks HQ, cs.AI, chopsticksAI, ChopCode, free AI assistant, Mozilla search, macOS AI app, no API key, rNitro, free macOS menu bar monitor, Fathom battery, Fathom Pro, Doomlike-FPS, open source mac tools, no telemetry">
-<link rel="canonical" href="https://www.chopstickshq.com/">
+<meta name="description" content="Chopsticks HQ — an independent software lab. Free local-first tools: cs.AI, MacBar, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta name="keywords" content="Chopsticks HQ, chopstickshq, chopstickshq.com, cs.AI, chopsticksAI, MacBar, macbar, MacBar, free macOS menu bar monitor, iStat alternative free, Fathom Air, Fathom Pro, Mac battery drain, Doomlike-FPS, open source mac tools, no telemetry, independent software lab, free mac software download">
+<link rel="canonical" href="https://chopstickshq.com/">
+<link rel="sitemap" type="application/xml" title="Sitemap" href="https://chopstickshq.com/sitemap.xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Chopsticks HQ — An Independent Software Lab">
-<meta property="og:description" content="An independent software lab. Free local-first tools — cs.AI, rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
-<meta property="og:url" content="https://www.chopstickshq.com/">
-<meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
+<meta property="og:description" content="An independent software lab. Free local-first tools — cs.AI, MacBar, Fathom Air, Fathom Pro, Doomlike-FPS™. No accounts, no telemetry.">
+<meta property="og:url" content="https://chopstickshq.com/">
+<meta property="og:image" content="https://chopstickshq.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Chopsticks HQ — independent software lab. Small lab. Sharp tools.">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://chopstickshq.com/og.png">
 <meta name="twitter:title" content="Chopsticks HQ — An Independent Software Lab">
-<meta name="twitter:description" content="An independent software lab. Free local-first tools — cs.AI, rNitro, Fathom, Fathom Pro, and Doomlike-FPS™.">
+<meta name="twitter:description" content="An independent software lab. Free local-first tools — cs.AI, MacBar, Fathom, Fathom Pro, and Doomlike-FPS™.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -44,7 +49,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root, html[data-theme="dark"] {
-    /* 101mogged-inspired tokens (aligned with rNitro / Fathom) */
+    
     --bg:       #0a0a0c;
     --bg2:      #0e0e12;
     --card:     #121216;
@@ -57,12 +62,33 @@
     --nav-border: rgba(255,255,255,0.08);
     --grid-line: rgba(255,255,255,0.02);
     --glow-spot: rgba(255,255,255,.06);
+    --surface: rgba(18,18,22,0.92);
+    --surface-muted: rgba(18,18,22,0.75);
+    --pill-bg: rgba(18,18,22,0.9);
+    --toast-bg: rgba(18,18,22,0.97);
+    --surface-hover: rgba(255,255,255,0.05);
+    --surface-subtle: rgba(255,255,255,0.03);
+    --border-strong: rgba(255,255,255,0.12);
+    --border-hover: rgba(255,255,255,0.18);
+    --border-faint: rgba(255,255,255,0.06);
+    --border-focus: rgba(232,232,237,0.35);
+    --accent-green: #9effc0;
+    --code-bg: #0b0b10;
+    --visual-bg: linear-gradient(180deg, rgba(24,24,30,.6), rgba(10,10,12,.9));
+    --visual-spot: rgba(255,255,255,.04);
+    --menubar-bg: rgba(14,14,18,0.95);
+    --menubar-bar-bg: rgba(0,0,0,0.28);
+    --curl-bg: rgba(0,0,0,.25);
+    --brand-stroke-1: #e8e8ed;
+    --brand-stroke-2: #8b8b9a;
+    --brand-stroke-3: rgba(255,255,255,0.2);
     --mono:     'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
     --sans:     'Inter', 'Varela Round', system-ui, -apple-system, sans-serif;
     --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
     --radius:   .75rem;
     --glow:     0 0 60px -15px rgba(230,230,230,.18);
     --shadow:   0 4px 24px -4px rgba(0,0,0,.45);
+    color-scheme: dark;
   }
   html[data-theme="light"] {
     --bg:       #f4f4f6;
@@ -73,12 +99,33 @@
     --soft:     #14141a;
     --text:     #121218;
     --muted:    #5c5c6a;
-    --nav-bg:   rgba(244,244,246,0.85);
+    --nav-bg:   rgba(244,244,246,0.92);
     --nav-border: rgba(0,0,0,0.08);
     --grid-line: rgba(0,0,0,0.04);
     --glow-spot: rgba(0,0,0,.04);
+    --surface: rgba(255,255,255,0.96);
+    --surface-muted: rgba(255,255,255,0.88);
+    --pill-bg: rgba(255,255,255,0.95);
+    --toast-bg: rgba(255,255,255,0.98);
+    --surface-hover: rgba(0,0,0,0.04);
+    --surface-subtle: rgba(0,0,0,0.03);
+    --border-strong: rgba(0,0,0,0.12);
+    --border-hover: rgba(0,0,0,0.16);
+    --border-faint: rgba(0,0,0,0.06);
+    --border-focus: rgba(18,18,24,0.28);
+    --accent-green: #15803d;
+    --code-bg: #eef0f4;
+    --visual-bg: linear-gradient(180deg, #f0f0f4, #e8e8ee);
+    --visual-spot: rgba(0,0,0,.04);
+    --menubar-bg: #ffffff;
+    --menubar-bar-bg: rgba(0,0,0,0.05);
+    --curl-bg: rgba(0,0,0,.04);
+    --brand-stroke-1: #121218;
+    --brand-stroke-2: #5c5c6a;
+    --brand-stroke-3: rgba(0,0,0,0.15);
     --glow:     0 0 50px -20px rgba(0,0,0,.08);
     --shadow:   0 4px 20px -6px rgba(0,0,0,.12);
+    color-scheme: light;
   }
 
   html { scroll-behavior: smooth; }
@@ -100,7 +147,7 @@
   a { color: inherit; text-decoration: none; }
   code, .mono { font-family: var(--mono); }
 
-  /* Soft radial glow + grid */
+  
   body::before {
     content: '';
     position: fixed;
@@ -121,7 +168,7 @@
     margin-inline: auto;
   }
 
-  /* Fixed glass nav */
+  
   .nav-bar {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -138,7 +185,16 @@
     background: transparent; color: var(--text); cursor: pointer;
     font-size: 0.75rem; font-weight: 600; font-family: inherit;
   }
-  .theme-toggle:hover { background: rgba(127,127,127,0.12); }
+  .theme-toggle:hover { background: var(--surface-hover); }
+  .theme-toggle:focus-visible,
+  .btn:focus-visible,
+  .nav-link:focus-visible,
+  .project-tab:focus-visible,
+  .nav-more summary:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
   .install-steps {
     display: grid; gap: 1rem;
     grid-template-columns: 1fr;
@@ -164,10 +220,26 @@
     display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.15rem;
   }
   .latest-releases {
-    font-family: var(--mono); font-size: .75rem; color: var(--muted);
-    margin-top: .65rem; letter-spacing: .02em;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .4rem;
+    margin: .75rem auto 1.1rem;
   }
-  .latest-releases strong { color: var(--text); font-weight: 500; }
+  .ver-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .02em;
+    color: var(--text);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .28rem .65rem;
+  }
+  .ver-pill b { font-weight: 600; color: var(--muted); }
   nav {
     min-height: 4rem;
     display: flex;
@@ -183,8 +255,8 @@
   .brand-mark {
     width: 2rem; height: 2rem;
     border-radius: .55rem;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-subtle);
     display: grid;
     place-items: center;
   }
@@ -208,7 +280,57 @@
     align-items: center;
     gap: .25rem;
   }
-  @media (min-width: 720px) { .nav-links { display: flex; } }
+  .nav-more {
+    position: relative;
+  }
+  .nav-more summary {
+    list-style: none;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding: .45rem .95rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .nav-more summary::-webkit-details-marker { display: none; }
+  .nav-more summary:hover { color: var(--text); background: var(--surface-hover); }
+  .nav-more-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + .4rem);
+    min-width: 11.5rem;
+    padding: .4rem;
+    border-radius: .75rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    z-index: 120;
+  }
+  .nav-more-panel a {
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    padding: .5rem .7rem;
+    border-radius: .5rem;
+  }
+  .nav-more-panel a:hover { color: var(--text); background: var(--surface-hover); }
+  @media (min-width: 720px) {
+    .nav-links { display: flex; }
+  }
+  @media (min-width: 1100px) {
+    .nav-more { display: none; }
+    .nav-more .nav-more-desktop { display: none; }
+  }
+  @media (max-width: 1099px) {
+    .nav-links .nav-link-secondary { display: none; }
+  }
+  @media (max-width: 719px) {
+    .nav-right .nav-hide-sm { display: none; }
+  }
   .nav-link {
     font-size: .8125rem;
     font-weight: 500;
@@ -220,8 +342,8 @@
   }
   .nav-link:hover {
     color: var(--text);
-    border-color: rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.05);
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
   }
   .nav-right { display: flex; align-items: center; gap: 8px; }
 
@@ -247,23 +369,43 @@
     color: var(--bg);
   }
   .btn-primary:hover { opacity: .92; }
+  .hero-actions .btn-primary {
+    height: 3rem;
+    padding: 0 1.55rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .btn-quiet {
+    border: 1px solid var(--border);
+    background: var(--surface-subtle);
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(in srgb, var(--text) 35%, transparent);
+  }
+  .btn-quiet:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
+    text-decoration-color: var(--text);
+  }
   .btn-outline {
-    border-color: rgba(255,255,255,0.12);
+    border-color: var(--border-strong);
     background: transparent;
     color: var(--text);
   }
   .btn-outline:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.22);
+    background: var(--surface-hover);
+    border-color: var(--border-hover);
   }
 
-  /* Hero */
+  
   .hero {
-    padding: 7.5rem 0 3.5rem;
+    padding: 6.25rem 0 2.25rem;
     text-align: center;
   }
   @media (min-width: 768px) {
-    .hero { padding: 9rem 0 5rem; }
+    .hero { padding: 7.25rem 0 3rem; }
   }
   .pill {
     display: inline-flex;
@@ -273,7 +415,7 @@
     padding: .4rem .85rem;
     border-radius: 999px;
     border: 1px solid var(--border);
-    background: rgba(18,18,22,0.9);
+    background: var(--pill-bg);
     font-family: var(--mono);
     font-size: .68rem;
     letter-spacing: .08em;
@@ -297,7 +439,7 @@
     color: var(--muted);
     font-weight: 500;
   }
-  /* Hidden unlock: first L after A in "Small" — looks normal until hover */
+  
   .hero h1 .easter-l {
     cursor: default;
     color: inherit;
@@ -313,7 +455,7 @@
   }
   .hero h1 .easter-l:hover,
   .hero h1 .easter-l:focus {
-    color: #9effc0;
+    color: var(--accent-green);
     outline: none;
   }
   .easter-toast {
@@ -326,7 +468,7 @@
     padding: 1rem 1.15rem;
     border-radius: .85rem;
     border: 1px solid var(--border);
-    background: rgba(18,18,22,0.97);
+    background: var(--toast-bg);
     box-shadow: var(--shadow);
     font-size: .85rem;
     color: var(--muted);
@@ -344,9 +486,9 @@
     margin: .55rem 0 .65rem;
     padding: .65rem .75rem;
     border-radius: .55rem;
-    background: #0b0b10;
+    background: var(--code-bg);
     border: 1px solid var(--border);
-    color: #9effc0;
+    color: var(--accent-green);
     font-family: var(--mono);
     font-size: .8rem;
     word-break: break-all;
@@ -358,18 +500,30 @@
   }
   .hero-lead {
     font-size: 1.05rem;
-    line-height: 1.7;
+    line-height: 1.65;
     color: var(--muted);
     max-width: 36rem;
-    margin: 0 auto 1.25rem;
+    margin: 0 auto .85rem;
   }
   .hero-lead strong { color: var(--text); font-weight: 600; }
+  .hero-privacy {
+    display: inline-block;
+    font-size: .92rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 auto 1rem;
+    padding: .4rem .95rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-hover);
+    letter-spacing: -.01em;
+  }
   .hero-meta {
     font-family: var(--mono);
     font-size: .72rem;
     color: var(--muted);
     letter-spacing: .04em;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.15rem;
   }
   .hero-actions {
     display: flex;
@@ -377,9 +531,98 @@
     flex-wrap: wrap;
     gap: .75rem;
   }
+  .contact-cta {
+    text-align: center;
+    padding: 1.25rem 1.5rem 0;
+    font-size: .95rem;
+    color: var(--muted);
+  }
+  .contact-cta a {
+    color: var(--text);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .contact-cta a:hover { opacity: .85; }
 
-  /* Sections */
-  section { padding: 2.5rem 0 3.5rem; }
+  .corner-badges {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+    pointer-events: none;
+  }
+  .corner-badges a {
+    pointer-events: auto;
+    display: block;
+    line-height: 0;
+    opacity: 0.88;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .corner-badges a:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  .corner-badges img { display: block; }
+  .corner-badges img.corner-badge-w { width: 96px; height: auto; }
+  .corner-badges img.corner-badge-h { height: 40px; width: auto; }
+  .corner-badges img.corner-badge-launch--light { display: none; }
+  html[data-theme="light"] .corner-badges img.corner-badge-launch--dark { display: none; }
+  html[data-theme="light"] .corner-badges img.corner-badge-launch--light { display: block; }
+  .corner-badges .corner-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 28px;
+    padding: 0 0.55rem;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1;
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow);
+  }
+  .corner-badges .corner-badge-pill--ph { background: #da552f; }
+  .corner-badges .corner-badge-pill--at { background: #0f766e; }
+  .netlify-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    width: 100%;
+    margin: 2rem 0 0;
+    padding: 1rem 1.25rem;
+    border-block: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+  }
+  .netlify-banner:hover { background: var(--surface-hover); }
+  .netlify-banner img {
+    display: block;
+    height: 32px;
+    width: auto;
+  }
+  .netlify-banner .netlify-logo-light { display: none; }
+  html[data-theme="light"] .netlify-banner .netlify-logo-dark { display: none; }
+  html[data-theme="light"] .netlify-banner .netlify-logo-light { display: block; }
+  @media (max-width: 720px) {
+    .corner-badges { bottom: 4.85rem; right: 0.65rem; }
+    .corner-badges img.corner-badge-w { width: 80px; }
+    .corner-badges img.corner-badge-h { height: 34px; }
+  }
+
+  
+  section { padding: 1.75rem 0 2.25rem; }
   .kicker {
     font-family: var(--mono);
     font-size: .68rem;
@@ -405,7 +648,7 @@
     font-size: .9rem;
   }
 
-  /* Tabs */
+  
   .project-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -426,7 +669,7 @@
   }
   .project-tab:hover {
     color: var(--text);
-    border-color: rgba(255,255,255,0.18);
+    border-color: var(--border-hover);
   }
   .project-tab.is-active {
     color: var(--bg);
@@ -434,27 +677,32 @@
     border-color: transparent;
   }
 
-  /* Project cards */
+  
   .projects {
     display: grid;
     gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 640px) {
+    .projects { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1100px) {
+    .projects { grid-template-columns: repeat(3, 1fr); }
   }
   .project {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: rgba(18,18,22,0.92);
+    background: var(--surface);
     box-shadow: var(--shadow);
     overflow: hidden;
     transition: .15s border-color, .15s transform, .15s box-shadow;
   }
-  @media (min-width: 860px) {
-    .project { grid-template-columns: 1.2fr .9fr; }
-  }
   .project:hover {
-    border-color: rgba(255,255,255,0.16);
-    transform: translateY(-1px);
+    border-color: var(--border-hover);
+    transform: translateY(-3px);
+    background: var(--card2);
     box-shadow: var(--shadow), var(--glow);
   }
   .project-body {
@@ -475,14 +723,21 @@
     text-transform: uppercase;
     color: var(--muted);
     border: 1px solid var(--border);
-    background: rgba(255,255,255,0.03);
+    background: var(--surface-subtle);
     padding: .3rem .55rem;
     border-radius: 999px;
   }
   .tag.live {
-    color: var(--text);
-    border-color: rgba(255,255,255,0.18);
-    background: rgba(255,255,255,0.06);
+    color: #0a0a0c;
+    border-color: transparent;
+    background: #9effc0;
+    font-weight: 700;
+  }
+  .tag.beta {
+    color: #0a0a0c;
+    border-color: transparent;
+    background: #e8c36a;
+    font-weight: 700;
   }
   .project h3 {
     font-size: 1.65rem;
@@ -507,27 +762,47 @@
     gap: .55rem;
     padding-top: .35rem;
   }
+  .project-curl {
+    margin-top: .75rem;
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--muted);
+    background: var(--curl-bg);
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+    padding: .55rem .65rem;
+    cursor: pointer;
+    word-break: break-all;
+    line-height: 1.45;
+    width: 100%;
+  }
+  .project-curl:hover { color: var(--text); border-color: var(--border-strong); }
+  .project-curl-label {
+    display: block;
+    font-family: var(--sans);
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .35rem;
+  }
   .project-visual {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1rem;
+    min-height: 9.5rem;
+    order: -1;
     background:
-      radial-gradient(ellipse 70% 60% at 50% 40%, rgba(255,255,255,.04), transparent 70%),
-      linear-gradient(180deg, rgba(24,24,30,.6), rgba(10,10,12,.9));
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-  @media (min-width: 860px) {
-    .project-visual {
-      border-top: none;
-      border-left: 1px solid rgba(255,255,255,0.06);
-    }
+      radial-gradient(ellipse 70% 60% at 50% 40%, var(--visual-spot), transparent 70%),
+      var(--visual-bg);
+    border-bottom: 1px solid var(--border-faint);
   }
 
   .fake-menubar {
     width: min(100%, 17.5rem);
-    background: rgba(14,14,18,0.95);
+    background: var(--menubar-bg);
     border: 1px solid var(--border);
     border-radius: .75rem;
     overflow: hidden;
@@ -538,8 +813,8 @@
     justify-content: space-between;
     align-items: center;
     padding: .55rem .75rem;
-    background: rgba(0,0,0,0.28);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: var(--menubar-bar-bg);
+    border-bottom: 1px solid var(--border-faint);
     font-family: var(--mono);
     font-size: .65rem;
     color: var(--muted);
@@ -554,8 +829,8 @@
     font-size: .8rem;
     padding: .5rem .65rem;
     border-radius: .5rem;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.05);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border-faint);
     color: var(--muted);
   }
   .row span:last-child {
@@ -565,13 +840,13 @@
   }
   .row.hot span:last-child { color: var(--soft); }
 
-  .project[data-cat] { display: grid; }
+  .project[data-cat] { display: flex; }
   .projects.is-filter-tools .project[data-cat="games"],
   .projects.is-filter-games .project[data-cat="tools"] {
     display: none;
   }
 
-  /* Suite strip */
+  
   .suite-grid {
     display: grid;
     gap: .85rem;
@@ -593,13 +868,13 @@
     padding: 1.15rem 1.2rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    background: rgba(18,18,22,0.92);
+    background: var(--surface);
     box-shadow: var(--shadow);
     transition: .15s border-color, .15s transform, .15s box-shadow;
     min-height: 8.5rem;
   }
   .suite-card:hover {
-    border-color: rgba(255,255,255,0.18);
+    border-color: var(--border-hover);
     transform: translateY(-2px);
     box-shadow: var(--shadow), var(--glow);
   }
@@ -622,7 +897,7 @@
     line-height: 1.45;
   }
 
-  /* About */
+  
   .about-lead {
     color: var(--muted);
     font-size: 1.02rem;
@@ -643,12 +918,12 @@
     padding: 1.25rem 1.3rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    background: rgba(18,18,22,0.92);
+    background: var(--surface);
     box-shadow: var(--shadow);
     transition: .15s border-color, .15s transform;
   }
   .about-card:hover {
-    border-color: rgba(255,255,255,0.14);
+    border-color: var(--border-hover);
     transform: translateY(-1px);
   }
   .about-card .n {
@@ -677,7 +952,7 @@
     padding: 1.35rem 1.4rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    background: rgba(18,18,22,0.92);
+    background: var(--surface);
   }
   .about-wide h4 {
     font-size: 1rem;
@@ -725,14 +1000,15 @@
     margin-top: 1.25rem;
   }
 
-  /* Footer */
+  
   footer {
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid var(--nav-border);
     padding: 2rem 0 3rem;
     display: flex;
     flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 1rem 1.5rem;
-    justify-content: space-between;
     font-size: .85rem;
     color: var(--muted);
   }
@@ -748,7 +1024,7 @@
     padding: 0.9rem 1.1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: rgba(18,18,22,0.75);
+    background: var(--surface-muted);
     color: var(--muted);
     font-size: 0.8rem;
     line-height: 1.55;
@@ -756,11 +1032,65 @@
   .disclaimer strong { color: var(--text); font-weight: 600; }
   .disclaimer a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 
+  .install-easy {
+    margin-top: 1.25rem;
+    padding: 1.15rem 1.2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-hover);
+    background: var(--card);
+    box-shadow: var(--glow);
+  }
+  .install-easy .pref-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .62rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #0a0a0c;
+    background: #9effc0;
+    border-radius: 999px;
+    padding: .2rem .5rem;
+    margin-bottom: .5rem;
+  }
+  .install-easy h3 { font-size: 1rem; margin-bottom: .35rem; }
+  .install-easy p { color: var(--muted); font-size: .875rem; line-height: 1.5; margin-bottom: .75rem; }
+  .install-easy pre {
+    margin: 0 0 .75rem;
+    padding: .7rem .8rem;
+    border-radius: .55rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    color: var(--accent-green);
+    font-family: var(--mono);
+    font-size: .72rem;
+    line-height: 1.45;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    cursor: pointer;
+  }
+  .mobile-download {
+    display: none;
+  }
   @media (max-width: 720px) {
-    .hero { padding-top: 6.5rem; }
+    .hero { padding-top: 5.75rem; }
+    .mobile-download {
+      display: block;
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 95;
+      padding: .65rem 1rem calc(.65rem + env(safe-area-inset-bottom));
+      background: var(--nav-bg);
+      border-top: 1px solid var(--nav-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    .mobile-download .btn { width: 100%; height: 2.75rem; font-weight: 600; }
+    body { padding-bottom: 4.75rem; }
   }
 
-  /* Vault (password-gated) */
+  
   .vault-box {
     max-width: 28rem;
     background: var(--card);
@@ -787,7 +1117,7 @@
     font-size: .9rem;
     outline: none;
   }
-  .vault-box input:focus { border-color: rgba(232,232,237,.35); }
+  .vault-box input:focus { border-color: var(--border-focus); }
   .vault-actions {
     display: flex;
     flex-wrap: wrap;
@@ -816,14 +1146,14 @@
     border: 1px solid var(--border);
     background: var(--bg);
   }
-  .vault-links a:hover { border-color: rgba(232,232,237,.28); }
+  .vault-links a:hover { border-color: var(--border-focus); }
   .vault-links strong { display: block; margin-bottom: .2rem; font-size: .95rem; }
   .vault-links span { color: var(--muted); font-size: .82rem; }
   .vault-keybox {
     font-family: var(--mono);
     font-size: .85rem;
     letter-spacing: .02em;
-    color: #9effc0;
+    color: var(--accent-green);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: .65rem;
@@ -843,7 +1173,7 @@
   .vault-history div,
   .vault-hist-row {
     padding: .35rem 0;
-    border-bottom: 1px solid rgba(255,255,255,.06);
+    border-bottom: 1px solid var(--border-faint);
     word-break: break-all;
   }
   .vault-hist-row {
@@ -886,9 +1216,9 @@
           <a class="brand" href="/">
             <div class="brand-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">
-                <path d="M7 3l3 18" stroke="#e8e8ed" stroke-width="2.2" stroke-linecap="round"/>
-                <path d="M17 3l-3 18" stroke="#8b8b9a" stroke-width="2.2" stroke-linecap="round"/>
-                <path d="M6 9h12" stroke="#ffffff33" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M7 3l3 18" stroke="var(--brand-stroke-1)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M17 3l-3 18" stroke="var(--brand-stroke-2)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M6 9h12" stroke="var(--brand-stroke-3)" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
             </div>
             <div>
@@ -898,19 +1228,32 @@
           </a>
           <div class="nav-links">
             <a class="nav-link" href="#projects">Projects</a>
-            <a class="nav-link" href="#vault">Vault</a>
             <a class="nav-link" href="/about/">About</a>
-            <a class="nav-link" href="/guides/">Guides</a>
-            <a class="nav-link" href="/chopsticks-ai/">chopsticksAI</a>
-            <a class="nav-link" href="/chopailab/">ChopsticksAI</a>
+            <a class="nav-link nav-link-secondary" href="#vault">Vault</a>
+            <a class="nav-link nav-link-secondary" href="/guides/">Guides</a>
+            <a class="nav-link nav-link-secondary" href="/chopsticks-ai/">chopsticksAI</a>
+            <a class="nav-link nav-link-secondary" href="/chopsticks-ai/web/">cs.AI web</a>
           </div>
+          <details class="nav-more">
+            <summary>More</summary>
+            <div class="nav-more-panel">
+              <a href="/code-of-conduct/">Code of Conduct</a>
+              <a href="/opensource/">License</a>
+              <a href="#vault">Vault</a>
+              <a href="/guides/">Guides</a>
+              <a href="/chopsticks-ai/">chopsticksAI</a>
+              <a href="/chopsticks-ai/web/">cs.AI web</a>
+              <a class="nav-more-desktop" href="/fathom/">Fathom Air</a>
+              <a class="nav-more-desktop" href="/fathom-pro/">Fathom Pro</a>
+            </div>
+          </details>
           <div class="nav-right">
             <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
               <span data-theme-label>Light</span>
             </button>
-            <a class="btn btn-outline btn-sm" href="/fathom/">Fathom</a>
-            <a class="btn btn-outline btn-sm" href="/fathom-pro/">Fathom Pro</a>
-            <a class="btn btn-primary btn-sm" href="/rnitro/">rNitro</a>
+            <a class="btn btn-outline btn-sm nav-hide-sm" href="/fathom/">Fathom</a>
+            <a class="btn btn-outline btn-sm nav-hide-sm" href="/fathom-pro/">Fathom Pro</a>
+          <a class="btn btn-primary btn-sm" href="/macbar/">MacBar</a>
           </div>
         </nav>
       </div>
@@ -922,40 +1265,49 @@
         <h1>Sma<span class="easter-l" id="easter-l" title="" role="button" tabindex="0" aria-label="Hidden letter">l</span>l lab.<br><span class="dim">Sharp tools.</span></h1>
         <p class="hero-lead">
           Free tools and games we ship ourselves —
-          <strong>rNitro</strong> (menu bar monitor),
+          <strong>MacBar</strong> (menu bar monitor),
           <strong>Fathom Air</strong> (battery drain),
           <strong>Fathom Pro</strong> (battery + weather + AI),
           <strong>Doomlike-FPS™</strong>,
           <strong>Minecraft Portfolio</strong>.
-          No accounts. No telemetry. No subscription.
         </p>
+        <p class="hero-privacy">No accounts. No telemetry. No subscription.</p>
         <p class="hero-meta">open source · GitHub releases · tools + games</p>
-        <p class="latest-releases" id="latest-releases" aria-live="polite">
-          Latest · <strong>rNitro</strong> v1.4.0 · <strong>Fathom Air</strong> v0.3.8 · <strong>Fathom Pro</strong> v0.1.6
-        </p>
+        <div class="latest-releases" id="latest-releases" aria-live="polite">
+          <span class="ver-pill"><b>MacBar</b> v1.5.8</span>
+          <span class="ver-pill"><b>Fathom Air</b> v0.3.8</span>
+          <span class="ver-pill"><b>Fathom Pro</b> v0.1.6</span>
+        </div>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/rnitro/">Download rNitro</a>
-          <a class="btn btn-outline" href="/fathom/">Get Fathom Air</a>
-          <a class="btn btn-outline" href="/fathom-pro/">Fathom Pro</a>
-          <a class="btn btn-outline" href="#projects">All projects</a>
+          <a class="btn btn-primary" href="/macbar/">Download MacBar</a>
+          <a class="btn btn-quiet" href="/fathom/">Fathom Air</a>
+          <a class="btn btn-quiet" href="/fathom-pro/">Fathom Pro</a>
+          <a class="btn btn-quiet" href="#projects">All projects</a>
         </div>
       </div>
     </header>
 
-    <!-- Chopsticks suite strip -->
+    <p class="contact-cta wrap">
+      Interested in a project, press, or a review?
+      <a href="/press/">Press kit</a> ·
+      <a href="mailto:chopstickshq@lam.ws?subject=Chopsticks%20HQ">chopstickshq@lam.ws</a> ·
+      <a href="mailto:chopstickshq@lam.ws?subject=Built%20with%20Chopsticks%20HQ">Share your build</a>
+    </p>
+
+    
     <section id="suite" aria-label="Chopsticks suite">
       <div class="wrap">
         <div class="section-head">
           <div>
             <div class="kicker">Suite</div>
-            <h2>Five products. One lab.</h2>
+            <h2>The lab.</h2>
             <p>Local only · no telemetry · free to use.</p>
           </div>
         </div>
         <div class="suite-grid">
-          <a class="suite-card" href="/rnitro/">
+          <a class="suite-card" href="/macbar/">
             <span class="suite-tag">macOS tool</span>
-            <strong>rNitro</strong>
+            <strong>MacBar</strong>
             <span class="suite-desc">Menu bar system monitor — CPU, temp, battery, GPU, RAM.</span>
           </a>
           <a class="suite-card" href="/fathom/">
@@ -988,30 +1340,38 @@
           <div>
             <div class="kicker">macOS</div>
             <h2>Install in 3 steps</h2>
-            <p>Same path for rNitro and Fathom — App ZIP preferred.</p>
+            <p>Terminal install is the easy path — it skips Gatekeeper. ZIP works too.</p>
           </div>
+        </div>
+        <div class="install-easy">
+          <div class="pref-badge">Preferred</div>
+          <h3>Easiest — paste in Terminal</h3>
+          <p>Downloads MacBar, installs to <code class="mono" style="color:var(--text);font-size:.8em">~/Applications</code>, and clears quarantine. No account.</p>
+          <pre id="hq-macbar-curl" title="Click to copy">curl -fsSL https://chopstickshq.com/macbar/MacBar-v1.5.8.sh -o /tmp/macbar-install.sh &amp;&amp; bash /tmp/macbar-install.sh</pre>
+          <button type="button" class="btn btn-primary btn-sm" id="hq-copy-macbar-curl">Copy Terminal install</button>
         </div>
         <div class="install-steps">
           <article class="install-step">
             <div class="n">01</div>
-            <h3>Download App ZIP</h3>
-            <p>Grab the current build from the product page. Files are served from this site (Netlify edge).</p>
+            <h3>Terminal (recommended)</h3>
+            <p>Paste the command above. That’s the path we recommend on a new Mac.</p>
           </article>
           <article class="install-step">
             <div class="n">02</div>
-            <h3>Drag to Applications</h3>
-            <p>Unzip, then move the <code class="mono" style="color:var(--text);font-size:.8em">.app</code> into <code class="mono" style="color:var(--text);font-size:.8em">Applications</code> (or <code class="mono" style="color:var(--text);font-size:.8em">~/Applications</code>).</p>
+            <h3>Or download the App ZIP</h3>
+            <p>Unzip, then move the <code class="mono" style="color:var(--text);font-size:.8em">.app</code> into Applications (or <code class="mono" style="color:var(--text);font-size:.8em">~/Applications</code>).</p>
           </article>
           <article class="install-step">
             <div class="n">03</div>
-            <h3>Right-click → Open</h3>
-            <p>First launch may need Gatekeeper confirmation. Right-click the app → Open → Open. No App Store account required.</p>
+            <h3>ZIP only: Right-click → Open</h3>
+            <p>Browser downloads can trip Gatekeeper. Right-click → Open → Open. Terminal install skips this.</p>
           </article>
         </div>
         <div class="install-links">
-          <a class="btn btn-primary btn-sm" href="/rnitro/#downloads">rNitro downloads</a>
+          <a class="btn btn-primary btn-sm" href="/macbar/#downloads">MacBar downloads</a>
           <a class="btn btn-outline btn-sm" href="/fathom/#downloads">Fathom Air</a>
           <a class="btn btn-outline btn-sm" href="/fathom-pro/#downloads">Fathom Pro</a>
+          <a class="btn btn-outline btn-sm" href="/chopsticks-ai/#macos-app">Download cs.AI</a>
         </div>
       </div>
     </section>
@@ -1037,13 +1397,49 @@
             <div class="project-body">
               <div class="project-tags">
                 <span class="tag live">Live</span>
+                <span class="tag">v1.0</span>
+                <span class="tag">macOS</span>
+                <span class="tag">Metal</span>
+              </div>
+              <h3>CSR — Chopsticks Super Resolution</h3>
+              <p>
+                Upscales your <strong>display or a single window in real time</strong>
+                on the GPU — edge-adaptive reconstruction with temporal
+                accumulation and optional frame generation. 4K at 125&nbsp;fps on an M1.
+                2.3&nbsp;MB, no ML models, no telemetry.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/csr/">Open project</a>
+                <a class="btn btn-outline btn-sm" href="/csr/install.sh">install script</a>
+              </div>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>CSR</span>
+                  <span class="pulse">● 60 FPS</span>
+                </div>
+                <div class="panel">
+                  <div class="row"><span>Source</span><span>Main Display</span></div>
+                  <div class="row"><span>Target</span><span>4K</span></div>
+                  <div class="row"><span>Method</span><span>CSR Ultra</span></div>
+                  <div class="row"><span>GPU</span><span>7.99 ms</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Live</span>
                 <span class="tag">v1.0.14</span>
                 <span class="tag">macOS</span>
                 <span class="tag">Launcher</span>
               </div>
               <h3>Chopsticks HQ</h3>
               <p>
-                The website in a native macOS app — browse projects, launch rNitro,
+                The website in a native macOS app — browse projects, launch MacBar,
                 Fathom, ARENA, and more from one window. Installs with a curl one-liner;
                 no Xcode required.
               </p>
@@ -1059,7 +1455,7 @@
                   <span class="pulse">● v1.0.14</span>
                 </div>
                 <div class="panel">
-                  <div class="row"><span>rNitro</span><span>Launch</span></div>
+                  <div class="row"><span>MacBar</span><span>Launch</span></div>
                   <div class="row"><span>Fathom</span><span>Launch</span></div>
                   <div class="row"><span>ARENA</span><span>Get</span></div>
                   <div class="row"><span>Site</span><span>Live</span></div>
@@ -1076,20 +1472,20 @@
                 <span class="tag">Linux</span>
                 <span class="tag">Windows</span>
               </div>
-              <h3><em>r</em>Nitro</h3>
+              <h3>MacBar</h3>
               <p>
                 Free menu bar system monitor — CPU, temperature, battery, GPU, RAM.
                 Stable, Beta, and Experimental channels. No account required.
               </p>
               <div class="project-meta">
-                <a class="btn btn-primary btn-sm" href="/rnitro/">Open rNitro</a>
-                <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos/rNitro" rel="noopener">GitHub</a>
+                <a class="btn btn-primary btn-sm" href="/macbar/">Open MacBar</a>
+                <a class="btn btn-outline btn-sm" href="https://github.com/ilikemacos/MacBar" rel="noopener">GitHub</a>
               </div>
             </div>
             <div class="project-visual" aria-hidden="true">
               <div class="fake-menubar">
                 <div class="bar">
-                  <span>rNitro</span>
+                  <span>MacBar</span>
                   <span class="pulse">● live</span>
                 </div>
                 <div class="panel">
@@ -1142,31 +1538,78 @@
               <div class="project-tags">
                 <span class="tag live">Live</span>
                 <span class="tag">Web</span>
-                <span class="tag">In rNitro</span>
-                <span class="tag">Web agent</span>
+                <span class="tag">WebGPU</span>
+                <span class="tag">Local only</span>
               </div>
-              <h3>cs.AI 2.2.9</h3>
+              <h3>Upscaler</h3>
               <p>
-                The Chopsticks HQ assistant — <strong>cs.AI 2.2.9</strong> (chopsticksAI) —
-                security update with end-to-end encrypted messages, Keychain sessions,
-                StickerCoder+ coding, and a Cursor-style Agents Window.
+                Real-ESRGAN image upscaling that runs on <strong>your</strong> GPU through WebGPU —
+                ×2 and ×4, PNG/JPG/WebP out. Nothing is uploaded; the image never leaves the tab.
+                Video upscaling lives in the macOS build.
               </p>
               <div class="project-meta">
-                <a class="btn btn-primary btn-sm" href="/chopsticks-ai/">Open cs.AI</a>
+                <a class="btn btn-primary btn-sm" href="/upscaler/#try">Upscale an image</a>
+                <a class="btn btn-outline btn-sm" href="/upscaler/#install">Install for macOS</a>
+                <a class="btn btn-outline btn-sm" href="/upscaler/#video">Video</a>
+              </div>
+              <button type="button" class="project-curl" id="upscaler-curl" title="Click to copy">
+                <span class="project-curl-label">Install macOS app</span>
+                curl -fsSL https://chopstickshq.com/upscaler/install.sh | bash
+              </button>
+            </div>
+            <div class="project-visual" aria-hidden="true">
+              <div class="fake-menubar">
+                <div class="bar">
+                  <span>Upscaler</span>
+                  <span class="pulse">● webgpu</span>
+                </div>
+                <div class="panel">
+                  <div class="row"><span>Backend</span><span>WebGPU</span></div>
+                  <div class="row"><span>Scale</span><span>×2 / ×4</span></div>
+                  <div class="row"><span>Upload</span><span>none</span></div>
+                  <div class="row"><span>Account</span><span>not needed</span></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="project" data-cat="tools">
+            <div class="project-body">
+              <div class="project-tags">
+                <span class="tag live">Live</span>
+                <span class="tag">Web</span>
+                <span class="tag">macOS</span>
+                <span class="tag">macOS app</span>
+                <span class="tag">Web agent</span>
+              </div>
+              <h3>cs.AI-3</h3>
+              <p>
+                Chopsticks HQ assistant — Agents window, Chromium search dated to today, plates Rice → Wagyu.
+                <strong>macOS app</strong> or <strong>web agent</strong>; optional <code>csai</code> CLI.
+                No API key from you.
+              </p>
+              <div class="project-meta">
+                <a class="btn btn-primary btn-sm" href="/chopsticks-ai/#macos-app">Download macOS</a>
+                <a class="btn btn-outline btn-sm" href="/chopsticks-ai/web/">Open web app</a>
                 <a class="btn btn-outline btn-sm" href="/chopsticks-ai/#search">Search</a>
+                <a class="btn btn-outline btn-sm" href="/chopsticks-ai/#terminal-cli">Terminal CLI</a>
                 <a class="btn btn-outline btn-sm" href="/chopsticks-ai/#changelog">Changelog</a>
               </div>
+              <button type="button" class="project-curl" id="csai-app-curl" title="Click to copy">
+                <span class="project-curl-label">Install macOS app</span>
+                curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash
+              </button>
             </div>
             <div class="project-visual" aria-hidden="true">
               <div class="fake-menubar">
                 <div class="bar">
                   <span>cs.AI</span>
-                  <span class="pulse">● 2.2.9</span>
+                  <span class="pulse">● 3.3.10</span>
                 </div>
                 <div class="panel">
-                  <div class="row"><span>Version</span><span>cs.AI 2.2.9</span></div>
-                  <div class="row"><span>Search</span><span>Mozilla</span></div>
-                  <div class="row"><span>Context</span><span>48K–128K</span></div>
+                  <div class="row"><span>Version</span><span>cs.AI-3</span></div>
+                  <div class="row"><span>Agents</span><span>macOS app</span></div>
+                  <div class="row"><span>Browser</span><span>Chromium</span></div>
                   <div class="row"><span>Key</span><span>not needed</span></div>
                 </div>
               </div>
@@ -1212,7 +1655,8 @@
           <article class="project" data-cat="games">
             <div class="project-body">
               <div class="project-tags">
-                <span class="tag">v0.9 Beta</span>
+                <span class="tag beta">Beta</span>
+                <span class="tag">v0.9</span>
                 <span class="tag">Browser</span>
                 <span class="tag">FPS</span>
               </div>
@@ -1246,6 +1690,7 @@
           <article class="project" data-cat="games">
             <div class="project-body">
               <div class="project-tags">
+                <span class="tag live">Live</span>
                 <span class="tag">v1.0</span>
                 <span class="tag">macOS</span>
                 <span class="tag">FPS</span>
@@ -1281,7 +1726,7 @@
           <article class="project" data-cat="tools">
             <div class="project-body">
               <div class="project-tags">
-                <span class="tag live">Portfolio</span>
+                <span class="tag">Portfolio</span>
                 <span class="tag">Minecraft</span>
                 <span class="tag">Skript</span>
               </div>
@@ -1383,7 +1828,7 @@
             <p>
               <strong style="color:var(--text)">chopstickshq.com</strong> is the hub.
               Product sites live under
-              <a href="/rnitro/">/rnitro</a>,
+              <a href="/macbar/">/macbar</a>,
               <a href="/fathom/">/fathom</a>,
               <a href="/fathom-pro/">/fathom-pro</a>,
               <a href="/doomlike-fps/">/doomlike-fps</a>,
@@ -1402,7 +1847,7 @@
             <div class="n">03</div>
             <h4>Privacy-first</h4>
             <p>
-              No product accounts. No telemetry from rNitro, Fathom Air, or Fathom Pro.
+              No product accounts. No telemetry from MacBar, Fathom Air, or Fathom Pro.
               Optional AI uses <strong style="color:var(--text)">your</strong> provider keys and talks only to that provider.
             </p>
           </div>
@@ -1441,7 +1886,7 @@
             and self-hosted so they load fast and work offline once cached.
           </p>
           <ul class="about-list">
-            <li><strong>rNitro</strong> — free menu bar system monitor (CPU, temp, battery, GPU, RAM, network).</li>
+            <li><strong>MacBar</strong> — free menu bar system monitor (CPU, temp, battery, GPU, RAM, network).</li>
             <li><strong>Fathom Air</strong> — free local-only battery drain app for macOS.</li>
             <li><strong>Fathom Pro</strong> — Air core plus weather and multi-provider AI (your keys).</li>
             <li><strong>Doomlike-FPS™</strong> — browser FPS experiment.</li>
@@ -1459,7 +1904,7 @@
             Full legal text lives on the
             <a href="/disclaimer/">software disclaimer</a>
             and product terms pages (for example
-            <a href="/rnitro/terms.html">rNitro Terms</a>).
+            <a href="/macbar/terms.html">MacBar Terms</a>).
           </p>
           <p>
             Want the long version — principles, channels, and contact links?
@@ -1476,26 +1921,52 @@
     </section>
 
     <p class="disclaimer">
-      <strong>Disclaimer:</strong> All ChopsticksHQ software (rNitro, Fathom Air, Fathom Pro, Doomlike-FPS™, and related tools)
+      <strong>Disclaimer:</strong> All ChopsticksHQ software (MacBar, Fathom Air, Fathom Pro, Doomlike-FPS™, and related tools)
       is provided <strong>“AS IS”</strong> with no warranties. Use at your own risk.
       <a href="/disclaimer/">Full software disclaimer</a>
     </p>
+    <a class="netlify-banner" href="https://www.netlify.com">
+      <img class="netlify-logo-dark" src="https://www.netlify.com/v3/img/components/netlify-color-accent.svg" alt="" height="32" width="auto" />
+      <img class="netlify-logo-light" src="https://www.netlify.com/v3/img/components/netlify-color-bg.svg" alt="" height="32" width="auto" />
+      This site is powered by Netlify
+    </a>
     <footer class="wrap">
       <div>© ChopsticksHQ 2026</div>
       <div class="foot-links">
-        <a href="/rnitro/">rNitro</a>
+        <a href="/macbar/">MacBar</a>
         <a href="/fathom/">Fathom Air</a>
         <a href="/fathom-pro/">Fathom Pro</a>
         <a href="/doomlike-fps/">Doomlike-FPS™</a>
         <a href="/minecraft/">Minecraft</a>
+        <a href="/chopsticks-ai/">cs.AI</a>
         <a href="/guides/">Guides</a>
+        <a href="/press/">Press</a>
+        <a href="/blog/">Blog</a>
         <a href="/about/">About</a>
         <a href="/disclaimer/">Disclaimer</a>
+        <a href="/opensource/">MIT License</a>
+        <a href="/code-of-conduct/">Code of Conduct</a>
         <a href="#vault">Vault</a>
-        <a href="https://github.com/ilikemacos/rNitro" rel="noopener">GitHub</a>
+        <a href="https://github.com/ilikemacos/MacBar" rel="noopener">GitHub</a>
       </div>
     </footer>
   </div>
+
+  <div class="mobile-download">
+    <a class="btn btn-primary" href="/macbar/">Download MacBar</a>
+  </div>
+
+  <aside class="corner-badges" aria-label="Featured on">
+    <a href="https://launchstag.com" target="_blank" rel="noopener noreferrer" title="Featured on Launchstag">
+      <img class="corner-badge-w corner-badge-launch--dark" src="https://launchstag.com/badge-light.svg" alt="Featured on Launchstag" width="96" height="30" />
+      <img class="corner-badge-w corner-badge-launch--light" src="https://launchstag.com/badge-dark.svg" alt="Featured on Launchstag" width="96" height="30" />
+    </a>
+    <a href="https://sellwithboost.com" target="_blank" rel="noopener noreferrer" title="Listed on Sell With boost">
+      <img class="corner-badge-h" src="https://sellwithboost.com/badge/listing.svg" alt="Listed on Sell With boost" height="40" />
+    </a>
+    <a class="corner-badge-pill corner-badge-pill--ph" href="https://www.producthunt.com/products/cs-ai" target="_blank" rel="noopener noreferrer" title="cs.AI on Product Hunt">▲ Product Hunt</a>
+    <a class="corner-badge-pill corner-badge-pill--at" href="https://alternativeto.net/software/chopsticks-ai/about/" target="_blank" rel="noopener noreferrer" title="cs.AI on AlternativeTo">◆ AlternativeTo</a>
+  </aside>
 
   <div class="easter-toast" id="easter-toast" role="status" aria-live="polite">
     <div style="color:var(--text);font-weight:600;margin-bottom:2px">Fathom Pro unlock</div>
@@ -1511,7 +1982,6 @@
   <script>
     var _y=document.getElementById('y'); if(_y) _y.textContent=new Date().getFullYear();
 
-    // Live version line from product version.json files
     (function () {
       var el = document.getElementById('latest-releases');
       if (!el) return;
@@ -1524,19 +1994,24 @@
         return String(raw).replace(/^v/, 'v');
       }
       Promise.all([
-        fetch('/rnitro/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/chopsticks-ai/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+        fetch('/macbar/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
         fetch('/fathom/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
         fetch('/fathom-pro/version.json').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       ]).then(function (arr) {
-        var rn = label(pick(arr[0]) || (arr[0] && arr[0].releases && arr[0].releases.experimental && arr[0].releases.experimental.id));
-        if (!rn && arr[0] && arr[0].releases && arr[0].releases.experimental) rn = label(arr[0].releases.experimental.short || arr[0].releases.experimental.id);
-        if (arr[0] && arr[0].experimental) rn = label(arr[0].experimental);
-        var air = label(pick(arr[1]));
-        var pro = label(pick(arr[2]));
-        if (!rn && !air && !pro) return;
-        el.innerHTML = 'Latest · <strong>rNitro</strong> ' + (rn || '—') +
-          ' · <strong>Fathom Air</strong> ' + (air || '—') +
-          ' · <strong>Fathom Pro</strong> ' + (pro || '—');
+        var cs = arr[0] && (arr[0].latest || (arr[0].releases && arr[0].releases.stable && arr[0].releases.stable.zip && String(arr[0].releases.stable.zip).replace(/^chopsticksAI-v/i, 'v').replace(/\.zip$/i, '')));
+        var rn = label(pick(arr[1]) || (arr[1] && arr[1].releases && arr[1].releases.experimental && arr[1].releases.experimental.id));
+        if (!rn && arr[1] && arr[1].releases && arr[1].releases.experimental) rn = label(arr[1].releases.experimental.short || arr[1].releases.experimental.id);
+        if (arr[1] && arr[1].experimental) rn = label(arr[1].experimental);
+        var air = label(pick(arr[2]));
+        var pro = label(pick(arr[3]));
+        if (!cs && !rn && !air && !pro) return;
+        cs = cs ? label(cs) : null;
+        function pill(name, ver) {
+          if (!ver) return '';
+          return '<span class="ver-pill"><b>' + name + '</b> ' + ver + '</span>';
+        }
+        el.innerHTML = [pill('cs.AI', cs), pill('MacBar', rn), pill('Fathom Air', air), pill('Fathom Pro', pro)].join('');
       });
     })();
 
@@ -1552,7 +2027,7 @@
 
     (function () {
       var lastCode = '';
-      var SCAVENGER_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+      var SCAVENGER_COOLDOWN_MS = 10 * 60 * 1000;
       var SCAVENGER_NEXT_KEY = 'chq.scavenger.nextAt';
       var el = document.getElementById('easter-l');
       var toast = document.getElementById('easter-toast');
@@ -1693,7 +2168,6 @@
         });
       }
 
-      // Fathom Pro unlock — uses window.FathomProMintKey (random every click)
       var HIST_KEY = 'chopstickshq.vault.keys.v1';
       var out = document.getElementById('vault-key-out');
       var genBtn = document.getElementById('vault-gen');
@@ -1754,7 +2228,6 @@
           });
       }
       window.__vaultMintFresh = mintFresh;
-      // Drop old fixed keys from history
       saveHist(loadHist().filter(function (k) {
         return String(k).toLowerCase().indexOf('c0ffee') < 0;
       }));
@@ -1801,7 +2274,6 @@
           mintFresh();
         });
       }
-      // Already unlocked from session → show a brand-new random key
       if (section.classList.contains('is-unlocked')) mintFresh();
       if (copyBtn && out) {
         copyBtn.addEventListener('click', function () {
@@ -1851,6 +2323,38 @@
           if (btn) btn.click();
         }
       } catch (e) {}
+    })();
+    (function () {
+      var CURL = 'curl -fsSL https://chopstickshq.com/macbar/MacBar-v1.5.8.sh -o /tmp/macbar-install.sh && bash /tmp/macbar-install.sh';
+      function copyCurl() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(CURL).then(function () {
+            var btn = document.getElementById('hq-copy-macbar-curl');
+            if (!btn) return;
+            var prev = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = prev; }, 1400);
+          });
+        }
+      }
+      var btn = document.getElementById('hq-copy-macbar-curl');
+      var pre = document.getElementById('hq-macbar-curl');
+      if (btn) btn.addEventListener('click', copyCurl);
+      if (pre) pre.addEventListener('click', copyCurl);
+    })();
+    (function () {
+      var more = document.querySelector('.nav-more');
+      if (!more) return;
+      document.addEventListener('click', function (e) {
+        if (!more.contains(e.target)) more.removeAttribute('open');
+      });
+    })();
+    (function () {
+      var APP_CURL = 'curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash';
+      var el = document.getElementById('csai-app-curl');
+      if (el) el.addEventListener('click', function () {
+        navigator.clipboard.writeText(APP_CURL).catch(function () {});
+      });
     })();
   </script>
   <script src="/js/chopsticks-ai-kb.js" defer></script>

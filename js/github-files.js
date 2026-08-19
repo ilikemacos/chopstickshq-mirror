@@ -1,16 +1,4 @@
-/**
- * List GitHub release files at the bottom of product pages.
- *
- * Usage:
- *   <div id="github-files"
- *        data-repo="ilikemacos/rNitro"
- *        data-cdn-base="/rnitro/"
- *        data-title="All release files"></div>
- *   <script src="/js/github-files.js"></script>
- *
- * Fetches public releases from api.github.com and renders download links.
- * When a same-named file exists on this CDN (HEAD ok), also links the CDN copy.
- */
+
 (function () {
   var root = document.getElementById('github-files');
   if (!root) return;
@@ -84,7 +72,6 @@
     return cdnBase + encodeURIComponent(name).replace(/%2F/g, '/');
   }
 
-  // HEAD check with short timeout — optional CDN mirror badge
   function probeCdn(name) {
     return fetch(cdnUrl(name), { method: 'HEAD', cache: 'no-store' })
       .then(function (r) {

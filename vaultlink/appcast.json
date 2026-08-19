@@ -1,0 +1,9 @@
+{
+  "version": "1.0.1",
+  "build": 2,
+  "url": "https://github.com/ilikemacos/VaultLink/releases/download/v1.0.1/VaultLink-1.0.1.zip",
+  "sha256": "1a8958f35469bb4e2f2b0943dfb6600f89e8ed8d169d97c9072936f5a3eb43b2",
+  "notes": "Fixes device file scanning.\n\n• AFC path arguments were sent in the wrong part of the packet, so the iPad ignored them and answered for the root directory every time. Any made-up path looked like a real folder, which sent the sweep into an endless loop of invented directories and reported hundreds of thousands of files that were not there.\n• A full sweep of the media partition now completes properly: 22,441 real files in about 45 seconds over USB, instead of running until it hit an internal ceiling.\n• The scan now reports how many files it actually looked at, per device.",
+  "minimumSystemVersion": "14.0",
+  "publishedAt": "2026-08-16T17:05:00Z"
+}

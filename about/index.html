@@ -8,14 +8,19 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>About · Chopsticks HQ</title>
-<meta name="description" content="About Chopsticks HQ — free local-first macOS tools and games. rNitro, Fathom Air, Fathom Pro, Doomlike-FPS, Minecraft portfolio. No accounts, no telemetry.">
+<meta name="description" content="About Chopsticks HQ — free local-first macOS tools and games. MacBar, Fathom Air, Fathom Pro, Doomlike-FPS, Minecraft portfolio. No accounts, no telemetry.">
+<meta name="keywords" content="About Chopsticks HQ, chopstickshq about, independent software lab, free macOS tools, open source mac developer, cs.AI, MacBar, Fathom, no telemetry software">
 <link rel="canonical" href="https://chopstickshq.com/about/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
 <meta property="og:title" content="About Chopsticks HQ">
 <meta property="og:description" content="Small lab. Sharp tools. Free local-first software under chopstickshq.com.">
 <meta property="og:url" content="https://chopstickshq.com/about/">
-<meta property="og:image" content="https://chopstickshq.com/rnitro/screenshots/hero-monitor.png">
+<meta property="og:image" content="https://chopstickshq.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Chopsticks HQ — independent software lab. Small lab. Sharp tools.">
+<meta name="twitter:image" content="https://chopstickshq.com/og.png">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="About · Chopsticks HQ">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -64,9 +69,9 @@
   body::before {
     content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background:
-      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(255,255,255,.05), transparent 55%),
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      radial-gradient(ellipse 90% 50% at 50% -10%, var(--glow-spot), transparent 55%),
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
     background-size: auto, 64px 64px, 64px 64px;
     mask-image: radial-gradient(ellipse 80% 70% at 50% 20%, #000 15%, transparent 80%);
   }
@@ -194,7 +199,7 @@
       <div class="nav-mid">
         <a class="nav-link" href="/">HQ</a>
         <a class="nav-link" href="/#projects">Projects</a>
-        <a class="nav-link" href="/rnitro/">rNitro</a>
+        <a class="nav-link" href="/macbar/">MacBar</a>
         <a class="nav-link" href="/fathom/">Fathom Air</a>
         <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
         <a class="nav-link" href="/chopsticks-ai/">chopsticksAI</a>
@@ -202,7 +207,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle theme"><span data-theme-label>Light</span></button>
-        <a class="btn btn-primary btn-sm" href="/rnitro/">Get rNitro</a>
+        <a class="btn btn-primary btn-sm" href="/macbar/">Get MacBar</a>
       </div>
     </nav>
 
@@ -227,7 +232,7 @@
           </p>
           <p>
             <strong>chopstickshq.com</strong> is the master domain. Each product gets a stable path
-            (for example <a href="/rnitro/">/rnitro/</a> and <a href="/fathom/">/fathom/</a>) and
+            (for example <a href="/macbar/">/macbar/</a> and <a href="/fathom/">/fathom/</a>) and
             optional product subdomains when DNS is set. GitHub holds source and release mirrors under
             <a href="https://github.com/ilikemacos" rel="noopener">ilikemacos</a>.
           </p>
@@ -248,7 +253,7 @@
           <div class="card">
             <h3>No product accounts</h3>
             <p>
-              You do not create a Chopsticks login to use rNitro or Fathom.
+              You do not create a Chopsticks login to use MacBar or Fathom.
               Keys for third-party AI stay in Keychain on your Mac.
             </p>
           </div>
@@ -291,7 +296,7 @@
         </p>
         <ul class="clean">
           <li>
-            <strong><a href="/rnitro/">rNitro</a></strong> —
+            <strong><a href="/macbar/">MacBar</a></strong> —
             Free open-source menu bar system monitor for macOS (and related CLI / Linux / Windows builds).
             CPU, temperature, battery, GPU, RAM, network. Optional AI with your provider keys.
           </li>
@@ -321,7 +326,7 @@
           </li>
         </ul>
         <div class="pill-row">
-          <a href="/rnitro/">/rnitro/</a>
+          <a href="/macbar/">/macbar/</a>
           <a href="/fathom/">/fathom/</a>
           <a href="/fathom-pro/">/fathom-pro/</a>
           <a href="/doomlike-fps/">/doomlike-fps/</a>
@@ -358,19 +363,22 @@
           <h3>Contact &amp; source</h3>
           <p>
             Issues, builds, and release notes live on GitHub. Start with
-            <a href="https://github.com/ilikemacos/rNitro" rel="noopener">ilikemacos/rNitro</a>
+            <a href="https://github.com/ilikemacos/MacBar" rel="noopener">ilikemacos/MacBar</a>
             and
             <a href="https://github.com/ilikemacos" rel="noopener">other repos under ilikemacos</a>.
             Product pages list the current ZIP and installer for each line.
           </p>
           <p>
-            Contact me at
+            Press, reviews, collaborations, or “built with Chopsticks HQ” stories:
             <a class="mono" href="mailto:chopstickshq@lam.ws">chopstickshq@lam.ws</a>.
+            See the <a href="/press/">press kit</a> for one-line pitches and assets.
           </p>
           <div class="actions">
-            <a class="btn btn-primary" href="mailto:chopstickshq@lam.ws">Contact me</a>
+            <a class="btn btn-primary" href="/press/">Press kit</a>
+            <a class="btn btn-outline" href="mailto:chopstickshq@lam.ws?subject=Chopsticks%20HQ%20press">Press inquiry</a>
+            <a class="btn btn-outline" href="mailto:chopstickshq@lam.ws?subject=cs.AI%20review%20request">Review request</a>
             <a class="btn btn-outline" href="/#projects">See all projects</a>
-            <a class="btn btn-outline" href="/rnitro/">Download rNitro</a>
+            <a class="btn btn-outline" href="/macbar/">Download MacBar</a>
             <a class="btn btn-outline" href="/fathom/">Fathom Air</a>
             <a class="btn btn-outline" href="/disclaimer/">Software disclaimer</a>
             <a class="btn btn-outline" href="https://github.com/ilikemacos" rel="noopener">GitHub</a>
@@ -383,7 +391,7 @@
       <div>© ChopsticksHQ 2026</div>
       <div class="foot-links">
         <a href="/">HQ</a>
-        <a href="/rnitro/">rNitro</a>
+        <a href="/macbar/">MacBar</a>
         <a href="/fathom/">Fathom Air</a>
         <a href="/fathom-pro/">Fathom Pro</a>
         <a href="/disclaimer/">Disclaimer</a>

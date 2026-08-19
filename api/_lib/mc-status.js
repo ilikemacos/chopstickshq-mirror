@@ -1,19 +1,4 @@
-/**
- * Same-origin Minecraft status for chopstickshq.com/minecraft
- * GET /.netlify/functions/mc-status?host=catboigens.minefort.com
- *
- * Accuracy stack (probed in parallel):
- *   1. direct-slp     — TCP Server List Ping (best when Netlify can reach :25565)
- *   2. minetools.eu   — live ping + player sample (very reliable for Velocity)
- *   3. mc-api.net     — EU ping API with sample list
- *   4. mcstatus.io    — solid secondary (can briefly cache offline)
- *
- * mcsrvstat.us is intentionally NOT used — often false-offline on Minefort.
- *
- * Online: trusted sources (SLP / minetools / mc-api) win over flaky offline votes.
- * Player count: median of online votes (less skew than max).
- * Names/version: prefer direct-slp, then richest sample.
- */
+
 const dns = require("dns").promises;
 const net = require("net");
 
@@ -31,7 +16,7 @@ const ALLOWED = new Set([
 
 const UA = "chopstickshq-minecraft-telemetry/3.1";
 const FETCH_MS = 4500;
-const SLP_MS = 2500; // fail fast on Netlify (Minefort often blocks AWS :25565)
+const SLP_MS = 2500;
 
 const SOURCE_RANK = {
   "direct-slp": 6,
@@ -72,8 +57,6 @@ async function fetchJson(url) {
     clearTimeout(t);
   }
 }
-
-/* ── SLP ────────────────────────────────────────────────────── */
 
 function writeVarInt(value) {
   const out = [];
@@ -149,7 +132,7 @@ async function resolveConnectTargets(host, defaultPort) {
       }
     }
   } catch (_) {
-    /* no SRV */
+    
   }
 
   try {
@@ -231,7 +214,6 @@ function javaSlpOnce(handshakeHost, connect, timeoutMs) {
   });
 }
 
-/** Race multiple connect targets; first successful status wins. */
 async function javaSlp(handshakeHost) {
   const targets = await resolveConnectTargets(handshakeHost, 25565);
   return new Promise(function (resolve, reject) {
@@ -245,7 +227,6 @@ async function javaSlp(handshakeHost) {
       javaSlpOnce(handshakeHost, connect, SLP_MS)
         .then(function (raw) {
           if (settled) return;
-          // Reject Minefort "wrong vhost" offline shell
           const ver =
             raw && raw.version && (raw.version.name || raw.version);
           const players = (raw && raw.players) || {};
@@ -271,8 +252,6 @@ async function javaSlp(handshakeHost) {
     });
   });
 }
-
-/* ── normalize ──────────────────────────────────────────────── */
 
 function playerNamesFromList(list) {
   if (!Array.isArray(list) || !list.length) return [];
@@ -523,7 +502,6 @@ function mergeConsensus(results) {
   const trustedOnline = onlineVotes.some(function (r) {
     return TRUSTED_ONLINE.has(r.source);
   });
-  // If a trusted source says online, ignore flaky offline caches (mcstatus, etc.)
   let consensusOnline = trustedOnline || onlineVotes.length > offlineVotes;
   if (!trustedOnline && onlineVotes.length === offlineVotes) {
     consensusOnline = onlineVotes.some(function (r) {
@@ -554,7 +532,6 @@ function mergeConsensus(results) {
   const listMap = Object.create(null);
   const listOut = [];
 
-  // Prefer direct-slp count when present
   const slp = onlineVotes.find(function (r) {
     return r.source === "direct-slp";
   });

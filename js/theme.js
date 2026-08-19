@@ -1,7 +1,4 @@
-/**
- * Chopsticks HQ theme: dark | light
- * Key: chq.theme  — missing = follow prefers-color-scheme, then dark.
- */
+
 (function () {
   var KEY = 'chq.theme';
 
@@ -61,7 +58,6 @@
     });
   }
 
-  // Early paint: set before body if possible
   apply(resolve(stored()));
 
   if (document.readyState === 'loading') {
@@ -70,7 +66,6 @@
     init();
   }
 
-  // Follow OS only when user has no saved preference
   try {
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () {

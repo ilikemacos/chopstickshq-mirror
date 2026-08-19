@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Chopsticks HQ</title>
+    <link>https://chopstickshq.com/blog/</link>
+    <description>Release notes and lab updates from Chopsticks HQ.</description>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 14 Aug 2026 12:00:00 +0000</lastBuildDate>
+    <item>
+      <title>cs.AI 2.6.0 — Live research as of today</title>
+      <link>https://chopstickshq.com/blog/cs-ai-260-live-research.html</link>
+      <guid isPermaLink="true">https://chopstickshq.com/blog/cs-ai-260-live-research.html</guid>
+      <pubDate>Fri, 14 Aug 2026 12:00:00 +0000</pubDate>
+      <description>Each question runs Chromium research dated to today. Launch briefing once per day. Welcome sheet still appears after updates.</description>
+    </item>
+    <item>
+      <title>cs.AI 2.5.5b — Pro tier, Groq, Grok-style web UI</title>
+      <link>https://chopstickshq.com/blog/cs-ai-255b-pro-groq.html</link>
+      <guid isPermaLink="true">https://chopstickshq.com/blog/cs-ai-255b-pro-groq.html</guid>
+      <pubDate>Fri, 14 Aug 2026 00:00:00 +0000</pubDate>
+      <description>Pro effort tier on Groq GPT-OSS 120B, Grok-style web UI, Groq model picker, MIT + Contributor Covenant.</description>
+    </item>
+    <item>
+      <title>cs.AI 2.5.4 — CLI parity, Keychain, press kit</title>
+      <link>https://chopstickshq.com/blog/cs-ai-254-launch.html</link>
+      <guid isPermaLink="true">https://chopstickshq.com/blog/cs-ai-254-launch.html</guid>
+      <pubDate>Thu, 13 Aug 2026 00:00:00 +0000</pubDate>
+      <description>Terminal unlock keys, Keychain sessions, deploy sha256 gate, press kit, and launch copy for cs.AI.</description>
+    </item>
+  </channel>
+</rss>

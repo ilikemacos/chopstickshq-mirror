@@ -1,8 +1,4 @@
 #!/bin/bash
-# ARENA terminal installer — plain macOS, no Xcode or dev tools required.
-#   curl -fsSL https://chopstickshq.com/arena-fps/install.sh | bash
-# Downloads the prebuilt app, installs to ~/Applications, clears the
-# quarantine flag (skips the Gatekeeper right-click dance), and launches.
 set -euo pipefail
 
 URL="https://chopstickshq.com/arena-fps/ARENA-macOS.zip"
@@ -28,7 +24,6 @@ mkdir -p "$DEST"
 rm -rf "$DEST/ARENA.app"
 ditto -xk "$TMP/ARENA.zip" "$DEST"
 
-# de-quarantine so first launch works without the right-click > Open dance
 xattr -dr com.apple.quarantine "$DEST/ARENA.app" 2>/dev/null || true
 
 echo "▸ Launching..."

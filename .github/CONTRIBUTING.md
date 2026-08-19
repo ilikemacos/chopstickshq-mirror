@@ -8,7 +8,7 @@ Thank you for helping improve [chopstickshq.com](https://chopstickshq.com/) and 
 |------|------------|
 | cs.AI (macOS app, core API) | [ilikemacos/ChopsticksAI](https://github.com/ilikemacos/ChopsticksAI) |
 | This site + Netlify API mirror | This repo |
-| rNitro | [ilikemacos/rNitro](https://github.com/ilikemacos/rNitro) |
+| MacBar | [ilikemacos/MacBar](https://github.com/ilikemacos/MacBar) |
 | Fathom / Fathom Pro | [ilikemacos/Fathom](https://github.com/ilikemacos/Fathom) |
 
 ## Before you open a PR

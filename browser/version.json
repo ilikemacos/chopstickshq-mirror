@@ -1,0 +1,6 @@
+{
+  "name": "cs.browser",
+  "version": "0.3.0",
+  "min_macos": "13.0",
+  "install": "curl -fsSL https://chopstickshq.com/browser/install.sh | bash"
+}

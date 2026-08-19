@@ -1,7 +1,4 @@
-/**
- * Reliable clipboard helper for Chopsticks HQ install/terminal copy buttons.
- * Order: sync execCommand (keeps user-gesture on Safari) → async Clipboard API → selectable modal.
- */
+
 (function (global) {
   'use strict';
 
@@ -9,7 +6,6 @@
     try {
       var ta = document.createElement('textarea');
       ta.value = text;
-      // iOS / Safari: must be in DOM, selectable, not display:none
       ta.setAttribute('readonly', '');
       ta.contentEditable = 'true';
       ta.style.cssText =
@@ -21,7 +17,6 @@
       ta.select();
       ta.setSelectionRange(0, text.length);
 
-      // Extra path for older WebKit
       try {
         var range = document.createRange();
         range.selectNodeContents(ta);
@@ -153,21 +148,16 @@
     }, 30);
   }
 
-  /**
-   * @param {string} text
-   * @returns {Promise<boolean>}
-   */
+  
   function copyTextToClipboard(text) {
     if (text == null) return Promise.resolve(false);
     text = String(text);
     if (!text) return Promise.resolve(false);
 
-    // 1) Sync path first — keeps user activation (critical after modal / Safari)
     if (tryExecCommandCopy(text)) {
       return Promise.resolve(true);
     }
 
-    // 2) Async Clipboard API
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       return navigator.clipboard
         .writeText(text)
@@ -182,11 +172,7 @@
     return Promise.resolve(false);
   }
 
-  /**
-   * Copy or open selectable modal. Always leaves the user with a way to copy.
-   * @param {string} text
-   * @param {{ successToast?: function(string), failTitle?: string, toastOk?: string }=} opts
-   */
+  
   function copyOrShow(text, opts) {
     opts = opts || {};
     return copyTextToClipboard(text).then(function (ok) {
@@ -204,7 +190,6 @@
     });
   }
 
-  // Click-to-copy for <pre data-copy> or .curl / .copyable
   function bindCopyableBlocks(root) {
     root = root || document;
     var nodes = root.querySelectorAll('pre.curl, pre.copyable, code.copyable, [data-copy]');

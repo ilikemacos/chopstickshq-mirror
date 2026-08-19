@@ -4,19 +4,19 @@
 |----------|--------|
 | `www.chopstickshq.com` | Chopsticks HQ homepage |
 | `chopstickshq.com` | HQ site |
-| **`chopstickshq.com/rnitro`** | **rNitro product site (canonical)** |
+| **`chopstickshq.com/macbar`** | **MacBar product site (canonical)** |
 | **`chopstickshq.com/fathom`** | **Fathom Air (canonical)** |
 | **`chopstickshq.com/fathom-pro`** | **Fathom Pro (canonical)** |
 | **`chopstickshq.com/minecraft`** | **Minecraft portfolio (imik2261_) + live CatboiGens telemetry** |
 | `minecraft.chopstickshq.com` | Redirects → `/minecraft/` (add CNAME → Netlify) |
 | **`chopstickshq.com/vault`** | **Password-gated vault** |
-| `macbar.chopstickshq.com` | Redirects → /rnitro (temporary after rebrand revert) |
-| `rnitro.chopstickshq.com` | Optional → /rnitro |
+| `macbar.chopstickshq.com` | Redirects → /macbar (temporary after rebrand revert) |
+| `macbar.chopstickshq.com` | Optional → /macbar |
 | **`fathom.chopstickshq.com`** | **→ /fathom/** (Fathom Air) — add CNAME → Netlify |
 | **`air.chopstickshq.com`** | **→ /fathom/** (alias) — add CNAME → Netlify |
 | **`fathompro.chopstickshq.com`** | **→ /fathom-pro/** — add CNAME → Netlify |
 | **`fathom-pro.chopstickshq.com`** | **→ /fathom-pro/** — add CNAME → Netlify |
-| `getrnitro.netlify.app` | Legacy product CDN (redirect → `/rnitro/`) |
+| `chopstickshq.com/macbar` | Legacy product CDN (redirect → `/macbar/`) |
 | **`chopstickshq-mirror.pages.dev`** | **Cloudflare Pages backup** (repo `ilikemacos/chopstickshq-mirror`) |
 | **`ilikemacos.github.io/chopstickshq-mirror/`** | **GitHub Pages backup** |
 | **`ilikemacos.github.io/chopstickshq-backup/`** | **GitHub Pages second backup** |
@@ -48,8 +48,8 @@ For each product subdomain, add a **CNAME** (or ALIAS) to your Netlify site host
 
 Then in Netlify → Domain management → **Add domain alias** for each hostname (or wait for auto-detect). SSL is automatic.
 
-Redirects are already in `netlify.toml` (same pattern as `rnitro.chopstickshq.com`).
+Redirects are already in `netlify.toml` (same pattern as `macbar.chopstickshq.com`).
 
 ## GitHub
-- Repo may be named MacBar on GitHub; product brand is **rNitro**.
-- Homepage: https://chopstickshq.com/rnitro
+- Repo may be named MacBar on GitHub; product brand is **MacBar**.
+- Homepage: https://chopstickshq.com/macbar

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — Chopsticks HQ</title>
+<meta name="description" content="Chopsticks HQ blog — release notes, launch updates, and lab news for cs.AI, MacBar, Fathom, and more.">
+<meta name="keywords" content="Chopsticks HQ blog, cs.AI changelog, chopsticksAI updates, MacBar news, macOS software blog">
+<link rel="canonical" href="https://chopstickshq.com/blog/">
+<link rel="alternate" type="application/rss+xml" title="Chopsticks HQ" href="/blog/feed.xml">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c; --card: #121216; --border: #26262e;
+    --text: #f2f2f5; --muted: #8b8b9a;
+    --sans: 'Inter', system-ui, sans-serif;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+  .wrap { width: min(40rem, calc(100% - 2rem)); margin: 0 auto; padding: 6.5rem 0 4rem; }
+  h1 { font-family: var(--display); font-size: 2rem; letter-spacing: -.03em; margin-bottom: .5rem; }
+  .lead { color: var(--muted); margin-bottom: 1.75rem; font-size: .95rem; }
+  .nav-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10,10,12,0.72); backdrop-filter: blur(18px);
+  }
+  nav {
+    width: min(40rem, calc(100% - 2rem)); margin: 0 auto; min-height: 3.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand { font-family: var(--display); font-weight: 600; font-size: .95rem; color: var(--text); text-decoration: none; }
+  .nav-links { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .nav-links a { color: var(--muted); font-size: .8rem; text-decoration: none; }
+  .list { display: grid; gap: .75rem; }
+  .card {
+    display: block; padding: 1.1rem 1.2rem; border-radius: .75rem;
+    border: 1px solid var(--border); background: rgba(18,18,22,0.92);
+    text-decoration: none; color: inherit;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.18); }
+  .card strong { font-family: var(--display); font-size: 1rem; display: block; margin-bottom: .25rem; }
+  .card .date { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-bottom: .35rem; }
+  .card span { color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+  <div class="nav-bar">
+    <nav>
+      <a class="brand" href="/">Chopsticks HQ</a>
+      <div class="nav-links">
+        <a href="/chopsticks-ai/">cs.AI</a>
+        <a href="/press/">Press</a>
+        <a href="/launch/">Launch</a>
+        <a href="/guides/">Guides</a>
+      </div>
+    </nav>
+  </div>
+  <div class="wrap">
+    <h1>Blog</h1>
+    <p class="lead">Release notes and lab updates — not a daily feed, just honest changelog posts when we ship.</p>
+    <div class="list">
+      <a class="card" href="cs-ai-260-live-research.html">
+        <div class="date">2026-08-14</div>
+        <strong>cs.AI 2.6.0 — Live research as of today</strong>
+        <span>Every prompt is dated to today. Launch briefing once per day. Welcome sheet still fires after updates.</span>
+      </a>
+      <a class="card" href="cs-ai-255b-pro-groq.html">
+        <div class="date">2026-08-14</div>
+        <strong>cs.AI 2.5.5b — Pro tier, Groq, Grok-style web UI</strong>
+        <span>Pro on Groq 120B, web UI polish, MIT + CoC — launch copy for Product Hunt and AlternativeTo.</span>
+      </a>
+      <a class="card" href="cs-ai-254-launch.html">
+        <div class="date">2026-08-13</div>
+        <strong>cs.AI 2.5.4 — CLI parity, Keychain, press kit</strong>
+        <span>Terminal unlock keys, deploy sha256 gate, launch copy for Show HN and Product Hunt.</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

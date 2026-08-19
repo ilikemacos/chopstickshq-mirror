@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#121218"/>
+      <stop offset="100%" stop-color="#0a0a0c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="0%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect x="48" y="48" width="1104" height="534" rx="28" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+  <g transform="translate(96 168)">
+    <rect x="0" y="0" width="88" height="88" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.12"/>
+    <path d="M34 18 L46 70" stroke="#e8e8ed" stroke-width="5" stroke-linecap="round"/>
+    <path d="M54 18 L42 70" stroke="#8b8b9a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M28 38 H60" stroke="#ffffff" stroke-opacity="0.18" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="210" y="214" fill="#f2f2f5" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="56" font-weight="700" letter-spacing="-2">Chopsticks HQ</text>
+  <text x="210" y="262" fill="#8b8b9a" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="28" font-weight="500">Independent software lab</text>
+  <text x="96" y="360" fill="#f2f2f5" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="64" font-weight="700" letter-spacing="-2.5">Small lab. Sharp tools.</text>
+  <text x="96" y="418" fill="#8b8b9a" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="26" font-weight="400">Free local-first macOS tools - cs.AI, MacBar, Fathom, games</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="500" letter-spacing="1.2">
+    <rect x="96" y="468" width="108" height="42" rx="21" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="150" y="495" fill="#c8c8d0" text-anchor="middle">cs.AI</text>
+    <rect x="220" y="468" width="108" height="42" rx="21" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="274" y="495" fill="#c8c8d0" text-anchor="middle">MacBar</text>
+    <rect x="344" y="468" width="138" height="42" rx="21" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="413" y="495" fill="#c8c8d0" text-anchor="middle">Fathom Air</text>
+    <rect x="498" y="468" width="142" height="42" rx="21" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="569" y="495" fill="#c8c8d0" text-anchor="middle">Fathom Pro</text>
+    <rect x="656" y="468" width="168" height="42" rx="21" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.12"/>
+    <text x="740" y="495" fill="#c8c8d0" text-anchor="middle">Doomlike-FPS</text>
+  </g>
+  <text x="1104" y="582" fill="#5c5c6a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" text-anchor="end">chopstickshq.com</text>
+  <text x="96" y="582" fill="#5c5c6a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="2">NO ACCOUNTS / NO TELEMETRY / FREE</text>
+</svg>

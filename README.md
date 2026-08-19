@@ -9,7 +9,7 @@ Live site: **https://chopstickshq.com** (Netlify). This repo is the public GitHu
 | Project | Repo | License |
 |---------|------|---------|
 | **cs.AI / chopsticksAI** (macOS app + API + Lab) | [ilikemacos/ChopsticksAI](https://github.com/ilikemacos/ChopsticksAI) | MIT |
-| **rNitro** (menu bar monitor) | [ilikemacos/rNitro](https://github.com/ilikemacos/rNitro) | MIT |
+| **MacBar** (menu bar monitor) | [ilikemacos/MacBar](https://github.com/ilikemacos/MacBar) | MIT |
 | **Fathom** (battery drain) | [ilikemacos/Fathom](https://github.com/ilikemacos/Fathom) | MIT |
 | **Fathom Pro** | [ilikemacos/Fathom-Pro](https://github.com/ilikemacos/Fathom-Pro) | MIT |
 | **Homebrew tap** | [ilikemacos/homebrew-rnitro](https://github.com/ilikemacos/homebrew-rnitro) | MIT |
@@ -19,7 +19,7 @@ Live site: **https://chopstickshq.com** (Netlify). This repo is the public GitHu
 - **`chopsticks-ai/`** — product pages, changelog, macOS zip, installer script, mirrored server JS
 - **`chopailab/`** — web agent (Lab)
 - **`api/_lib/`** — cs.AI API implementation (`chopsticks-ai.js`)
-- **`rnitro/`**, **`fathom/`**, **`arena-fps/`** — other HQ products (pages + downloads)
+- **`macbar/`**, **`fathom/`**, **`arena-fps/`** — other HQ products (pages + downloads)
 
 ## cs.AI source layout
 

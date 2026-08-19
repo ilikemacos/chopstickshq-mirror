@@ -4,14 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DOOMLIKE™ — Doomlike-FPS™ Raycast FPS</title>
-<!-- Cloud accounts/progress/storage use Supabase. This is the one intentional
-     external dependency in an otherwise self-contained file: talking to a
-     remote backend for accounts inherently requires leaving the page. -->
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  /* ============================================================
-     GLOBAL / RESET
-     ============================================================ */
+  
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 100%; height: 100%; overflow: hidden;
@@ -27,9 +23,7 @@
     cursor: none;
   }
 
-  /* ============================================================
-     HUD
-     ============================================================ */
+  
   #hud {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none; color: #e8e8e8; text-shadow: 0 0 4px #000, 0 0 2px #000;
@@ -111,9 +105,7 @@
     font-size: 26px; color: #ffd23b; text-align: center; opacity: 0; transition: opacity 0.3s;
   }
 
-  /* ============================================================
-     WEAPON VIEWMODEL + MUZZLE FLASH (CSS overlay, not 3D geometry)
-     ============================================================ */
+  
   #weaponViewmodel {
     position: absolute; right: 3%; bottom: 0; width: 300px; height: 260px;
     pointer-events: none;
@@ -127,9 +119,7 @@
     background: radial-gradient(circle, rgba(255,240,180,0.95) 0%, rgba(255,180,60,0.5) 45%, rgba(255,180,60,0) 72%);
   }
 
-  /* ============================================================
-     OVERLAY MENUS
-     ============================================================ */
+  
   .menu-overlay {
     position: absolute; top:0; left:0; width:100%; height:100%;
     background: rgba(6,8,10,0.92); color: #e8e8e8;
@@ -163,9 +153,7 @@
 
   .menu-btn.small { font-size: 13px; padding: 8px 18px; margin: 0; }
 
-  /* ============================================================
-     SETTINGS PANEL
-     ============================================================ */
+  
   .settings-panel {
     width: min(760px, 92vw); max-height: 86vh; background: #12151a;
     border: 2px solid #333; border-radius: 6px; display: flex; flex-direction: column;
@@ -221,9 +209,7 @@
   }
   .settings-hint { font-size: 11px; opacity: 0.55; text-align: center; padding: 0 22px 12px; }
 
-  /* ============================================================
-     ACCOUNT PANEL
-     ============================================================ */
+  
   .account-panel {
     width: min(420px, 92vw); background: #12151a; border: 2px solid #333; border-radius: 6px;
     display: flex; flex-direction: column; pointer-events: all;
@@ -269,9 +255,7 @@
   .account-stat-box .stat-num { font-size: 22px; font-weight: bold; color: #ffd23b; }
   .account-stat-box .stat-label { font-size: 10px; color: #8a8f96; letter-spacing: 1px; margin-top: 4px; }
 
-  /* ============================================================
-     LOBBY (weapons / armor loadout cards)
-     ============================================================ */
+  
   .loadout-card {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
     padding: 14px 16px; margin-bottom: 10px; background: #0d0f13;
@@ -292,9 +276,7 @@
   .loadout-btn:disabled { opacity: 0.35; cursor: default; }
   .loadout-btn.equipped-btn { border-color: #3bff6e; color: #3bff6e; cursor: default; }
 
-  /* ============================================================
-     LEADERBOARD
-     ============================================================ */
+  
   .leaderboard-header-row, .leaderboard-row {
     display: grid; grid-template-columns: 40px 1fr 80px 90px; align-items: center;
     padding: 9px 6px; gap: 6px;
@@ -321,7 +303,6 @@
   <div class="menu-sub">This build renders with WebGPU instead of the old 2D raycaster. Your browser doesn't expose it (or it's disabled). Try a recent version of Chrome or Edge, or enable it in your browser's experimental-features flags.</div>
 </div>
 
-<!-- ================= HUD ================= -->
 <div id="hud">
   <div class="hud-corner" id="hud-bottom-left">
     <div class="stat-label">HEALTH</div>
@@ -352,10 +333,7 @@
   <div id="centerMsg"></div>
   <div id="crosshair"></div>
 
-  <!-- Weapon viewmodel + muzzle flash: moved out of the 3D scene into a
-       CSS/DOM overlay layer. Avoids needing a second render pass with its
-       own mini-camera just to keep the gun from clipping into world
-       geometry — the classic FPS "viewmodel" problem — for free. -->
+  
   <div id="weaponViewmodel">
     <div id="wvBody"></div>
     <div id="wvBarrel"></div>
@@ -367,7 +345,6 @@
 <div id="hitFlash"></div>
 <div id="lowHealthVignette"></div>
 
-<!-- ================= START MENU ================= -->
 <div id="startMenu" class="menu-overlay">
   <div class="menu-title">DOOMLIKE™</div>
   <div class="menu-sub">A lightweight raycast FPS. Survive the monster waves. Click START to lock your mouse and begin.</div>
@@ -387,7 +364,6 @@
   </div>
 </div>
 
-<!-- ================= PAUSE MENU ================= -->
 <div id="pauseMenu" class="menu-overlay hidden">
   <div class="menu-title" style="font-size:38px;">PAUSED</div>
   <button class="menu-btn" id="btnResume">RESUME</button>
@@ -397,21 +373,18 @@
   <button class="menu-btn" id="btnRestartFromPause">RESTART</button>
 </div>
 
-<!-- ================= GAME OVER ================= -->
 <div id="gameOverMenu" class="menu-overlay hidden">
   <div class="menu-title">YOU DIED</div>
   <div class="menu-stats">Final Score: <span id="goScore">0</span> &nbsp;|&nbsp; Wave Reached: <span id="goWave">1</span> &nbsp;|&nbsp; +<span id="goCredits">0</span> Credits</div>
   <button class="menu-btn" id="btnRestartFromGameOver">TRY AGAIN</button>
 </div>
 
-<!-- ================= VICTORY ================= -->
 <div id="victoryMenu" class="menu-overlay hidden">
   <div class="menu-title" style="color:#3bff6e; text-shadow:0 0 20px rgba(60,255,110,0.7);">VICTORY</div>
   <div class="menu-stats">All waves cleared! Final Score: <span id="vScore">0</span> &nbsp;|&nbsp; +<span id="vCredits">0</span> Credits</div>
   <button class="menu-btn" id="btnRestartFromVictory">PLAY AGAIN</button>
 </div>
 
-<!-- ================= LOBBY (loadout: weapons + armor) ================= -->
 <div id="lobbyMenu" class="menu-overlay hidden">
   <div class="settings-panel" style="width:min(820px, 94vw);">
     <div class="settings-header">
@@ -439,7 +412,6 @@
   </div>
 </div>
 
-<!-- ================= SETTINGS / OPTIONS ================= -->
 <div id="settingsMenu" class="menu-overlay hidden">
   <div class="settings-panel">
     <div class="settings-header">
@@ -603,7 +575,6 @@
   </div>
 </div>
 
-<!-- ================= ACCOUNT (Supabase) ================= -->
 <div id="accountMenu" class="menu-overlay hidden">
   <div class="account-panel">
     <div class="settings-header">
@@ -612,7 +583,7 @@
     </div>
     <div class="account-body">
 
-      <!-- Logged out: sign in / sign up form -->
+      
       <div id="accountLoggedOut">
         <div class="account-field">
           <label for="acctEmail">EMAIL</label>
@@ -630,7 +601,7 @@
         <span class="account-guest-link" id="btnContinueGuest">Continue without an account</span>
       </div>
 
-      <!-- Logged in: profile + cloud progress -->
+      
       <div id="accountLoggedIn" class="hidden">
         <div class="account-profile-row">
           <div class="avatar-circle" id="avatarCircle">
@@ -658,7 +629,6 @@
   </div>
 </div>
 
-<!-- ================= LEADERBOARD (Supabase) ================= -->
 <div id="leaderboardMenu" class="menu-overlay hidden">
   <div class="settings-panel" style="width:min(520px, 92vw);">
     <div class="settings-header">
@@ -689,27 +659,19 @@
    which is the single biggest lever for hitting a stable 60+ FPS target.
    ================================================================================== */
 
-// ============================================================================
-// CONFIG / CONSTANTS
-// BASE_CONFIG holds the game's original, never-mutated default values. CONFIG
-// is a live copy that gameplay code actually reads from; the Settings system
-// (further below) recomputes CONFIG's fields from BASE_CONFIG + the user's
-// settings every time an option changes, so nothing ever compounds across
-// repeated adjustments.
-// ============================================================================
 const BASE_CONFIG = {
-  FOV: Math.PI / 2,             // 90 degrees
-  AIM_FOV: Math.PI / 5.2,       // narrower FOV while aiming (zoom feel)
-  MOVE_SPEED: 3.0,              // map units / second
+  FOV: Math.PI / 2,
+  AIM_FOV: Math.PI / 5.2,
+  MOVE_SPEED: 3.0,
   SPRINT_MULT: 1.7,
   STRAFE_MULT: 0.9,
   PLAYER_RADIUS: 0.22,
   MOUSE_SENSITIVITY: 0.0022,
   AIM_SENSITIVITY_MULT: 0.55,
-  PITCH_SENSITIVITY: 0.0022,    // radians per mouse-Y unit (real camera pitch, not the old pixel-shift hack)
-  PITCH_MAX: 1.3,                // radians (~74 degrees)
-  RECOIL_KICK: 0.026,            // camera pitch (radians) added per shot — real muzzle kick, not just a viewmodel jiggle
-  RECOIL_RECOVERY: 3.2,          // radians/sec the recoil kick settles back down at
+  PITCH_SENSITIVITY: 0.0022,
+  PITCH_MAX: 1.3,
+  RECOIL_KICK: 0.026,
+  RECOIL_RECOVERY: 3.2,
   JUMP_VELOCITY: 3.4,
   GRAVITY: 9.0,
   MAX_HEALTH: 100,
@@ -735,18 +697,15 @@ const BASE_CONFIG = {
   AMMO_PICKUP_POOL_SIZE: 12,
   HEALTH_PICKUP_POOL_SIZE: 8,
   TOTAL_WAVES: 5,
-  FOG_DISTANCE: 10,             // distance at which fog fully obscures
-  BRIGHTNESS: 1.25,              // multiplier on final wall/ceiling/floor color
-  RT_QUALITY: 0,                 // ray-traced shadow tier, 0=low..4=extreme (see RAYTRACE_TIERS)
-  // Frame pacing — keep GPU/CPU out of a tight unlimited spin
+  FOG_DISTANCE: 10,
+  BRIGHTNESS: 1.25,
+  RT_QUALITY: 0,
   TARGET_FPS_PLAY: 45,
   TARGET_FPS_MENU: 12,
-  MAX_INTERNAL_WIDTH: 1280,      // hard cap on render buffer width
+  MAX_INTERNAL_WIDTH: 1280,
 };
 const CONFIG = Object.assign({}, BASE_CONFIG);
 
-// Internal render buffer target heights. Lower defaults = much less GPU fill
-// + fewer RT samples. CSS still scales the canvas to the full window.
 const RESOLUTION_TIERS = {
   '360p': 360,
   '480p': 480,
@@ -756,18 +715,8 @@ const RESOLUTION_TIERS = {
   '2160p': 2160,
 };
 
-// Ray tracing quality — real shadow rays marched through the level grid in
-// the fragment shader (mapGrid uploaded as a storage buffer), not a fake
-// screen-space effect. Higher tiers shadow-test more lights and use more
-// jittered samples per light for soft shadows, at real GPU cost — Extreme
-// is deliberately expensive.
 const RAYTRACE_TIERS = { low: 0, medium: 1, high: 2, ultra: 3, extreme: 4 };
 
-// ============================================================================
-// DIFFICULTY PRESETS — scale monster stats & ammo economy without touching
-// the base values directly, so switching difficulty is always relative to
-// BASE_CONFIG (never compounds).
-// ============================================================================
 const DIFFICULTY_PRESETS = {
   easy:      { healthMult: 0.7, dmgMult: 0.6, speedMult: 0.85, ammoMult: 1.4 },
   normal:    { healthMult: 1.0, dmgMult: 1.0, speedMult: 1.0,  ammoMult: 1.0 },
@@ -775,21 +724,13 @@ const DIFFICULTY_PRESETS = {
   nightmare: { healthMult: 1.8, dmgMult: 1.8, speedMult: 1.3,  ammoMult: 0.55 },
 };
 
-// ============================================================================
-// USER SETTINGS — everything the Options panel exposes. Persisted to
-// localStorage so choices survive a page reload.
-// ============================================================================
 const DEFAULT_SETTINGS = {
-  // Gameplay / look
   fovDeg: 90, aimFovDeg: 35, mouseSensitivity: 1.0, aimSensitivityMult: 0.55,
   invertY: false, moveSpeed: 3.0, sprintMult: 1.7, jumpVelocity: 3.4,
-  // Graphics — lightweight defaults (users can raise in Options)
   resolutionTier: '480p', fogDistance: 10, brightness: 1.25, showFPS: true,
   crosshairColor: '#d6ffe0', crosshairSize: 22, crosshairStyle: 'cross',
   rayTracingQuality: 'low',
-  // Audio
   masterVolume: 55,
-  // Combat / difficulty
   difficulty: 'normal', weaponDamageMult: 1.0,
   reserveAmmo: 96, maxHealth: 100, totalWaves: 5,
 };
@@ -801,8 +742,6 @@ const DEFAULT_KEYBINDS = {
 };
 const KEYBINDS = Object.assign({}, DEFAULT_KEYBINDS);
 
-// v2: force lighter graphics defaults so old 1080p/medium saves don't keep
-// the game in top CPU processes after this optimization pass.
 const SETTINGS_STORAGE_KEY = 'doomlike_settings_v2';
 const KEYBINDS_STORAGE_KEY = 'doomlike_keybinds_v1';
 function saveSettings() {
@@ -822,16 +761,6 @@ function loadSettings() {
   } catch (e) { /* storage unavailable or corrupt */ }
 }
 
-// ============================================================================
-// MAP DATA
-// 0 = floor, 1-4 = wall (the digit selects a material — brick/metal/wood/
-// tech-panel — colored in the level fragment shader). Border is fully enclosed.
-// Procedurally generated (rooms + MST corridors + a few extra loop links),
-// then validated for full floor connectivity offline before being baked in
-// here as static data, so every playthrough uses the same tested layout.
-// A large room in the top-left (wood-walled, material 3) is reserved as the
-// player's BASE — see BASE_ROOM_BOUNDS below — for the furniture system.
-// ============================================================================
 const MAP_ROWS = [
   "1111111111111111111111111111111111111111111111",
   "1133333333333311111111111111111111111111111111",
@@ -872,18 +801,13 @@ const MAP_ROWS = [
 ];
 const MAP_W = MAP_ROWS[0].length;
 const MAP_H = MAP_ROWS.length;
-const BASE_ROOM_BOUNDS = { x0: 2, y0: 2, w: 12, h: 9 }; // matches the generator's fixed BASE room
-const mapGrid = new Uint8Array(MAP_W * MAP_H); // 0 = open, 1-4 = wall material id
+const BASE_ROOM_BOUNDS = { x0: 2, y0: 2, w: 12, h: 9 };
+const mapGrid = new Uint8Array(MAP_W * MAP_H);
 for (let y = 0; y < MAP_H; y++) {
   for (let x = 0; x < MAP_W; x++) {
-    mapGrid[y * MAP_W + x] = MAP_ROWS[y].charCodeAt(x) - 48; // '0'-'4' -> 0-4
+    mapGrid[y * MAP_W + x] = MAP_ROWS[y].charCodeAt(x) - 48;
   }
 }
-// Static ceiling lamps — real point lights mounted at the ceiling (not just
-// the ambient/directional wash), placed at verified-open tiles reused from
-// layoutDefaultFurniture so they're guaranteed to sit in real rooms rather
-// than inside a wall. Spread across every distinct area of the map. Height
-// 0.94 puts them right up against the 1.0-unit ceiling.
 const LAMP_LIGHTS = [
   { x: 6.5, y: 4.5, z: 0.94, radius: 5.5, color: [1.0, 0.82, 0.56], intensity: 1.1 },
   { x: 20.5, y: 27.5, z: 0.94, radius: 5.5, color: [0.65, 0.82, 1.0], intensity: 1.0 },
@@ -901,7 +825,6 @@ function isWall(x, y) {
   return mapGrid[iy * MAP_W + ix] !== 0;
 }
 
-// Collect open floor tiles for spawn placement.
 const openTiles = [];
 for (let y = 1; y < MAP_H - 1; y++) {
   for (let x = 1; x < MAP_W - 1; x++) {
@@ -909,13 +832,6 @@ for (let y = 1; y < MAP_H - 1; y++) {
   }
 }
 
-// ============================================================================
-// MATRIX MATH — minimal column-major mat4 helpers (WGSL's mat4x4<f32> layout
-// matches a flat 16-float column-major array, so these Float32Arrays upload
-// directly as uniform data with no conversion). Just enough for a
-// perspective projection and a yaw/pitch FPS camera — no general-purpose
-// scene-graph transform stack, since the game only ever needs those two.
-// ============================================================================
 function mat4Perspective(fovY, aspect, near, far) {
   const f = 1.0 / Math.tan(fovY / 2);
   const out = new Float32Array(16);
@@ -923,13 +839,11 @@ function mat4Perspective(fovY, aspect, near, far) {
   out[5] = f;
   out[11] = -1;
   const nf = 1 / (near - far);
-  out[10] = far * nf;       // WebGPU clip-space depth is [0,1], not GL's [-1,1]
+  out[10] = far * nf;
   out[14] = far * near * nf;
   return out;
 }
 
-// Standard lookAt construction (eye/target/up -> view matrix). Used with a
-// target computed from the player's yaw+pitch each frame.
 function mat4LookAt(eyeX, eyeY, eyeZ, targetX, targetY, targetZ, upX, upY, upZ) {
   let z0 = eyeX - targetX, z1 = eyeY - targetY, z2 = eyeZ - targetZ;
   let len = Math.hypot(z0, z1, z2);
@@ -968,15 +882,6 @@ function mat4Multiply(a, b) {
   return out;
 }
 
-// ============================================================================
-// MESH GENERATION — a unit box and a low-poly unit sphere (both centered on
-// origin, positions only — props use a cheap local-Y height gradient for
-// shading instead of true per-face normals, see the prop shader below, so no
-// normal attribute is needed here). Triangle winding is intentionally not
-// guaranteed consistent (the level/prop pipelines both disable backface
-// culling), which trades a small amount of overdraw for zero risk of
-// "missing face" bugs from a winding mistake.
-// ============================================================================
 function buildUnitBoxPositions() {
   const faces = [
     [[0.5, -0.5, -0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [0.5, -0.5, -0.5], [0.5, 0.5, 0.5], [0.5, 0.5, -0.5]],
@@ -1013,12 +918,6 @@ function buildUnitSpherePositions(segments, rings) {
   return arr;
 }
 
-// Extrudes the 2D map grid into real 3D geometry: a vertical quad for every
-// wall face that borders open space (skips faces between two wall cells,
-// since those are never visible), plus one big floor quad and one big
-// ceiling quad. Each vertex packs [x,y,z,material] + [nx,ny,nz,0] (8 floats,
-// interleaved) — material 0 is reused by floor/ceiling and disambiguated in
-// the shader by normal.y sign. Built once at load; the map is static.
 function buildLevelGeometry() {
   const data = [];
   function addQuad(p0, p1, p2, p3, normal, material) {
@@ -1046,20 +945,11 @@ function buildLevelGeometry() {
       }
     }
   }
-  addQuad([0, 0, 0], [MAP_W, 0, 0], [MAP_W, 0, MAP_H], [0, 0, MAP_H], [0, 1, 0], 0);   // floor
-  addQuad([0, 1, 0], [0, 1, MAP_H], [MAP_W, 1, MAP_H], [MAP_W, 1, 0], [0, -1, 0], 0); // ceiling
+  addQuad([0, 0, 0], [MAP_W, 0, 0], [MAP_W, 0, MAP_H], [0, 0, MAP_H], [0, 1, 0], 0);
+  addQuad([0, 1, 0], [0, 1, MAP_H], [MAP_W, 1, MAP_H], [MAP_W, 1, 0], [0, -1, 0], 0);
   return { vertices: new Float32Array(data), vertexCount: data.length / 8 };
 }
 
-// ============================================================================
-// WEBGPU SETUP — device/context/pipelines. WebGPU is the browser-native
-// counterpart to Vulkan's design (explicit, low-overhead, modern GPU command
-// model) — real Vulkan cannot run in a browser at all, it has zero JS
-// exposure. This replaces the old CPU-side raycasting renderer with true 3D
-// geometry, a real depth buffer (so occlusion just works, no more manual
-// zBuffer sampling hacks), and a real yaw+pitch camera instead of the old
-// fake vertical-shift pitch trick.
-// ============================================================================
 const canvas = document.getElementById('gameCanvas');
 let gpuDevice = null;
 let gpuContext = null;
@@ -1067,25 +957,20 @@ let gpuFormat = null;
 let depthTexture = null;
 let depthView = null;
 
-let internalW = 1280, internalH = 720; // canvas pixel size (renamed concept from the old low-res raycast buffer — this is now the actual GPU render target size)
+let internalW = 1280, internalH = 720;
 
 const LEVEL_SHADER_SRC = `
 struct Scene {
   viewProj: mat4x4<f32>,
-  cameraPos: vec4<f32>,   // xyz, w unused
-  fogParams: vec4<f32>,   // x=fogDistance, y=brightness, z=ambient, w=time
-  lightDir: vec4<f32>,    // xyz normalized, w unused
-  rtParams: vec4<f32>,    // x=mapW, y=mapH, z=rtQuality (0..4), w unused
-  lights: array<vec4<f32>, 18>, // NUM_LIGHTS(9) point lights, each 2 slots: [pos.xyz,radius], [color.rgb,intensity]
+  cameraPos: vec4<f32>,
+  fogParams: vec4<f32>,
+  lightDir: vec4<f32>,
+  rtParams: vec4<f32>,
+  lights: array<vec4<f32>, 18>,
 };
 @group(0) @binding(0) var<uniform> scene: Scene;
 @group(0) @binding(1) var<storage, read> mapGridBuf: array<f32>;
 
-// Real shadow ray: 2D DDA march through the level grid (same technique as
-// the gameplay-side line-of-sight check) from a surface point to a light,
-// returning 1.0 if nothing occludes it or 0.0 if a wall cell is hit first.
-// Walls span full floor-to-ceiling height, so XZ-plane occlusion is exact
-// regardless of the light's or surface's Y height.
 fn shadowRay(fromXZ: vec2<f32>, toXZ: vec2<f32>) -> f32 {
   let delta = toXZ - fromXZ;
   let dist = length(delta);
@@ -1171,17 +1056,15 @@ fn materialColor(material: f32, isFloor: bool) -> vec3<f32> {
     if (isFloor) { return vec3<f32>(0.16, 0.14, 0.11); }
     return vec3<f32>(0.09, 0.10, 0.16);
   } else if (material < 1.5) {
-    return vec3<f32>(0.59, 0.24, 0.24); // brick
+    return vec3<f32>(0.59, 0.24, 0.24);
   } else if (material < 2.5) {
-    return vec3<f32>(0.37, 0.41, 0.46); // metal
+    return vec3<f32>(0.37, 0.41, 0.46);
   } else if (material < 3.5) {
-    return vec3<f32>(0.48, 0.35, 0.21); // wood
+    return vec3<f32>(0.48, 0.35, 0.21);
   }
-  return vec3<f32>(0.27, 0.50, 0.50);   // tech-panel
+  return vec3<f32>(0.27, 0.50, 0.50);
 }
 
-// Cheap hash noise (no textures) — gives walls/floor a faint grain instead
-// of a flat plastic-solid look. Deliberately coarse and low-amplitude.
 fn hash2(p: vec2<f32>) -> f32 {
   return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
 }
@@ -1193,9 +1076,6 @@ fn fs_main(in: VOut) -> @location(0) vec4<f32> {
   let isWallFace = !isFloor && !isCeiling;
   var base = materialColor(in.material, isFloor);
 
-  // Procedural banding (mortar/panel lines), a real per-pixel equivalent of
-  // the original 2D renderer's column banding — uses whichever world axis
-  // runs "along" the face so it doesn't smear with distance.
   if (material_uses_banding(in.material)) {
     let alongFace = select(in.worldPos.x, in.worldPos.z, abs(in.normal.x) > 0.5);
     let vBand = fract(alongFace * 3.0) < 0.5;
@@ -1203,16 +1083,11 @@ fn fs_main(in: VOut) -> @location(0) vec4<f32> {
     if (vBand != hBand) { base = base * 0.82; }
   }
 
-  // Baseboard / crown trim: thin darker bands where wall meets floor and
-  // ceiling, purely in the shader (no extra geometry) — breaks up the
-  // "single flat slab" read of a wall quad.
   if (isWallFace) {
     if (in.worldPos.y < 0.09) { base = base * 0.6; }
     else if (in.worldPos.y > 0.94) { base = base * 0.75; }
   }
 
-  // Faint per-pixel grain, sampled in whichever plane the face actually
-  // spans, so it doesn't smear or swim with camera distance.
   let grainUV = select(in.worldPos.xy, in.worldPos.zy, abs(in.normal.x) > 0.5);
   let grain = (hash2(floor(grainUV * 24.0)) - 0.5) * 0.05;
   base = base + grain;
@@ -1239,8 +1114,8 @@ struct Scene {
   cameraPos: vec4<f32>,
   fogParams: vec4<f32>,
   lightDir: vec4<f32>,
-  rtParams: vec4<f32>,    // x=mapW, y=mapH, z=rtQuality (0..4), w unused
-  lights: array<vec4<f32>, 18>, // NUM_LIGHTS(9) point lights, each 2 slots: [pos.xyz,radius], [color.rgb,intensity]
+  rtParams: vec4<f32>,
+  lights: array<vec4<f32>, 18>,
 };
 
 fn shadowRay(fromXZ: vec2<f32>, toXZ: vec2<f32>) -> f32 {
@@ -1306,9 +1181,9 @@ fn pointLightContrib(worldPos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
   return total;
 }
 struct Instance {
-  position: vec4<f32>, // xyz world position, w = yaw radians
-  scale: vec4<f32>,    // xyz per-axis scale, w = glow flag (0 or 1)
-  color: vec4<f32>,    // rgb, a = opacity
+  position: vec4<f32>,
+  scale: vec4<f32>,
+  color: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> scene: Scene;
 @group(0) @binding(1) var<storage, read> instances: array<Instance>;
@@ -1342,25 +1217,13 @@ fn vs_main(@location(0) localPos: vec3<f32>, @builtin(instance_index) idx: u32) 
 @fragment
 fn fs_main(in: VOut) -> @location(0) vec4<f32> {
   var rgb = in.color.rgb;
-  // Real per-face lighting: screen-space derivatives of the interpolated
-  // world position give the true geometric normal of whichever flat face
-  // (or low-poly facet) is under this fragment — every box side and every
-  // sphere facet now shades independently instead of sharing one fake
-  // height-based gradient, which is what was reading as "flat/blocky."
-  // dpdx/dpdy must run in uniform control flow, so this is computed
-  // unconditionally and only *used* inside the branch below.
   let faceNormal = normalize(cross(dpdx(in.worldPos), dpdy(in.worldPos)));
   if (in.glow < 0.5) {
     let diffuse = max(dot(faceNormal, scene.lightDir.xyz), 0.0) * 0.5 + 0.5;
-    // cheap AO: local-height gradient kept as a subtle secondary term so
-    // object bases still read as grounded, not because faces need it now.
     let heightAO = 0.88 + (in.localY + 0.5) * 0.12;
     rgb = rgb * diffuse * heightAO * scene.fogParams.y;
     rgb = rgb + pointLightContrib(in.worldPos, faceNormal) * in.color.rgb;
 
-    // Fresnel-style rim light — grazing angles catch a soft highlight,
-    // which is what makes rounded/faceted shapes read as 3D instead of
-    // flat-shaded cutouts.
     let viewDir = normalize(scene.cameraPos.xyz - in.worldPos);
     let rim = pow(1.0 - clamp(dot(faceNormal, viewDir), 0.0, 1.0), 3.0) * 0.3;
     rgb = rgb + rim;
@@ -1368,7 +1231,7 @@ fn fs_main(in: VOut) -> @location(0) vec4<f32> {
   let dist = distance(in.worldPos, scene.cameraPos.xyz);
   let fogT = clamp(dist / scene.fogParams.x, 0.0, 1.0);
   let fogColor = vec3<f32>(0.04, 0.05, 0.07);
-  let mixed = mix(rgb, fogColor, fogT * (1.0 - in.glow * 0.7)); // glow objects resist fog a bit (they read as lit)
+  let mixed = mix(rgb, fogColor, fogT * (1.0 - in.glow * 0.7));
   return vec4<f32>(mixed, in.color.a);
 }
 `;
@@ -1382,7 +1245,7 @@ const MAX_INSTANCES = 2048;
 let boxInstanceBuffer = null, sphereInstanceBuffer = null;
 let boxBindGroup = null, sphereBindGroup = null;
 let mapGridBuffer = null;
-const boxInstanceData = new Float32Array(MAX_INSTANCES * 12); // 3 vec4 per instance
+const boxInstanceData = new Float32Array(MAX_INSTANCES * 12);
 const sphereInstanceData = new Float32Array(MAX_INSTANCES * 12);
 let boxInstanceCount = 0, sphereInstanceCount = 0;
 
@@ -1414,9 +1277,6 @@ async function initWebGPU() {
   boxInstanceBuffer = gpuDevice.createBuffer({ size: boxInstanceData.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
   sphereInstanceBuffer = gpuDevice.createBuffer({ size: sphereInstanceData.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
 
-  // Static level grid, uploaded once as a read-only storage buffer so both
-  // fragment shaders can shadow-ray-march through it (see shadowRay above) —
-  // any nonzero material cell fully occludes.
   const mapGridF32 = new Float32Array(mapGrid.length);
   for (let i = 0; i < mapGrid.length; i++) mapGridF32[i] = mapGrid[i];
   mapGridBuffer = gpuDevice.createBuffer({ size: mapGridF32.byteLength, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
@@ -1495,31 +1355,25 @@ async function initWebGPU() {
 }
 
 function resizeCanvas() {
-  // Guard against a transiently zero/invalid viewport (e.g. a resize firing
-  // before layout settles) so the canvas can never collapse to 0 size.
   const w = window.innerWidth || 1280, h = window.innerHeight || 720;
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
   const aspect = w / h;
-  // Render target resolution still follows the chosen tier — now genuine
-  // GPU framebuffer resolution rather than a CPU-bound raycast buffer size.
   const targetHeight = RESOLUTION_TIERS[CONFIG.RESOLUTION_TIER] || RESOLUTION_TIERS['480p'];
   internalH = targetHeight;
   internalW = Math.round(internalH * aspect);
-  // Cap width so ultrawide displays don't explode pixel count
   const maxW = CONFIG.MAX_INTERNAL_WIDTH || 1280;
   if (internalW > maxW) {
     internalW = maxW;
     internalH = Math.round(internalW / aspect);
   }
-  // Avoid thrashing GPU textures on tiny dimension changes (e.g. scrollbars)
   if (canvas.width === internalW && canvas.height === internalH && depthTexture) {
     updateProjection();
     return;
   }
   canvas.width = internalW;
   canvas.height = internalH;
-  if (!gpuDevice) return; // resize can be called before WebGPU finishes initializing
+  if (!gpuDevice) return;
   if (depthTexture) depthTexture.destroy();
   depthTexture = gpuDevice.createTexture({
     size: [internalW, internalH], format: 'depth24plus', usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -1528,14 +1382,8 @@ function resizeCanvas() {
   updateProjection();
 }
 function updateProjection() {
-  // No-op placeholder retained for call-site compatibility (FOV is read
-  // live from currentFOV() when building the projection matrix each frame
-  // in renderFrame(), so there's nothing to precompute here anymore).
 }
 
-// ============================================================================
-// AUDIO — procedurally generated sound effects via WebAudio (no files)
-// ============================================================================
 const AudioSys = {
   ctx: null,
   masterGain: null,
@@ -1594,9 +1442,6 @@ const AudioSys = {
   pickupHealth() { this.tone(520, 0.1, 'sine', 0.2, 1040); this.tone(780, 0.14, 'sine', 0.16, 1300); },
 };
 
-// ============================================================================
-// INPUT
-// ============================================================================
 const Input = {
   keys: Object.create(null),
   mouseDown: false,
@@ -1604,9 +1449,6 @@ const Input = {
   movementX: 0,
   movementY: 0,
 };
-// When non-null, the very next keydown is captured as a keybind rebind
-// instead of being treated as normal gameplay input (see the Controls tab
-// in the Settings panel).
 let listeningForAction = null;
 
 document.addEventListener('keydown', (e) => {
@@ -1646,13 +1488,10 @@ document.addEventListener('pointerlockchange', () => {
   }
 });
 
-// ============================================================================
-// PLAYER
-// ============================================================================
 const player = {
   x: 8.5, y: 6.5, angle: 0,
-  pitch: 0,           // vertical look offset in pixels (fake-pitch)
-  velZ: 0, z: 0,      // jump height + velocity
+  pitch: 0,
+  velZ: 0, z: 0,
   health: CONFIG.MAX_HEALTH,
   armor: 0, armorMax: 0,
   ammo: CONFIG.MAG_SIZE,
@@ -1661,11 +1500,11 @@ const player = {
   reloadTimer: 0,
   fireTimer: 0,
   isAiming: false,
-  aimAmount: 0,       // lerp 0..1 for FOV / sway transitions
+  aimAmount: 0,
   bobPhase: 0,
   distanceWalked: 0,
-  recoil: 0,          // viewmodel kick
-  recoilPitch: 0,     // real camera-pitch kick (radians), on top of mouse-driven pitch
+  recoil: 0,
+  recoilPitch: 0,
   score: 0,
   invulnTimer: 0,
 };
@@ -1688,10 +1527,6 @@ function placePlayerAtStart() {
   player.invulnTimer = 0;
 }
 
-// Attempts to move the player by (dx, dy), sliding along walls on each axis
-// independently so corridors feel smooth instead of "sticky". Furniture
-// blocks the same way a wall would, except the player can push a piece
-// forward if there's room for it to slide into.
 function movePlayer(dx, dy) {
   const r = CONFIG.PLAYER_RADIUS;
   if (dx !== 0) {
@@ -1710,13 +1545,6 @@ function movePlayer(dx, dy) {
   }
 }
 
-// ============================================================================
-// MONSTERS — fixed-size object pool to avoid per-wave GC churn.
-// ============================================================================
-// Monster type roster. Stats are multipliers applied on top of
-// CONFIG.MONSTER_BASE_HEALTH/SPEED/ATTACK_DAMAGE (which already carry the
-// wave and difficulty scaling), so a type's relative feel stays consistent
-// across waves/difficulty rather than needing its own tuning.
 const MONSTER_TYPES = {
   grunt: {
     name: 'Grunt', healthMult: 1.0, speedMult: 1.0, damageMult: 1.0, radiusMult: 1.0,
@@ -1740,9 +1568,6 @@ const MONSTER_TYPES = {
   },
 };
 
-// Weighted-random type selection that phases in tougher/ranged types as
-// waves progress, so early waves stay simple (all Grunts) and later ones
-// get real variety.
 function pickMonsterType(waveNum) {
   const roll = Math.random();
   if (waveNum <= 1) return 'grunt';
@@ -1761,7 +1586,7 @@ function createMonster() {
     damage: 0, attackRange: 0.9, projectileSpeed: 0, scoreValue: 100, ammoDrop: 0,
     health: 0, maxHealth: 0,
     speed: 0,
-    state: 'idle',           // idle | chase | attack | dead
+    state: 'idle',
     wanderTarget: null,
     wanderTimer: 0,
     attackTimer: 0,
@@ -1778,8 +1603,6 @@ let monstersAliveCount = 0;
 
 function distSq(x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1; return dx * dx + dy * dy; }
 
-// Coarse line-of-sight test: step along the segment in fixed increments and
-// bail out on the first wall tile encountered. Cheap and good enough for AI.
 function hasLineOfSight(x0, y0, x1, y1) {
   const dx = x1 - x0, dy = y1 - y0;
   const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1796,7 +1619,6 @@ function hasLineOfSight(x0, y0, x1, y1) {
 function spawnMonster(waveNum, forcedType) {
   const slot = monsters.find((m) => !m.active);
   if (!slot) return null;
-  // Find a spawn tile reasonably far from the player so monsters don't pop in on top of them.
   let tile = null;
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = openTiles[(Math.random() * openTiles.length) | 0];
@@ -1847,7 +1669,6 @@ function updateMonster(m, dt) {
   const dSq = distSq(m.x, m.y, player.x, player.y);
   const dist = Math.sqrt(dSq);
 
-  // Occasional ambient growl for atmosphere, throttled per-monster.
   m.growlTimer -= dt;
   if (m.growlTimer <= 0 && dist < 8) {
     m.growlTimer = 3 + Math.random() * 4;
@@ -1876,7 +1697,7 @@ function updateMonster(m, dt) {
         damagePlayer(m.damage);
       }
     }
-    return; // no movement while attacking (ranged types hold their distance this way)
+    return;
   }
 
   let moveX = 0, moveY = 0;
@@ -1886,7 +1707,6 @@ function updateMonster(m, dt) {
     moveX = (dx / len) * m.speed * dt;
     moveY = (dy / len) * m.speed * dt;
   } else {
-    // idle wander: pick a random nearby target periodically
     m.wanderTimer -= dt;
     if (!m.wanderTarget || m.wanderTimer <= 0) {
       m.wanderTimer = 2 + Math.random() * 3;
@@ -1906,9 +1726,6 @@ function updateMonster(m, dt) {
     }
   }
 
-  // Wall + furniture sliding, same technique as the player — but monsters
-  // never push furniture, only get blocked by it (that's what makes
-  // barricading a doorway with pushed crates actually work defensively).
   const r = m.radius || CONFIG.MONSTER_RADIUS;
   const startX = m.x, startY = m.y;
   const intendedLen = Math.hypot(moveX, moveY);
@@ -1917,17 +1734,6 @@ function updateMonster(m, dt) {
   const ny = m.y + moveY;
   if (!isWall(m.x, ny + Math.sign(moveY) * r) && !furnitureBlockingCircle(m.x, ny, r)) m.y = ny; else m.wanderTarget = null;
 
-  // Obstacle steering: a chasing monster whose direct line to the player is
-  // mostly blocked (wall/furniture edge-on) sidesteps perpendicular to that
-  // line instead of just grinding against it — a cheap stand-in for real
-  // pathfinding that's enough to route monsters around corners and pushed
-  // furniture rather than beelining into them forever. "Blocked" is judged
-  // by how much of the intended move actually landed, not exact equality —
-  // a monster sliding along an obstacle edge still makes some incidental
-  // progress each frame, and resetting on any nonzero progress would cancel
-  // the sidestep before it actually clears the obstacle. The chosen side
-  // persists while still mostly blocked (avoids flip-flopping) and resets
-  // once the monster is moving mostly freely again.
   const actualLen = Math.hypot(m.x - startX, m.y - startY);
   const isBlocked = m.state === 'chase' && intendedLen > 0.0001 && actualLen < intendedLen * 0.4;
   if (isBlocked) {
@@ -1971,9 +1777,6 @@ function damageMonster(m, amount) {
   }
 }
 
-// ============================================================================
-// PARTICLES — fixed pool, no per-frame allocation.
-// ============================================================================
 function createParticle() {
   return { active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0, color: '#fff', size: 1 };
 }
@@ -2006,13 +1809,6 @@ function updateParticles(dt) {
   }
 }
 
-// ============================================================================
-// BLOOD DECALS — permanent-ish floor stains left where monsters die, purely
-// cosmetic detail. A ring buffer (oldest replaced first) instead of an
-// active/inactive pool since decals never expire on their own — capping
-// count by recycling is simpler than tracking lifetimes for something this
-// cheap to draw.
-// ============================================================================
 const decals = [];
 for (let i = 0; i < CONFIG.DECAL_POOL_SIZE; i++) decals.push({ active: false, x: 0, y: 0, size: 0.3 });
 let nextDecalIndex = 0;
@@ -2021,12 +1817,6 @@ function spawnDecal(x, y) {
   nextDecalIndex = (nextDecalIndex + 1) % decals.length;
   d.active = true; d.x = x; d.y = y; d.size = 0.28 + Math.random() * 0.22;
 }
-// ============================================================================
-// FURNITURE — movable base-building props, fixed-size pool like everything
-// else. Sokoban-style physics: walking into a piece pushes it if the space
-// ahead is clear; monsters are blocked by furniture but never push it, so
-// shoving crates/tables into doorways creates real defensible chokepoints.
-// ============================================================================
 const FURNITURE_TYPES = {
   crate: { radius: 0.32, height: 0.55, color: [140, 100, 55] },
   barrel: { radius: 0.28, height: 0.62, color: [72, 76, 70] },
@@ -2049,12 +1839,6 @@ function spawnFurniture(type, x, y) {
   return slot;
 }
 
-// Deterministic default arrangement: most pieces in the BASE room (usable
-// as barricade material), a handful scattered around the map so cover and
-// pushable chokepoints exist out in the fight too. Coordinates were
-// verified against the map data offline, but the isWall() guard is kept as
-// a defensive fallback regardless. Called fresh on every game start so the
-// base always begins tidy.
 function layoutDefaultFurniture() {
   for (let i = 0; i < furniture.length; i++) furniture[i].active = false;
   const placements = [
@@ -2084,9 +1868,6 @@ function furnitureBlockingCircle(x, y, r, exclude) {
   return null;
 }
 
-// Attempts to slide a furniture item by (dx, dy). Fails if the destination
-// overlaps a wall or another piece — the caller (movePlayer) treats failure
-// as "this push didn't happen" and keeps the player from moving too.
 function tryPushFurniture(item, dx, dy) {
   const nx = item.x + dx, ny = item.y + dy;
   const r = item.radius;
@@ -2096,19 +1877,10 @@ function tryPushFurniture(item, dx, dy) {
   return true;
 }
 
-// ============================================================================
-// AMMO PICKUPS — static crates scattered around the map. Walk over one to
-// refill reserve ammo; it then goes on cooldown and reappears after a
-// while, so fights near a cache reward looping back through it instead of
-// being a one-time grab.
-// ============================================================================
 const AMMO_PICKUP_AMOUNT = 30;
 const AMMO_PICKUP_RESPAWN_TIME = 22;
 const AMMO_PICKUP_RADIUS = 0.5;
 
-// Coordinates verified against the map data offline (same process as the
-// furniture layout) and spread across rooms far from the base, so
-// resupplying means actually moving through the level during a wave.
 const AMMO_PICKUP_SPOTS = [
   [17.5, 6.5], [28.5, 7.5], [37.5, 9.5], [12.5, 20.5],
   [23.5, 23.5], [35.5, 25.5], [16.5, 29.5], [6.5, 26.5],
@@ -2149,11 +1921,6 @@ function updateAmmoPickups(dt) {
   }
 }
 
-// ============================================================================
-// HEALTH PICKUPS — same pattern as ammo pickups (pooled, respawn-on-cooldown
-// world objects), placed at a distinct set of verified map spots so ammo
-// and health caches pull the player toward different parts of the level.
-// ============================================================================
 const HEALTH_PICKUP_AMOUNT = 25;
 const HEALTH_PICKUP_RESPAWN_TIME = 30;
 const HEALTH_PICKUP_RADIUS = 0.5;
@@ -2197,10 +1964,6 @@ function updateHealthPickups(dt) {
   }
 }
 
-// ============================================================================
-// PROJECTILES — simple pooled entities for the ranged Spitter monster.
-// Straight-line travel, dies on wall contact or on touching the player.
-// ============================================================================
 function createProjectile() { return { active: false, x: 0, y: 0, vx: 0, vy: 0, damage: 0 }; }
 const projectiles = [];
 for (let i = 0; i < CONFIG.PROJECTILE_POOL_SIZE; i++) projectiles.push(createProjectile());
@@ -2233,9 +1996,6 @@ function updateProjectiles(dt) {
   }
 }
 
-// ============================================================================
-// COMBAT
-// ============================================================================
 let muzzleFlashTimer = 0;
 let hitmarkerTimer = 0;
 
@@ -2252,8 +2012,6 @@ function tryShoot() {
   muzzleFlashTimer = 0.06;
   AudioSys.shoot();
 
-  // Multi-pellet weapons (shotgun) fire several independent hitscans per
-  // trigger pull, each with its own spread roll and damage/impact FX.
   const pellets = CONFIG.BULLET_PELLETS || 1;
   for (let i = 0; i < pellets; i++) fireSinglePellet();
 }
@@ -2263,13 +2021,10 @@ function fireSinglePellet() {
   const shootAngle = player.angle + spread;
   const dirX = Math.cos(shootAngle), dirY = Math.sin(shootAngle);
 
-  // Distance to nearest wall along the shot ray (for range limiting + impact FX).
   const wallDist = castSingleRay(shootAngle).dist;
   const maxDist = Math.min(wallDist, CONFIG.BULLET_RANGE);
 
   if (CONFIG.BULLET_PIERCING) {
-    // Railgun-style: damages every monster along the ray up to the wall
-    // instead of stopping at the first one.
     let anyHit = false;
     for (let i = 0; i < monsters.length; i++) {
       const m = monsters[i];
@@ -2295,8 +2050,6 @@ function fireSinglePellet() {
     return;
   }
 
-  // Find the closest monster whose angular position is within a tight cone
-  // of the shot direction and who isn't occluded by a nearer wall.
   let closestMonster = null, closestDist = maxDist;
   for (let i = 0; i < monsters.length; i++) {
     const m = monsters[i];
@@ -2308,7 +2061,7 @@ function fireSinglePellet() {
     let diff = angleTo - shootAngle;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    const hitRadius = (m.radius || CONFIG.MONSTER_RADIUS) + dist * 0.05; // generous forgiving hitbox
+    const hitRadius = (m.radius || CONFIG.MONSTER_RADIUS) + dist * 0.05;
     if (Math.abs(diff) * dist < hitRadius + 0.15 && dist < closestDist) {
       closestDist = dist;
       closestMonster = m;
@@ -2320,7 +2073,6 @@ function fireSinglePellet() {
     spawnParticleBurst(closestMonster.x, closestMonster.y, 0.5, '#c02020', 3);
     hitmarkerTimer = 0.12;
   } else {
-    // Impact spark on the wall.
     const impactX = player.x + dirX * wallDist;
     const impactY = player.y + dirY * wallDist;
     spawnParticleBurst(impactX, impactY, 0.5, '#e8c060', 5);
@@ -2361,9 +2113,6 @@ function damagePlayer(amount) {
   }
 }
 
-// ============================================================================
-// WAVES
-// ============================================================================
 let currentWave = 0;
 let waveInProgress = false;
 let waveBreakTimer = 0;
@@ -2379,7 +2128,7 @@ function startNextWave() {
   monstersToSpawnThisWave = 6 + currentWave * 3;
   isBossWave = currentWave === CONFIG.TOTAL_WAVES;
   bossSpawnedThisWave = false;
-  if (isBossWave) monstersToSpawnThisWave += 1; // the boss itself, spawned first (see updateWaveSystem)
+  if (isBossWave) monstersToSpawnThisWave += 1;
   spawnDripTimer = 0;
   showCenterMessage(isBossWave ? 'FINAL WAVE — BOSS INCOMING' : 'WAVE ' + currentWave, 1.8);
   AudioSys.waveStart();
@@ -2411,15 +2160,6 @@ function updateWaveSystem(dt) {
   }
 }
 
-// ============================================================================
-// HITSCAN RAYCASTING — pure map-space math, unrelated to the WebGPU
-// renderer. Still used for weapon hit detection (fireSinglePellet) and wall
-// distance queries; kept exactly as it was when it also drove the old 2D
-// renderer, since a DDA raycast is still the cheapest way to answer
-// "what's the first wall along this ray" for hitscan purposes.
-// ============================================================================
-// Casts a single ray using DDA and returns perpendicular-corrected distance
-// plus metadata about what it hit.
 function castSingleRay(rayAngle) {
   const rayDirX = Math.cos(rayAngle), rayDirY = Math.sin(rayAngle);
   let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
@@ -2446,10 +2186,8 @@ function castSingleRay(rayAngle) {
   }
 
   const rawDist = side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
-  // Convert ray-length distance into perpendicular (fisheye-corrected) distance.
   const perpDist = rawDist * Math.cos(rayAngle - player.angle);
 
-  // Fractional hit position along the wall face, used for simple vertical banding.
   let wallX;
   if (side === 0) wallX = player.y + rawDist * rayDirY;
   else wallX = player.x + rawDist * rayDirX;
@@ -2458,9 +2196,6 @@ function castSingleRay(rayAngle) {
   return { dist: Math.max(perpDist, 0.0001), side, mapX, mapY, wallX, material };
 }
 
-// Precomputes a ceiling/floor color for every screen row (function of row
-// only, not column), so the per-column pixel loop can just look values up
-// instead of recomputing a gradient per pixel.
 function hexToRgb01(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
@@ -2483,12 +2218,6 @@ function pushSphereInstance(x, y, z, yaw, sx, sy, sz, r, g, b, a, glow) {
   sphereInstanceCount++;
 }
 
-// Assembles every world object (monsters, furniture, pickups, particles,
-// projectiles, decals) into the box/sphere instance buffers for this frame.
-// Billboarding is now just "rotate the instance to face the player around
-// Y" instead of the old 2D angular-projection math — the depth buffer
-// handles all occlusion automatically, no more zBuffer sampling or
-// painter's-algorithm sorting needed anywhere.
 function assembleInstances() {
   boxInstanceCount = 0;
   sphereInstanceCount = 0;
@@ -2512,11 +2241,6 @@ function assembleInstances() {
     const bob = m.state !== 'dead' ? Math.sin(m.animPhase) * 0.03 : 0;
     const s = sizeMult * shrink;
 
-    // Multi-part humanoid (legs + torso + arms + head) instead of one flat
-    // box — the whole model still yaws to face the player as a unit
-    // (billboarded), but is built from six pieces so it reads as a
-    // creature instead of a single rectangular slab. lateralX/lateralZ is
-    // the model's own "left/right" axis after that yaw.
     const lateralX = Math.cos(yawToPlayer), lateralZ = Math.sin(yawToPlayer);
     const limbSwing = m.state !== 'dead' ? Math.sin(m.animPhase) * 0.035 * s : 0;
 
@@ -2540,8 +2264,6 @@ function assembleInstances() {
     const headY = legH + torsoH + headR * 0.75 - sink + bob;
     pushSphereInstance(m.x, headY, m.y, yawToPlayer, headR * 2, headR * 2, headR * 2, cr, cg, cb, alpha, 0);
 
-    // Health bar as a thin flat box hovering above the head — cheap and
-    // reads fine at gameplay distances without needing a text-in-3D system.
     if (m.state !== 'dead') {
       const barY = headY + headR + 0.15;
       pushBoxInstance(m.x, barY, m.y, yawToPlayer, 0.5 * sizeMult, 0.05, 0.02, 0.15, 0.15, 0.15, 0.7, 1);
@@ -2560,8 +2282,6 @@ function assembleInstances() {
     const w = f.radius * 1.8;
 
     if (f.type === 'table') {
-      // tabletop slab + 4 thin corner legs, instead of one squat box —
-      // reads as an actual table with a visible gap underneath.
       const legH = def.height * 0.82, topH = def.height * 0.18;
       const legInset = w * 0.36, legW = w * 0.1;
       pushBoxInstance(f.x, def.height - topH * 0.5, f.y, 0, w, topH, w, cr, cg, cb, 1, 0);
@@ -2569,21 +2289,15 @@ function assembleInstances() {
         pushBoxInstance(f.x + ox * legInset, legH * 0.5, f.y + oz * legInset, 0, legW, legH, legW, cr * 0.75, cg * 0.75, cb * 0.75, 1, 0);
       }
     } else if (f.type === 'barrel') {
-      // rounded ellipsoid body + a smaller cap accent, instead of a box —
-      // barrels are round, not rectangular.
       pushSphereInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
       pushSphereInstance(f.x, def.height * 0.94, f.y, 0, w * 0.72, def.height * 0.18, w * 0.72, cr * 0.7, cg * 0.7, cb * 0.7, 1, 0);
     } else if (f.type === 'bookshelf') {
-      // frame + 3 thin lighter shelf bands across the face, breaking up
-      // the flat slab into a recognizable paneled shelf.
       pushBoxInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
       const shelfColor = [Math.min(1, cr + 0.15), Math.min(1, cg + 0.12), Math.min(1, cb + 0.1)];
       for (const t of [0.35, 0.62, 0.86]) {
         pushBoxInstance(f.x, def.height * t, f.y, 0, w * 1.04, 0.03, w * 1.04, shelfColor[0], shelfColor[1], shelfColor[2], 1, 0);
       }
     } else {
-      // crate (and any other type): main box + a darker lid rim for a
-      // visible seam instead of one solid slab.
       pushBoxInstance(f.x, def.height * 0.5, f.y, 0, w, def.height, w, cr, cg, cb, 1, 0);
       pushBoxInstance(f.x, def.height * 0.94, f.y, 0, w * 1.04, def.height * 0.1, w * 1.04, cr * 0.65, cg * 0.65, cb * 0.65, 1, 0);
     }
@@ -2630,11 +2344,6 @@ function renderFrame() {
   const fov = currentFOV();
   const aspect = w / h;
 
-  // Real yaw+pitch FPS camera (player.pitch is genuine radians now, not the
-  // old fake vertical-shift hack). Map-space (x,y) maps directly to
-  // world-space (X,Z); world Y is height. player.z (jump) is a true world
-  // height offset, scaled down a bit since the tuned jump velocity would
-  // otherwise put the camera uncomfortably close to the 1-unit ceiling.
   const eyeX = player.x, eyeZ = player.y, eyeY = 0.55 + player.z * 0.5;
   const viewPitch = Math.max(-CONFIG.PITCH_MAX, Math.min(CONFIG.PITCH_MAX, player.pitch + player.recoilPitch));
   const cosPitch = Math.cos(viewPitch);
@@ -2651,9 +2360,6 @@ function renderFrame() {
   uniformData[24] = 0.4 / lightLen; uniformData[25] = 1.0 / lightLen; uniformData[26] = 0.3 / lightLen; uniformData[27] = 0;
   uniformData[28] = MAP_W; uniformData[29] = MAP_H; uniformData[30] = CONFIG.RT_QUALITY; uniformData[31] = 0;
 
-  // Point lights: slot 0 is the dynamic muzzle flash (follows the camera,
-  // intensity tied to the same recoil-decay timer as the viewmodel kick so
-  // it flares and fades with the shot), slots 1-8 are the static ceiling lamps.
   const muzzleLightX = eyeX + Math.cos(player.angle) * 0.35;
   const muzzleLightZ = eyeZ + Math.sin(player.angle) * 0.35;
   uniformData[32] = muzzleLightX; uniformData[33] = eyeY; uniformData[34] = muzzleLightZ; uniformData[35] = 3.2;
@@ -2699,9 +2405,6 @@ function renderFrame() {
   updateWeaponOverlay();
 }
 
-// ============================================================================
-// UI HELPERS
-// ============================================================================
 const el = {
   healthValue: document.getElementById('healthValue'),
   healthBarFill: document.getElementById('healthBarFill'),
@@ -2728,8 +2431,6 @@ const el = {
   muzzleFlashOverlay: document.getElementById('muzzleFlashOverlay'),
 };
 
-// Per-weapon viewmodel color/proportions — same palette as before, just
-// applied via CSS instead of canvas fillRect calls.
 const WEAPON_VIEWMODEL_VARIANTS = {
   pistol: { body: '#23262b', barrel: '#15171a', barrelLen: 35, barrelW: 32 },
   smg: { body: '#1f2a22', barrel: '#12180f', barrelLen: 50, barrelW: 40 },
@@ -2739,10 +2440,6 @@ const WEAPON_VIEWMODEL_VARIANTS = {
   railgun: { body: '#241c33', barrel: '#7a3ff2', barrelLen: 75, barrelW: 22 },
 };
 
-// Drives the weapon viewmodel + muzzle flash overlay each frame (called
-// from renderFrame). Bob/recoil/reload-dip/aim-slide all translate the
-// whole viewmodel container; per-weapon color/proportions update the two
-// inner divs directly.
 function updateWeaponOverlay() {
   const bobX = Math.sin(player.bobPhase) * 14;
   const bobY = Math.abs(Math.sin(player.bobPhase)) * 10;
@@ -2842,7 +2539,6 @@ function updateCenterMessage(dt) {
   }
 }
 
-// FPS counter, averaged over a rolling ~0.5s window to avoid jittery display.
 let fpsAccumTime = 0, fpsAccumFrames = 0, fpsDisplay = 0;
 function updateFPS(dt) {
   fpsAccumTime += dt; fpsAccumFrames++;
@@ -2853,10 +2549,7 @@ function updateFPS(dt) {
   }
 }
 
-// ============================================================================
-// GAME STATE MACHINE
-// ============================================================================
-let gameState = 'menu'; // menu | playing | paused | gameover | victory
+let gameState = 'menu';
 
 function setPaused(paused) {
   if (gameState !== 'playing' && gameState !== 'paused') return;
@@ -2919,11 +2612,7 @@ document.getElementById('btnRestartFromPause').addEventListener('click', () => {
 document.getElementById('btnRestartFromGameOver').addEventListener('click', () => { document.getElementById('gameOverMenu').classList.add('hidden'); openLobby(); });
 document.getElementById('btnRestartFromVictory').addEventListener('click', () => { document.getElementById('victoryMenu').classList.add('hidden'); openLobby(); });
 
-// ============================================================================
-// MAIN UPDATE
-// ============================================================================
 function updatePlayer(dt) {
-  // Mouse look
   const sensMult = player.isAiming ? CONFIG.AIM_SENSITIVITY_MULT : 1;
   const pitchDir = SETTINGS.invertY ? 1 : -1;
   player.angle += Input.movementX * CONFIG.MOUSE_SENSITIVITY * sensMult;
@@ -2931,13 +2620,11 @@ function updatePlayer(dt) {
   player.pitch = Math.max(-CONFIG.PITCH_MAX, Math.min(CONFIG.PITCH_MAX, player.pitch));
   Input.movementX = 0; Input.movementY = 0;
 
-  // Aiming (right click) — smoothly interpolate FOV/sway amount.
   player.isAiming = Input.aimDown;
   const aimTarget = player.isAiming ? 1 : 0;
   player.aimAmount += (aimTarget - player.aimAmount) * Math.min(1, dt * 10);
   updateProjection();
 
-  // Movement input
   let moveX = 0, moveY = 0;
   const forward = { x: Math.cos(player.angle), y: Math.sin(player.angle) };
   const right = { x: -Math.sin(player.angle), y: Math.cos(player.angle) };
@@ -2958,7 +2645,6 @@ function updatePlayer(dt) {
     player.bobPhase += dt * speed * 3.2;
   }
 
-  // Jump / gravity (visual — does not change collision, just camera height)
   if (Input.keys[KEYBINDS.jump] && player.z <= 0 && player.velZ === 0) {
     player.velZ = CONFIG.JUMP_VELOCITY;
     AudioSys.jump();
@@ -2969,7 +2655,6 @@ function updatePlayer(dt) {
     if (player.z <= 0) { player.z = 0; player.velZ = 0; }
   }
 
-  // Firing / reload timers
   if (player.fireTimer > 0) player.fireTimer -= dt;
   if (player.recoil > 0) player.recoil = Math.max(0, player.recoil - dt * 6);
   if (player.recoilPitch > 0) player.recoilPitch = Math.max(0, player.recoilPitch - dt * CONFIG.RECOIL_RECOVERY);
@@ -2992,16 +2677,14 @@ let lastFrameTime = performance.now();
 let lastHudTime = 0;
 let menuBackdropDrawn = false;
 let lastRenderedState = '';
-// Adaptive frame pacing — never burn 100% GPU/CPU when uncapped.
 function targetFrameMs() {
-  if (document.hidden) return 1000; // ~1 Hz when tab not visible
+  if (document.hidden) return 1000;
   if (gameState === 'playing') return 1000 / (CONFIG.TARGET_FPS_PLAY || 45);
   return 1000 / (CONFIG.TARGET_FPS_MENU || 12);
 }
 function gameLoop(now) {
   requestAnimationFrame(gameLoop);
 
-  // Fully idle when the browser tab is in the background (biggest CPU saver).
   if (document.hidden) {
     lastFrameTime = now;
     return;
@@ -3012,7 +2695,7 @@ function gameLoop(now) {
 
   let dt = (now - lastFrameTime) / 1000;
   lastFrameTime = now;
-  dt = Math.min(dt, 0.1); // clamp to avoid spiral-of-death after tab-switch
+  dt = Math.min(dt, 0.1);
 
   updateFPS(dt);
 
@@ -3029,7 +2712,6 @@ function gameLoop(now) {
     updateWaveSystem(dt);
     updateHitFlash(dt);
     updateCenterMessage(dt);
-    // HUD DOM writes are expensive — throttle to ~10 Hz
     if (now - lastHudTime > 100) {
       lastHudTime = now;
       updateHUD();
@@ -3037,14 +2719,12 @@ function gameLoop(now) {
     renderFrame();
     lastRenderedState = gameState;
   } else if (gameState === 'paused' || gameState === 'gameover' || gameState === 'victory') {
-    // One frozen frame is enough; only re-render if state just changed.
     if (lastRenderedState !== gameState || !menuBackdropDrawn) {
       renderFrame();
       menuBackdropDrawn = true;
       lastRenderedState = gameState;
     }
   } else {
-    // Main menu: draw backdrop once, then sit nearly idle.
     if (!menuBackdropDrawn || lastRenderedState !== gameState) {
       renderFrame();
       menuBackdropDrawn = true;
@@ -3053,7 +2733,6 @@ function gameLoop(now) {
   }
 }
 
-// Wake immediately when returning to the tab so the first frame isn't delayed.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     lastFrameTime = 0;
@@ -3061,12 +2740,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// ============================================================================
-// SETTINGS PANEL — wires every control in the Options overlay to the
-// SETTINGS/KEYBINDS objects, applies live changes to CONFIG, and persists
-// everything to localStorage. This is the single place that turns a raw
-// <input> value into actual gameplay/rendering behavior.
-// ============================================================================
 function applyCrosshairStyle() {
   document.documentElement.style.setProperty('--crosshair-color', SETTINGS.crosshairColor);
   document.documentElement.style.setProperty('--crosshair-size', SETTINGS.crosshairSize + 'px');
@@ -3074,13 +2747,8 @@ function applyCrosshairStyle() {
   el.crosshair.classList.add('style-' + SETTINGS.crosshairStyle);
 }
 
-// Recomputes every derived CONFIG field from BASE_CONFIG + SETTINGS, then
-// pushes the result into audio/HUD/crosshair. Pass {resize:true} when a
-// change affects the render buffer dimensions (only the resolution slider
-// needs this — everything else is a cheap in-place projection update).
 function applySettings(opts) {
   opts = opts || {};
-  // Settings changes (esp. resolution / RT) need a fresh GPU frame.
   if (typeof menuBackdropDrawn !== 'undefined') menuBackdropDrawn = false;
   const preset = DIFFICULTY_PRESETS[SETTINGS.difficulty] || DIFFICULTY_PRESETS.normal;
 
@@ -3105,15 +2773,8 @@ function applySettings(opts) {
   CONFIG.TOTAL_WAVES = Math.round(SETTINGS.totalWaves);
   CONFIG.MAX_HEALTH = SETTINGS.maxHealth;
 
-  // Damage/fire-rate/mag-size/reload/spread/pellets come from the equipped
-  // weapon + its upgrade level (see WEAPON_DEFS below), not from a flat
-  // setting — refreshEquippedWeaponStats() is what actually derives
-  // CONFIG.BULLET_DAMAGE etc. It still respects SETTINGS.weaponDamageMult
-  // as a difficulty-style multiplier layered on top.
   refreshEquippedWeaponStats();
 
-  // Defensive clamps so a live change mid-run can't leave the player holding
-  // more ammo/health than the new caps allow.
   if (player.ammo > CONFIG.MAG_SIZE) player.ammo = CONFIG.MAG_SIZE;
   if (player.reserveAmmo > CONFIG.MAX_RESERVE_AMMO) player.reserveAmmo = CONFIG.MAX_RESERVE_AMMO;
   if (player.health > CONFIG.MAX_HEALTH) player.health = CONFIG.MAX_HEALTH;
@@ -3127,7 +2788,6 @@ function applySettings(opts) {
   if (opts.resize) resizeCanvas();
 }
 
-// Human-readable label for a KeyboardEvent.code, used on the rebind buttons.
 function keyLabel(code) {
   if (!code) return '—';
   if (code.indexOf('Key') === 0) return code.slice(3);
@@ -3147,7 +2807,7 @@ function refreshKeybindButtons() {
   });
 }
 function startListenForKey(action, btn) {
-  if (listeningForAction) return; // one rebind at a time
+  if (listeningForAction) return;
   listeningForAction = action;
   btn.textContent = 'PRESS A KEY…';
   btn.classList.add('listening');
@@ -3157,8 +2817,6 @@ function finishListenForKey() {
   refreshKeybindButtons();
 }
 
-// Binds a <input type=range> to a SETTINGS field: syncs its initial value,
-// live-updates the adjacent value label, and reapplies settings on input.
 function bindRange(inputId, valId, key, format, resize) {
   const input = document.getElementById(inputId);
   const valEl = document.getElementById(valId);
@@ -3240,13 +2898,11 @@ function initSettingsUI() {
   settingSyncFns.push(bindRange('setMaxHealth', 'valMaxHealth', 'maxHealth', intVal));
   settingSyncFns.push(bindRange('setTotalWaves', 'valTotalWaves', 'totalWaves', intVal));
 
-  // Key rebinding buttons
   refreshKeybindButtons();
   document.querySelectorAll('.keybind-btn').forEach((btn) => {
     btn.addEventListener('click', () => startListenForKey(btn.dataset.action, btn));
   });
 
-  // Tab switching
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
@@ -3282,17 +2938,21 @@ function closeSettings() {
   document.getElementById(settingsOrigin === 'start' ? 'startMenu' : 'pauseMenu').classList.remove('hidden');
 }
 
-// ============================================================================
-// CLOUD ACCOUNTS / PROGRESS / STORAGE (Supabase)
-// Local progress (best score/wave) always works via localStorage, even for
-// guests. Signing in layers a cloud copy on top: on login it's pulled down
-// and merged in; after every run (and on manual Save Now) it's pushed back
-// up. All Supabase calls are wrapped so a network failure just shows a
-// status message instead of breaking gameplay.
-// ============================================================================
 const SUPABASE_URL = 'https://gptvjiroogpnveropoou.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwdHZqaXJvb2dwbnZlcm9wb291Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MzU1NzQsImV4cCI6MjEwMDAxMTU3NH0.nv9SlENtyS8lYgqf8B2bnB555cUQf1jOPo9On32n2aw';
-const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const SUPABASE_ANON_WRAP = {
+  e: 'X55iY2sgcQNrcwBeSsF35aMzglraIPYvQaafBMZsRrG6+WTX1Kw43LavcBOkSgFifqk8TEN9tAZWLKlqiWtxsVcWkyaNEnnbKjmkm8Z+2hsiIwdoCLpW2wKIlUrSaZWgRn58VqXSu0rRnfXrBj4KRBew4V27z3JhKfA4cSkUKYOZua1vIKg4JxTHKHGdiePVXx+3CpI7zJWnlZ3n+XGc1cJWl/fMSDpwBAIOZ00Ve294lpaPWFd2iDOoDslQjC+4pAleMHPMUcmJH3W/2F6He3wqo40vgdmCFD9PrrttSE4=',
+  iv: 'mDRcRt5iKj37z99E'
+};
+let sb = null;
+async function unwrapSbAnon() {
+  const secret = ['chq', 'sb', '26', 'v1'].join('.') + '|chopstickshq.com';
+  const enc = Uint8Array.from(atob(SUPABASE_ANON_WRAP.e), (c) => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(SUPABASE_ANON_WRAP.iv), (c) => c.charCodeAt(0));
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  const key = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, enc);
+  return new TextDecoder().decode(pt);
+}
 
 const PROGRESS_STORAGE_KEY = 'doomlike_progress_v1';
 const localProgress = {
@@ -3314,7 +2974,6 @@ function saveLocalProgress() {
   try { localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(localProgress)); } catch (e) { /* storage unavailable */ }
 }
 
-// Called at the end of every run (game over or victory). Returns credits earned.
 function registerRunResult(finalScore, waveReached) {
   let improved = false;
   if (finalScore > localProgress.bestScore) { localProgress.bestScore = finalScore; improved = true; }
@@ -3402,7 +3061,6 @@ async function loadCloudDataForUser() {
       saveLocalProgress();
       renderLobby();
     } else {
-      // First time this user has ever saved — push current local state up.
       cloudSaveProgress();
     }
     updateAccountStatsDisplay();
@@ -3418,11 +3076,6 @@ function updateAccountStatsDisplay() {
   if (waveEl) waveEl.textContent = localProgress.bestWave;
 }
 
-// ============================================================================
-// LEADERBOARD — public top-scores list. Readable by anyone (including
-// signed-out visitors); writing your own row requires being signed in. One
-// row per user, holding their personal best — not a full run history.
-// ============================================================================
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -3433,7 +3086,7 @@ async function submitToLeaderboard(finalScore, waveReached) {
   if (!currentUser || !sb) return;
   try {
     const { data: existing } = await sb.from('leaderboard').select('score').eq('user_id', currentUser.id).maybeSingle();
-    if (existing && existing.score >= finalScore) return; // only overwrite with an improvement
+    if (existing && existing.score >= finalScore) return;
     const username = (document.getElementById('acctUsername').textContent || currentUser.email || 'Player').trim();
     await sb.from('leaderboard').upsert({
       user_id: currentUser.id,
@@ -3443,7 +3096,6 @@ async function submitToLeaderboard(finalScore, waveReached) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
   } catch (e) {
-    // Non-critical — a failed leaderboard submit shouldn't interrupt the game-over flow.
   }
 }
 
@@ -3514,7 +3166,7 @@ async function handleAvatarUpload(file) {
     const { error: uploadError } = await sb.storage.from('avatars').upload(path, file, { upsert: true });
     if (uploadError) { setAcctStatus('acctStatusLoggedIn', 'Upload failed: ' + uploadError.message, 'error'); return; }
     const { data: pub } = sb.storage.from('avatars').getPublicUrl(path);
-    const avatarUrl = pub.publicUrl + '?t=' + Date.now(); // cache-bust so the new image shows immediately
+    const avatarUrl = pub.publicUrl + '?t=' + Date.now();
     const { error: updateError } = await sb.from('profiles').update({ avatar_url: avatarUrl }).eq('id', currentUser.id);
     if (updateError) { setAcctStatus('acctStatusLoggedIn', 'Saved image but failed to link profile: ' + updateError.message, 'error'); return; }
     const avatarCircle = document.getElementById('avatarCircle');
@@ -3595,15 +3247,6 @@ function closeAccount() {
   document.getElementById(accountOrigin === 'start' ? 'startMenu' : 'pauseMenu').classList.remove('hidden');
 }
 
-// ============================================================================
-// WEAPONS & ARMOR — the Lobby's loadout system. Each weapon has a base stat
-// block plus up to 5 upgrade levels (bought with credits earned from runs);
-// armor is a set of unlockable tiers that absorb a fraction of incoming
-// damage. refreshEquippedWeaponStats() is the single place that turns
-// "which weapon + level is equipped" into the live CONFIG fields combat
-// code actually reads (CONFIG.BULLET_DAMAGE etc.), so nothing else needs to
-// know about weapon defs at all.
-// ============================================================================
 const WEAPON_DEFS = [
   {
     id: 'pistol', name: 'PISTOL', cost: 0, maxLevel: 5, pellets: 1,
@@ -3641,8 +3284,6 @@ function getWeaponDef(id) { return WEAPON_DEFS.find((w) => w.id === id) || WEAPO
 function getArmorDef(id) { return ARMOR_DEFS.find((a) => a.id === id) || ARMOR_DEFS[0]; }
 function getWeaponLevel(id) { return localProgress.weaponLevels[id] || 1; }
 
-// Each level adds +12% damage, -6% fire cooldown (faster), +2 mag size, and
-// -5% reload time versus the weapon's base, all cumulative per level.
 function weaponStatsAtLevel(def, level) {
   const lvl = Math.max(0, level - 1);
   return {
@@ -3720,11 +3361,6 @@ function equipArmor(id) {
   renderLobby();
 }
 
-// ============================================================================
-// LOBBY UI — the persistent hub every run starts from. Cards are generated
-// from WEAPON_DEFS/ARMOR_DEFS rather than hardcoded in HTML so unlock/equip/
-// upgrade state always reflects localProgress exactly.
-// ============================================================================
 function renderLobby() {
   document.getElementById('lobbyCredits').textContent = localProgress.credits;
   renderWeaponCards();
@@ -3848,9 +3484,6 @@ function closeLobby() {
   document.getElementById('startMenu').classList.remove('hidden');
 }
 
-// ============================================================================
-// BOOTSTRAP
-// ============================================================================
 (async function boot() {
   const ok = await initWebGPU();
   if (!ok) {
@@ -3862,6 +3495,13 @@ function closeLobby() {
   loadSettings();
   loadLocalProgress();
   initSettingsUI();
+  if (window.supabase) {
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, await unwrapSbAnon());
+    } catch (e) {
+      sb = null;
+    }
+  }
   initAccountUI();
   initLobbyUI();
   initLeaderboardUI();

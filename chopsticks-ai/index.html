@@ -6,15 +6,33 @@
 (function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>cs.AI 2.2.9 — chopsticksAI · Chopsticks HQ</title>
-<meta name="description" content="cs.AI 2.2.9 (chopsticksAI) — Mozilla search, ChopCode coding mode, profile entitlements, Usage warnings, Cursor-style Agents. No API key from you.">
-<meta name="keywords" content="cs.AI, chopsticksAI, ChopCode, free AI assistant, Mozilla search, MDN, DuckDuckGo, macOS AI app, Chopsticks HQ, no API key, coding assistant, Agents Window">
+<title>cs.AI-3 — Free macOS AI Assistant · Chopsticks HQ</title>
+<meta name="description" content="chopsticksAI (cs.AI) 3.6.7 — free macOS AI assistant. ChopCode for Pro, live research, Agents window, web app, optional csai CLI. No API key from you. MIT open source.">
+<meta name="keywords" content="chopsticksAI, cs.AI, chopsticks AI, chopsticks ai download, chopsticks ai mac, cs ai app, free macOS AI assistant, AI app Mac download, macOS AI chat free, Terminal AI CLI, csai install, csai command, csai terminal, Chromium browser macOS, coding assistant Mac, Cursor-style agents, AI coding Mac, Chopsticks HQ, chopstickshq, chopstickshq.com, no API key AI, no OpenRouter key, free ChatGPT alternative Mac, local-first AI, macOS agent app, AI chat Mac free, web AI assistant browser, ChopCode, Agents window Mac, MIT open source AI">
 <link rel="canonical" href="https://chopstickshq.com/chopsticks-ai/">
-<meta name="robots" content="index,follow">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "chopsticksAI",
+  "alternateName": ["cs.AI", "Chopsticks AI"],
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "macOS",
+  "softwareVersion": "3.6.7",
+  "description": "chopsticksAI (cs.AI) is a free macOS AI assistant with a Cursor-style Agents window, built-in Chromium browser, and live chat with no API key on your side. Also available in the browser; optional Terminal CLI. Offline knowledge base for Chopsticks HQ products. MIT open source.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "downloadUrl": "https://chopstickshq.com/chopsticks-ai/",
+  "url": "https://chopstickshq.com/chopsticks-ai/",
+  "author": { "@type": "Organization", "name": "Chopsticks HQ", "url": "https://chopstickshq.com/" }
+}
+</script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Chopsticks HQ">
-<meta property="og:title" content="cs.AI 2.2.9 — chopsticksAI · Chopsticks HQ">
-<meta property="og:description" content="cs.AI 2.2.9 — Mozilla Search in the Agents Window, accounts, Usage upgrades.">
+<meta property="og:title" content="cs.AI-3 — chopsticksAI · Chopsticks HQ">
+<meta property="og:description" content="Free macOS AI assistant — Agents window, Chromium browser, web app. No API key on your side.">
+<meta name="twitter:description" content="chopsticksAI (cs.AI) — free macOS AI assistant with web app. No OpenRouter key required.">
+<meta name="twitter:title" content="cs.AI-3 — free macOS AI assistant">
 <meta property="og:url" content="https://chopstickshq.com/chopsticks-ai/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -153,6 +171,23 @@
   .footer a { margin-right: 1rem; }
   .footer a:hover { color: var(--text); }
 
+  .launchstag-badge { margin: 2.5rem 0 0; }
+  .launchstag-badge img { display: block; width: 198px; height: auto; opacity: 0.92; transition: opacity 0.15s; }
+  .launchstag-badge:hover img { opacity: 1; }
+  .social-row {
+    display: flex; flex-wrap: wrap; gap: 0.55rem; margin: 2rem 0 0;
+  }
+  .social-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.45rem 0.75rem; border-radius: 999px;
+    font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--border);
+  }
+  .social-pill--ph { background: #da552f; color: #fff; border-color: transparent; }
+  .social-pill--at { background: #0f766e; color: #fff; border-color: transparent; }
+  .social-pill--gh { background: var(--card); color: var(--text); }
+  .social-pill:hover { opacity: 0.92; transform: translateY(-1px); }
+
   .install-card {
     margin: 1.75rem 0 2.5rem; padding: 1.25rem 1.35rem;
     border: 1px solid var(--border); border-radius: var(--radius);
@@ -167,12 +202,60 @@
     overflow-x: auto; cursor: pointer; user-select: all;
   }
   .install-btns { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.85rem; }
+  .hero-actions { margin: 1.25rem 0 2rem; }
   .btn {
     display: inline-flex; align-items: center; padding: 0.55rem 1rem;
     border-radius: 999px; font-size: 0.875rem; font-weight: 600; border: 1px solid var(--border);
   }
   .btn-primary { background: var(--soft); color: var(--bg); border-color: transparent; }
   .btn-outline { background: transparent; color: var(--text); }
+
+  .install-warn {
+    margin: 0 0 0.7rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .install-warn strong { color: var(--text); }
+  .prereq-callout {
+    display: block;
+    margin: 0 0 0.7rem;
+    padding: 0.55rem 0.75rem;
+    border-left: 3px solid var(--text);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .prereq-callout span { color: var(--muted); font-weight: 500; }
+
+  .spec-note { color: var(--muted); font-size: 0.88rem; margin: 0 0 0.85rem; }
+  .try-cue {
+    display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .try-mock {
+    position: relative;
+    width: 11rem; height: 7.2rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--bg2);
+  }
+  .try-mock-btn {
+    position: absolute; left: 0.7rem; bottom: 0.7rem;
+    width: 2.6rem; height: 2.6rem; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; box-shadow: var(--shadow);
+  }
+  .try-arrow {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--text);
+    max-width: 16rem; line-height: 1.45;
+  }
 
   .changelog { list-style: none; }
   .changelog li {
@@ -188,7 +271,7 @@
   .changelog ul { padding-left: 1.15rem; color: var(--muted); font-size: .9rem; }
   .changelog ul li { border: none; padding: .2rem 0; list-style: disc; }
 
-  /* Mozilla engine — compact Firefox-inspired search */
+  
   .moz-engine {
     margin: 0 0 2.5rem; border: 1px solid var(--border); border-radius: var(--radius);
     background: var(--card); box-shadow: var(--shadow); overflow: hidden;
@@ -226,7 +309,7 @@
   }
   .moz-brand .moz-tag {
     font-family: var(--mono); font-size: .65rem; letter-spacing: .1em; text-transform: uppercase;
-    color: #ff7139; border: 1px solid rgba(255,113,57,.35); padding: .2rem .5rem; border-radius: 999px;
+    color: #1a73e8; border: 1px solid rgba(26,115,232,.35); padding: .2rem .5rem; border-radius: 999px;
   }
   .moz-form { display: flex; gap: .5rem; flex-wrap: wrap; }
   .moz-form input {
@@ -234,11 +317,11 @@
     background: var(--bg2); border: 1px solid var(--border); border-radius: 999px;
     padding: .65rem 1rem; outline: none;
   }
-  .moz-form input:focus { border-color: #ff7139; box-shadow: 0 0 0 3px rgba(255,113,57,.15); }
+  .moz-form input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
   .moz-form button {
     font: inherit; font-weight: 600; font-size: .875rem; cursor: pointer;
     padding: .65rem 1.15rem; border-radius: 999px; border: none;
-    background: #ff7139; color: #1a0f0a;
+    background: #1a73e8; color: #fff;
   }
   .moz-form button:disabled { opacity: .55; cursor: wait; }
   .moz-hint { margin-top: .65rem; font-size: .82rem; color: var(--muted); }
@@ -254,7 +337,7 @@
   html[data-theme="light"] .moz-results a { color: #0b57d0; }
   .moz-results .via {
     font-family: var(--mono); font-size: .65rem; letter-spacing: .06em;
-    color: #ff7139; margin-left: .4rem;
+    color: #1a73e8; margin-left: .4rem;
   }
   .moz-results p { color: var(--muted); font-size: .88rem; margin-top: .3rem; line-height: 1.5; }
   .moz-results .url {
@@ -266,60 +349,103 @@
 <body>
 <div class="app">
   <nav>
-    <a class="nav-logo" href="/">Chopsticks HQ <span>· cs.AI 2.2.9</span></a>
+    <a class="nav-logo" href="/">Chopsticks HQ <span>· cs.AI-3</span></a>
     <div class="nav-mid">
       <a class="nav-link" href="/">HQ</a>
+      <a class="nav-link" href="#macos-app">macOS app</a>
+      <a class="nav-link" href="#windows-app">Windows</a>
+      <a class="nav-link" href="/chopsticks-ai/web/">Web app</a>
+      <a class="nav-link" href="/chopsticks-ai/web/?plate=chopcode">ChopCode</a>
       <a class="nav-link" href="#search">Search</a>
-      <a class="nav-link" href="/rnitro/">rNitro</a>
-      <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
-      <a class="nav-link" href="/chopailab/">Lab</a>
-      <a class="nav-link" href="#changelog">Changelog</a>
+      <a class="nav-link" href="#latest-release">Releases</a>
+      <a class="nav-link" href="#terminal-cli">Terminal</a>
     </div>
     <button type="button" class="theme-toggle" data-theme-toggle>&#9680; Theme</button>
   </nav>
 
   <main>
     <div class="wrap">
-      <div class="kicker">cs.AI 2.2.9 · Security update · chopsticksAI</div>
-      <h1>cs.AI</h1>
+      <div class="kicker">cs.AI-3 · chopsticksAI</div>
+      <h1>cs.AI-3</h1>
       <p class="lead">
-        A general-purpose assistant that answers anything you ask &mdash; and the in-house
-        expert on every Chopsticks app. <strong>cs.AI 2.2.9</strong> is a
-        <strong>security update</strong>: all messages are
-        <strong>encrypted end-to-end</strong>, with Keychain-backed sessions and
-        per-account chat isolation.
+        One free AI agent — Mac app, web chat, and optional <code>csai</code> CLI.
+        Four plates plus Wagyu grades: <strong>Rice</strong>, <strong>Tamago</strong>, <strong>Hibachi</strong>, <strong>Wagyu A1–A5</strong> (A5 highest), and <strong>ChopCode</strong>.
+        <strong>ChopCode</strong> is the dedicated coding assistant (Pro).
+        Every prompt is grounded with live Chromium research dated to today.
+        No API key on your side; allowance resets every 5 hours.
       </p>
 
-      <div class="badge-row">
-        <span class="badge">Version <strong>cs.AI 2.2.9</strong></span>
-        <span class="badge">Security <strong>end-to-end encryption</strong></span>
-        <span class="badge">Coding <strong>StickerCoder+</strong></span>
-        <span class="badge">Tools <strong>write_file</strong></span>
-        <span class="badge">Search <strong>Mozilla engine</strong></span>
-        <span class="badge">Accounts <strong>profile entitlements</strong></span>
-        <span class="badge">Usage <strong>80% soft warning</strong></span>
-        <span class="badge">Free <strong>775K · 48K context · 3h cooldown</strong></span>
-        <span class="badge">Credit tiers <strong>64K / 96K / 128K context</strong></span>
-        <span class="badge">Open source <strong><a href="https://github.com/ilikemacos/ChopsticksAI" style="color:inherit">MIT · GitHub</a></strong></span>
-        <span class="badge">OpenRouter key <strong>never needed from you</strong></span>
+      <div class="install-btns hero-actions">
+        <a class="btn btn-primary" id="hero-zip-btn" href="chopsticksAI-v3.6.7.zip">Download macOS app</a>
+        <a class="btn btn-outline" href="/chopsticks-ai/web/">Open web app</a>
+        <a class="btn btn-outline" href="/chopsticks-ai/web/?plate=chopcode">Open ChopCode</a>
       </div>
 
-      <section class="moz-engine" id="search" aria-label="Mozilla search engine">
+      <div class="badge-row">
+        <span class="badge">Version <strong id="csai-version-badge">cs.AI-3 3.6.7</strong></span>
+        <span class="badge">Plates <strong>Rice · Tamago · Hibachi · Wagyu A1–A5 · ChopCode</strong></span>
+        <span class="badge">Free <strong>775k tokens · 5h reset</strong></span>
+        <span class="badge">Key <strong>not required from you</strong></span>
+      </div>
+
+      <section id="plates">
+        <h2>Plates</h2>
+        <p class="spec-note">Pick a plate per question. Higher plates use more context and take longer. Allowance is separate (table below).</p>
+        <div class="card" style="padding-bottom:.4rem">
+          <div class="files-wrap">
+            <table>
+              <thead>
+                <tr><th>Plate</th><th>Speed / quality</th><th>Context</th><th>Who</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>Rice</strong></td><td>Fastest, shortest replies</td><td>16k</td><td>Anyone</td></tr>
+                <tr><td><strong>Tamago</strong></td><td>Default — balanced</td><td>48k</td><td>Anyone</td></tr>
+                <tr><td><strong>Hibachi</strong></td><td>Stronger, slower</td><td>96k</td><td>Anyone</td></tr>
+                <tr><td><strong>Wagyu A1–A4</strong></td><td>More room each grade</td><td>80k → 128k</td><td>Sign in</td></tr>
+                <tr><td><strong>Wagyu A5</strong></td><td>Highest grade, review pass</td><td>160k</td><td>Sign in</td></tr>
+                <tr><td><strong>ChopCode</strong></td><td>Coding + live 2026 research</td><td>128k ctx · 1m tokens</td><td>Pro (5 Fathom Pro unlock keys)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="specs">
+        <h2>Allowance</h2>
+        <p class="spec-note">One source of truth. Plate context (above) is per reply; this table is your rolling token budget. You never paste an OpenRouter key.</p>
+        <div class="card" style="padding-bottom:.4rem">
+          <div class="files-wrap">
+            <table>
+              <thead>
+                <tr><th>Tier</th><th>Tokens</th><th>Max context cap</th><th>Reset / cooldown</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>Free</strong> (baseline)</td><td>775k</td><td>128k</td><td>Resets every 5 hours</td></tr>
+                <tr><td><strong>2</strong> Fathom Pro unlock keys</td><td>800k</td><td>64k</td><td>2h 30m cooldown</td></tr>
+                <tr><td><strong>5</strong> Fathom Pro unlock keys</td><td>900k</td><td>96k</td><td>2h cooldown</td></tr>
+                <tr><td><strong>10</strong> Fathom Pro unlock keys</td><td>1m</td><td>128k</td><td>1h cooldown</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="moz-engine" id="search" aria-label="Chromium search engine">
         <div class="moz-chrome" aria-hidden="true">
           <div class="moz-dots"><i></i><i></i><i></i></div>
-          <div class="moz-url">cs.AI · Mozilla engine · MDN · Wikipedia · DuckDuckGo</div>
+          <div class="moz-url">cs.AI · Chromium · chopstickshq.com</div>
         </div>
         <div class="moz-body">
           <div class="moz-brand">
-            <h2>Search</h2>
-            <span class="moz-tag">Mozilla engine</span>
+            <h2>Chromium search</h2>
+            <span class="moz-tag">Chromium engine</span>
           </div>
           <form class="moz-form" id="moz-form">
-            <input id="moz-q" type="search" name="q" placeholder="Search the web…" autocomplete="off" required minlength="3">
+            <input id="moz-q" type="search" name="q" placeholder="Search Google…" autocomplete="off" required minlength="3">
             <button type="submit" id="moz-go">Search</button>
           </form>
           <p class="moz-hint">
-            Same engine cs.AI uses before every answer. No API key. Results from MDN, Wikipedia, and DuckDuckGo.
+            Same Chromium engine cs.AI uses before every answer, dated to today. No API key. The macOS app also includes a full in-app browser.
           </p>
           <div class="moz-status" id="moz-status" aria-live="polite"></div>
           <ul class="moz-results" id="moz-results"></ul>
@@ -329,45 +455,151 @@
       <section class="install-card" id="macos-app">
         <h2>macOS app</h2>
         <p>
-          Native Agents Window with the same live model, Mozilla search grounding, and offline knowledge-base fallback.
-          No Xcode required to install.
+          Native Agents Window with the same live model, Chromium search grounding, and offline knowledge-base fallback.
+          No Xcode required to install. 3.6.7 is tuned to stay quiet on battery.
+        </p>
+        <p class="install-warn">
+          Review the installer before piping it to bash.
+          Open <a href="install-chopsticks-ai.sh"><strong>install-chopsticks-ai.sh</strong></a> first, or use the zip button.
+          See the <a href="/disclaimer/">disclaimer</a>.
         </p>
         <pre class="curl" id="curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash</pre>
         <div class="install-btns">
-          <a class="btn btn-primary" id="zip-btn" href="#">Download cs.AI 2.2.9</a>
+          <a class="btn btn-primary" id="zip-btn" href="chopsticksAI-v3.6.7.zip">Download cs.AI-3</a>
           <a class="btn btn-outline" href="install-chopsticks-ai.sh" download>Download .sh</a>
-          <a class="btn btn-outline" href="#changelog">Changelog</a>
+          <a class="btn btn-outline" href="#latest-release">Latest release</a>
         </div>
       </section>
 
-      <section id="changelog">
-        <h2>Changelog</h2>
+      <section class="install-card" id="windows-app">
+        <h2>Windows</h2>
+        <p>
+          Same one-liner idea as macOS. Installs <strong>csai</strong> plus Start Menu shortcuts for the web app and the terminal.
+        </p>
+        <p class="prereq-callout">Needs Python 3.9+ on PATH <span>before you run the command below.</span></p>
+        <p class="install-warn">
+          Review <a href="install-chopsticks-ai.ps1"><strong>install-chopsticks-ai.ps1</strong></a> before piping it to PowerShell.
+        </p>
+        <pre class="curl" id="win-cmd" title="Click to copy">irm https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.ps1 | iex</pre>
+        <div class="install-btns">
+          <a class="btn btn-primary" href="/chopsticks-ai/web/">Open cs.AI web</a>
+          <a class="btn btn-outline" href="install-chopsticks-ai.ps1" download>Download .ps1</a>
+        </div>
+      </section>
+
+      <section class="install-card" id="web-app">
+        <h2>Web app</h2>
+        <p>
+          Full cs.AI in the browser — same four plates, Chromium search, account sync with macOS.
+        </p>
+        <div class="install-btns">
+          <a class="btn btn-primary" href="/chopsticks-ai/web/">Open cs.AI web</a>
+          <a class="btn btn-outline" href="/chopailab/">Legacy Lab</a>
+        </div>
+      </section>
+
+      <section class="install-card" id="chopcode">
+        <h2>ChopCode</h2>
+        <p>
+          Dedicated coding assistant for signed-in <strong>Pro</strong> accounts.
+          Unlock Pro by redeeming <strong>five Fathom Pro unlock keys</strong> in Usage — those are Chopsticks keys, not five OpenRouter keys from you.
+          Paste a prompt and optional code context. 128k context cap, 1m total tokens.
+          Older names <strong>StickerCoder</strong> / <strong>StickerCoder+</strong> now map to ChopCode / Wagyu A5.
+        </p>
+        <div class="install-btns">
+          <a class="btn btn-primary" href="/chopsticks-ai/web/?plate=chopcode">Open ChopCode</a>
+          <a class="btn btn-outline" href="/chopsticks-ai/web/">cs.AI web</a>
+        </div>
+      </section>
+
+      <section class="install-card" id="terminal-cli">
+        <h2>Terminal CLI <span class="mono" style="font-size:.72rem;color:var(--muted);font-weight:500">optional</span></h2>
+        <p>
+          Type <strong>csai</strong> for a full-screen terminal UI — scrollback, status bar,
+          and prompt at the bottom. Same live model as the macOS app and web agent.
+          Free allowance <strong>resets every 5 hours</strong>. No API key from you.
+        </p>
+        <p class="install-warn">
+          Review <a href="install-csai-cli.sh"><strong>install-csai-cli.sh</strong></a> before piping it to bash.
+        </p>
+        <pre class="curl" id="cli-curl-cmd" title="Click to copy">curl -fsSL https://chopstickshq.com/chopsticks-ai/install-csai-cli.sh | bash</pre>
+        <div class="install-btns">
+          <a class="btn btn-outline" href="install-csai-cli.sh" download>Download install script</a>
+          <a class="btn btn-outline" href="/guides/csai-terminal-install.html">Install guide</a>
+        </div>
+        <p class="moz-hint" style="margin-top:14px">
+          Headless: <code>csai ask "question"</code> · Update: <code>csai update</code> · Simple mode: <code>csai --plain</code>
+        </p>
+      </section>
+
+      <section id="latest-release">
+        <h2 id="changelog">Latest releases</h2>
         <div class="card">
           <ul class="changelog" id="changelog-list">
             <li>
-              <div class="ver">v1.0.14 <span>2026-08-08</span></div>
-              <h3>Accounts, Usage, and Cursor-style Agents</h3>
+              <div class="ver">3.6.7 <span>2026-08-18</span></div>
+              <h3>More models — bring your own key</h3>
               <ul>
-                <li>Cursor-style Agents Window (Agents, Automations, Repos, Marketplace, Usage, Account, Settings)</li>
-                <li>Optional Supabase accounts — sync chats across Lab and macOS when signed in</li>
-                <li>Usage tab with Fathom Pro oi-pl credit upgrades (not OpenRouter keys)</li>
-                <li>Credit tiers: 2 → 800k / 64k context; 5 → 900k / 96k; 10 → 1m / 128k</li>
-                <li>Homepage scavenger mint cooldown: 10 minutes</li>
-                <li>Safer auto-update (main-thread alerts, ~/Applications install)</li>
+                <li>New More models tab for Groq, OpenRouter, and Claude catalogs</li>
+                <li>Paste your API key and pick any model those APIs expose</li>
+              </ul>
+            </li>
+            <li>
+              <div class="ver">3.6.6 <span>2026-08-18</span></div>
+              <h3>Send works, chat feels instant</h3>
+              <ul>
+                <li>Return sends; the send button unsticks after a reply</li>
+                <li>No more 11-bubble thinking animation freezing the composer</li>
+              </ul>
+            </li>
+            <li>
+              <div class="ver">3.6.5 <span>2026-08-17</span></div>
+              <h3>Never a blank live miss</h3>
+              <ul>
+                <li>A fast model runs in parallel so you still get an answer if ChopCode or Tamago stalls</li>
+                <li>That empty “live model didn’t return an answer” line is gone from the API and the Mac app</li>
+                <li>macOS retries Tamago, then Rice, then local help</li>
+              </ul>
+            </li>
+            <li>
+              <div class="ver">3.6.4 <span>2026-08-17</span></div>
+              <h3>Live answers come back</h3>
+              <ul>
+                <li>ChopCode leaves time for a live fallback so you get an answer instead of an empty error</li>
+                <li>macOS waits 90 seconds for ChopCode instead of cutting off at 22 seconds</li>
+                <li>Agent conversation starts immediately while Lead finishes</li>
+              </ul>
+            </li>
+            <li>
+              <div class="ver">3.6.3 <span>2026-08-17</span></div>
+              <h3>ChopCode finishes before the clock</h3>
+              <ul>
+                <li>ChopCode skips the extra discussion round so the room fits the live API window</li>
+                <li>Agent conversation appears immediately while the answer is still coming in</li>
+              </ul>
+            </li>
+            <li>
+              <div class="ver">3.6.2 <span>2026-08-17</span></div>
+              <h3>Live chat no longer dead-ends</h3>
+              <ul>
+                <li>Stopped showing “the live model is still responding” when the cloud call actually failed</li>
+                <li>If the live model misses, you get a real answer or local product help instead of a stuck retry loop</li>
+                <li>ChopCode coding plate uses a live 70B coding pass plus 2026 web research</li>
               </ul>
             </li>
           </ul>
+          <p class="spec-note" style="margin-top:0.75rem">Full history: <a href="changelog.json"><code>changelog.json</code></a></p>
         </div>
       </section>
 
       <section>
         <h2>How it answers</h2>
         <div class="card">
-          <h3>cs.AI 2.2.9</h3>
+          <h3>cs.AI-3</h3>
           <p>
-            <strong>cs.AI 2.2.9</strong> (chopsticksAI) is the assistant built and run by
-            Chopsticks HQ. Every answer is generated on request, grounded in the
-            knowledge base below, and preceded by a Mozilla-engine web search.</p>
+            <strong>cs.AI</strong> (chopsticksAI) is the Chopsticks HQ assistant. Every answer is
+            generated on request, grounded in the knowledge base below, and preceded by a
+            Chromium web search dated to today so facts stay current.</p>
           <p>
             Two models collaborate on each answer.
             <strong>NVIDIA Nemotron 3 Ultra</strong> (550B, 55B active) writes the
@@ -384,7 +616,7 @@
           <p>
             Requests run through a Chopsticks HQ endpoint that holds the API
             credential server-side. Nothing is embedded in this page or in the
-            rNitro binary, and you never supply a key of your own.
+            MacBar binary, and you never supply a key of your own.
           </p>
         </div>
       </section>
@@ -393,7 +625,7 @@
         <h2>Why it doesn't invent version numbers</h2>
         <div class="card">
           <p>
-            A language model asked "what version is rNitro?" will happily invent a
+            A language model asked "what version is MacBar?" will happily invent a
             plausible answer. chopsticksAI doesn't, because the model never answers
             from memory alone.
           </p>
@@ -421,7 +653,7 @@ retrieval      score against 2,285 terms, take the 6 best topics
    ↓
 grounding      inject those facts as reference material
    ↓
-search         Mozilla engine (MDN · Wikipedia · DuckDuckGo), then wider web
+search         Chromium engine (Google web + DuckDuckGo), then wider web
    ↓
 draft          Nemotron 3 Ultra 550B writes the answer
    ↓
@@ -446,16 +678,16 @@ fallback       the same knowledge base answers offline, on-device</div>
             <p>If the model can't be reached, the on-device knowledge base answers instead of erroring. The assistant degrades rather than dies.</p>
           </div>
           <div class="card">
-            <h3>Mozilla engine</h3>
-            <p>MDN, Wikipedia, and DuckDuckGo first — then Stack Overflow, HN, GitHub, npm, arXiv, and Google/Brave when configured. You can search the same engine on this page without chatting.</p>
+            <h3>Chromium engine</h3>
+            <p>Google web and DuckDuckGo first — then Stack Overflow, HN, GitHub, npm, arXiv, and Brave when configured. The macOS app includes a built-in Chromium browser rail.</p>
           </div>
           <div class="card">
             <h3>Optional accounts</h3>
-            <p>Guests stay local. Sign in to sync chats to your private Supabase rows (RLS). No analytics on what you ask.</p>
+            <p>Guests stay local. Sign in to sync chats to your account. No analytics on what you ask.</p>
           </div>
           <div class="card">
             <h3>Budgeted + upgrades</h3>
-            <p>Free: 775k tokens · 48k context · 3h cooldown. Redeem Fathom Pro oi-pl keys for higher allowance and larger context windows.</p>
+            <p>Free baseline: <strong>775k tokens · 128k context cap · resets every 5 hours</strong>. Tamago (the default plate) uses 48k of that window per reply. Redeem Fathom Pro unlock keys for higher allowance — see <a href="#specs">Allowance</a>.</p>
           </div>
         </div>
       </section>
@@ -507,7 +739,7 @@ fallback       the same knowledge base answers offline, on-device</div>
                 </tr>
                 <tr>
                   <td class="fname">ChopsticksAIEngine.swift</td>
-                  <td><strong>The Swift engine.</strong> Scoring identical to the JavaScript one, shipped inside rNitro.</td>
+                  <td><strong>The Swift engine.</strong> Scoring identical to the JavaScript one, shipped inside MacBar.</td>
                   <td class="fsize">3 KB</td>
                   <td><a class="flink" href="files/ChopsticksAIEngine.swift">view</a></td>
                 </tr>
@@ -539,19 +771,35 @@ fallback       the same knowledge base answers offline, on-device</div>
         <h2>Try it</h2>
         <div class="card">
           <p>
-            Tap the <strong>◉</strong> button in the bottom-left corner of any page
-            on this site. Inside rNitro, open the menu bar icon and pick the
-            <strong>Chat</strong> tab — chopsticksAI is the default provider and
-            needs no setup.
+            On this site, tap the round <strong>◉</strong> launcher in the <strong>bottom-left</strong> of the window.
+            In MacBar, open the menu bar icon and pick the <strong>Chat</strong> tab — cs.AI is the default and needs no setup.
           </p>
+          <div class="try-cue" aria-hidden="true">
+            <div class="try-mock">
+              <div class="try-mock-btn">◉</div>
+            </div>
+            <p class="try-arrow">← that button, lower left. Same control is already on this page.</p>
+          </div>
         </div>
       </section>
+
+      <div class="social-row" aria-label="Reviews and source">
+        <a class="social-pill social-pill--ph" href="https://www.producthunt.com/products/cs-ai" target="_blank" rel="noopener noreferrer">▲ Product Hunt</a>
+        <a class="social-pill social-pill--at" href="https://alternativeto.net/software/chopsticks-ai/about/" target="_blank" rel="noopener noreferrer">◆ AlternativeTo</a>
+        <a class="social-pill social-pill--gh" href="https://github.com/ilikemacos/ChopsticksAI" target="_blank" rel="noopener noreferrer">★ GitHub</a>
+      </div>
+
+      <p class="launchstag-badge">
+        <a href="https://launchstag.com" target="_blank" rel="noopener">
+          <img src="https://launchstag.com/badge-light.svg" alt="Featured on Launchstag" width="198" height="62" />
+        </a>
+      </p>
 
       <div class="footer">
         <div>&copy; ChopsticksHQ 2026</div>
         <div>
           <a href="/">HQ</a>
-          <a href="/rnitro/">rNitro</a>
+          <a href="/macbar/">MacBar</a>
           <a href="/fathom/">Fathom Air</a>
           <a href="/fathom-pro/">Fathom Pro</a>
           <a href="/about/">About</a>
@@ -568,22 +816,44 @@ fallback       the same knowledge base answers offline, on-device</div>
   <script>
     (function () {
       var CURL = 'curl -fsSL https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.sh | bash';
+      var WIN = 'irm https://chopstickshq.com/chopsticks-ai/install-chopsticks-ai.ps1 | iex';
+      var CLI_CURL = 'curl -fsSL https://chopstickshq.com/chopsticks-ai/install-csai-cli.sh | bash';
       var curlEl = document.getElementById('curl-cmd');
+      var winEl = document.getElementById('win-cmd');
+      var cliCurlEl = document.getElementById('cli-curl-cmd');
       if (curlEl) curlEl.addEventListener('click', function () {
         navigator.clipboard.writeText(CURL).catch(function () {});
       });
-      fetch('macos-version.json').then(function (r) { return r.json(); }).then(function (v) {
+      if (winEl) winEl.addEventListener('click', function () {
+        navigator.clipboard.writeText(WIN).catch(function () {});
+      });
+      if (cliCurlEl) cliCurlEl.addEventListener('click', function () {
+        navigator.clipboard.writeText(CLI_CURL).catch(function () {});
+      });
+      fetch('version.json').then(function (r) { return r.json(); }).catch(function () {
+        return fetch('macos-version.json').then(function (r) { return r.json(); });
+      }).then(function (v) {
         var rel = v.releases && (v.releases.stable || v.releases.beta);
         var btn = document.getElementById('zip-btn');
+        var heroBtn = document.getElementById('hero-zip-btn');
         if (rel && rel.zip && btn) {
           btn.href = rel.zip;
-          btn.textContent = 'Download ' + (v.latest || 'macOS app');
+          btn.textContent = 'Download cs.AI-3';
+          if (heroBtn) {
+            heroBtn.href = rel.zip;
+            heroBtn.textContent = 'Download cs.AI-3';
+          }
+        }
+        if (v.latest) {
+          var ver = 'cs.AI-3 ' + v.latest;
+          var badge = document.getElementById('csai-version-badge');
+          if (badge) badge.textContent = ver;
         }
       }).catch(function () {});
       fetch('changelog.json').then(function (r) { return r.json(); }).then(function (d) {
         var list = document.getElementById('changelog-list');
         if (!list || !d.entries || !d.entries.length) return;
-        list.innerHTML = d.entries.map(function (e) {
+        list.innerHTML = d.entries.slice(0, 8).map(function (e) {
           var items = (e.changes || []).map(function (c) {
             return '<li>' + c.replace(/</g, '&lt;') + '</li>';
           }).join('');
@@ -606,7 +876,7 @@ fallback       the same knowledge base answers offline, on-device</div>
         var q = (mozQ && mozQ.value || '').trim();
         if (q.length < 3) return;
         mozGo.disabled = true;
-        mozStatus.textContent = 'Searching Mozilla engine…';
+        mozStatus.textContent = 'Searching Chromium engine…';
         mozResults.innerHTML = '';
         fetch('/api/chopsticks-ai', {
           method: 'POST',
@@ -619,7 +889,7 @@ fallback       the same knowledge base answers offline, on-device</div>
             mozStatus.textContent = 'No results for “' + q + '”. Try different words.';
             return;
           }
-          mozStatus.textContent = src.length + ' result' + (src.length === 1 ? '' : 's') + ' · ' + (d.engine || 'mozilla');
+          mozStatus.textContent = src.length + ' result' + (src.length === 1 ? '' : 's') + ' · ' + (d.engine || 'chromium');
           mozResults.innerHTML = src.map(function (s) {
             var href = esc(s.url || '#');
             return '<li><div><a href="' + href + '" target="_blank" rel="noopener noreferrer">' +

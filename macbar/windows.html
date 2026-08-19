@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacBar for Windows — tray monitor (legacy)</title>
+<meta name="description" content="MacBar for Windows (legacy) — last tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.">
+<link rel="canonical" href="https://chopstickshq.com/macbar/windows.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MacBar for Windows — tray monitor (legacy)">
+<meta property="og:description" content="MacBar for Windows (legacy) — last tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.">
+<meta property="og:url" content="https://chopstickshq.com/macbar/windows.html">
+<meta property="og:image" content="https://chopstickshq.com/macbar/screenshots/hero-monitor.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MacBar for Windows — tray monitor (legacy)">
+<meta name="twitter:description" content="MacBar for Windows (legacy) — last tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "MacBar for Windows", "operatingSystem": "Windows", "applicationCategory": "UtilitiesApplication", "softwareVersion": "v6.0.2-Windows-x64", "description": "MacBar for Windows (legacy) — portable ZIP tray build with CPU, temperature, and RAM. Deprecated; prefer macOS or Linux for new installs.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "downloadUrl": "https://chopstickshq.com/macbar/MacBar-v6.0.2-Windows-x64.zip", "url": "https://chopstickshq.com/macbar/windows.html"}</script>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0a0a0c;
+    --bg2:      #0e0e12;
+    --card:     #121216;
+    --card2:    #18181e;
+    --border:   #26262e;
+    --cyan:     #e8e8ed;
+    --green:    #c8c8d0;
+    --orange:   #a8a8b4;
+    --text:     #f2f2f5;
+    --muted:    #8b8b9a;
+    --mono:     'JetBrains Mono', 'Geist Mono', ui-monospace, Menlo, monospace;
+    --sans:     'Inter', 'Varela Round', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --display:  'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --radius:   .75rem;
+    --glow:     0 0 60px -15px rgba(230,230,230,.18);
+    --shadow:   0 4px 24px -4px rgba(0,0,0,.4);
+  }
+  html, body {
+    font-family: var(--sans); background: var(--bg); color: var(--text);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(900px 420px at 50% -12%, rgba(232,232,237,.05), transparent 70%);
+    background-repeat: no-repeat;
+  }
+  a { color: var(--text); text-decoration-color: rgba(232,232,237,.35); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--text); }
+  code { font-family: var(--mono); font-size: 0.9em; color: var(--text); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 16px 72px; }
+
+  .nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 44px; }
+  .nav a {
+    display: inline-block; padding: 7px 16px; border-radius: 999px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.02);
+    text-decoration: none; color: var(--muted);
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    transition: color .18s, border-color .18s, background .18s;
+  }
+  .nav a:hover { color: var(--text); border-color: #3a3a46; background: rgba(255,255,255,.05); }
+  .nav a.active { color: #0a0a0c; font-weight: 600; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  h1 {
+    font-family: var(--display); font-size: clamp(38px, 7vw, 56px); font-weight: 700;
+    letter-spacing: -.03em; line-height: 1.05; margin: 0 0 16px; color: var(--text);
+  }
+  h1 span { color: var(--muted); }
+  .lead {
+    color: var(--muted); font-size: 17px; line-height: 1.65;
+    margin-bottom: 40px; max-width: 620px;
+  }
+
+  .desc {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px 26px; margin-bottom: 28px; line-height: 1.7; font-size: 15px;
+    box-shadow: var(--shadow);
+  }
+  .desc h2 {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted);
+    margin: 0 0 14px; text-transform: uppercase; letter-spacing: .18em;
+  }
+  .desc ul { margin: 12px 0 0; padding: 0; list-style: none; }
+  .desc li {
+    margin-bottom: 10px; color: var(--muted); padding-left: 18px; position: relative;
+  }
+  .desc li::before {
+    content: ''; position: absolute; left: 0; top: .68em;
+    width: 5px; height: 5px; border-radius: 50%; background: #3f3f4c;
+  }
+  .desc li strong { color: var(--text); font-weight: 600; }
+
+  .btn {
+    display: inline-block; padding: 11px 18px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    cursor: pointer; text-decoration: none;
+    transition: background .18s, border-color .18s, transform .18s;
+  }
+  .btn:hover { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--text); color: #0a0a0c; border-color: transparent; font-weight: 600;
+  }
+  .btn-primary:hover { background: #fff; border-color: transparent; }
+  .btn-secondary { background: rgba(255,255,255,.03); }
+  .btn-recommended { width: 100%; padding: 15px 18px !important; font-size: 15px !important; }
+
+  .dl-recommended {
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; margin-top: 20px; text-align: left; box-shadow: var(--glow);
+  }
+  .dl-recommended-badge {
+    display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04); color: var(--muted); margin-bottom: 14px;
+  }
+  .dl-recommended-title {
+    font-family: var(--display); font-size: 22px; font-weight: 600;
+    letter-spacing: -.02em; margin: 0 0 8px; color: var(--text);
+  }
+  .dl-recommended-steps { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; }
+
+  .dl-other-panel { margin-top: 14px; text-align: left; }
+  .prev-versions-toggle {
+    width: 100%; display: flex; justify-content: space-between; align-items: center;
+    background: transparent; border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); padding: 11px 14px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: .04em; cursor: pointer;
+    transition: color .18s, border-color .18s;
+  }
+  .prev-versions-toggle:hover { color: var(--text); border-color: #3a3a46; }
+  .prev-versions-chevron { transition: transform .2s; }
+  .dl-other-panel.is-open .prev-versions-chevron { transform: rotate(90deg); }
+  .prev-versions-body { display: none; padding-top: 12px; }
+  .dl-other-panel.is-open .prev-versions-body { display: block; }
+  .dl-other-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dl-other-note { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
+  .platform-banner {
+    font-size: 13px; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    line-height: 1.6; text-align: left;
+  }
+  .platform-banner--deprecated {
+    color: var(--muted); background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+
+  .steps { margin-top: 52px; text-align: left; }
+  .steps h2 {
+    font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted);
+    margin: 0 0 18px; text-transform: uppercase; letter-spacing: .18em;
+  }
+  .step {
+    display: flex; gap: 16px; margin-bottom: 12px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
+  }
+  .step-num {
+    flex: 0 0 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08); display: flex; align-items: center;
+    justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .step-content h3 {
+    font-family: var(--display); font-size: 16px; font-weight: 600;
+    letter-spacing: -.01em; margin: 0 0 8px;
+  }
+  .step-content p { font-size: 14px; color: var(--muted); line-height: 1.65; margin: 0; }
+
+  .code-block {
+    margin-top: 12px; background: #0c0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 12px; color: #c8c8d0;
+    word-break: break-all; line-height: 1.6; text-align: left; white-space: pre-wrap;
+  }
+  .code-block.purple, .code-block.gold { color: #c8c8d0; border-color: var(--border); }
+  .tui-preview {
+    margin-top: 14px; background: #0c0c10; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 11px; color: #9a9aa8;
+    line-height: 1.5; white-space: pre; overflow-x: auto;
+  }
+
+  .footer {
+    margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border);
+    text-align: center; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); line-height: 2;
+  }
+  .footer a { margin: 0 10px; color: var(--muted); text-decoration: none; }
+  .footer a:hover { color: var(--text); }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--card2); border: 1px solid rgba(255,255,255,.12); color: var(--text);
+    padding: 11px 18px; border-radius: 10px; font-family: var(--mono); font-size: 12px;
+    opacity: 0; pointer-events: none; transition: .2s; z-index: 9999; box-shadow: var(--shadow);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .tc-overlay {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(10,10,12,.86); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .tc-overlay.open { display: flex; }
+  .tc-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    max-width: 480px; width: 100%; padding: 26px; text-align: left; box-shadow: var(--shadow);
+  }
+  .tc-box h2 { font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 10px; }
+  .tc-box p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+  .tc-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 28px 14px 56px; }
+    .nav { margin-bottom: 32px; }
+    .desc { padding: 20px; }
+    .dl-recommended { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <nav class="nav" aria-label="Platform"><a href="/macbar/">🍎 macOS</a>
+<a href="/macbar/cli.html">⌨️ CLI</a>
+<a href="/macbar/linux.html">🐧 Linux</a>
+<a class="active" href="/macbar/windows.html" style="background:var(--cyan); border-color:var(--cyan); color:#000; opacity:0.9;">🪟 Windows (legacy)</a></nav>
+    <p class="eyebrow" style="color:var(--cyan);">Windows 10/11 · Legacy · Deprecated</p>
+    <h1>MacBar for Windows</h1>
+    <p class="lead">Final Windows tray build kept for download only. No new features or active support — use macOS or Linux for current MacBar.</p>
+    <div class="desc">
+      <h2>About MacBar for Windows</h2>
+      <p><strong>Windows is no longer actively developed.</strong> The current build (<code>v6.0.2-Windows-x64</code>) is shipped as a ZIP — no installer, nothing written to the registry.</p>
+      <ul>
+        <li><strong>What it does</strong> — system tray icon with CPU %, temperature, RAM, optional BTC, and short history graphs</li>
+        <li><strong>ZIP</strong> — unzip and run <code>MacBar.exe</code>; needs the <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 Desktop Runtime (x64)</a></li>
+        <li><strong>PowerShell installer</strong> — compiles with built-in <code>csc.exe</code> (no Visual Studio SDK)</li>
+        <li><strong>No install path</strong> — the ZIP runs from wherever you unpack it; delete the folder to remove it</li>
+      </ul>
+      <p style="margin-top:12px; color:var(--muted);">For new installs we recommend <a href="/macbar/">macOS</a> or <a href="/macbar/linux.html">Linux</a>.</p>
+    </div>
+    <div style="max-width:640px; margin:0 auto;">
+    <div style="width:100%; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:26px; text-align:center; box-shadow:var(--shadow);">
+      <div class="platform-banner platform-banner--deprecated">
+        Windows is no longer actively supported. Existing builds remain available for download.
+      </div>
+      <div style="font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">v6.0.2-Windows-x64</div>
+      <div style="font-size:16px; color:var(--muted); margin-bottom:0;">Windows 10/11 tray monitor — CPU, temp, RAM, and BTC stats.</div>
+      <div class="dl-recommended" style="margin-top:18px;">
+        <div class="dl-recommended-badge" >Recommended Download</div>
+        <div class="dl-recommended-title" style="color:var(--cyan);">Windows ZIP</div>
+        <p class="dl-recommended-steps">Unzip, then run <code>MacBar.exe</code>. Install <a href="https://dotnet.microsoft.com/download/dotnet/8.0" style="color:var(--cyan);">.NET 8 Desktop Runtime x64</a> first if Windows prompts you.</p>
+        <button type="button" class="btn btn-primary btn-recommended" style="background:var(--text); color:#0a0a0c;" onclick="requestDownload('MacBar-v6.0.2-Windows-x64.zip')">⬇ Download ZIP · 228 KB</button>
+      </div>
+      <div id="hero-win-other" class="dl-other-panel prev-versions-panel" style="margin-top:12px;">
+        <button type="button" class="prev-versions-toggle" onclick="toggleOtherDownloads('hero-win-other')" aria-expanded="false">
+          <span>Other download options</span>
+          <span class="prev-versions-chevron" aria-hidden="true">▸</span>
+        </button>
+        <div class="dl-other-body prev-versions-body">
+          <div class="dl-other-grid">
+            <button type="button" class="btn btn-secondary" onclick="requestDownload('MacBar-v4.2.4-Windows-Final-x86.ps1')">PowerShell installer (.ps1) · 45 KB</button>
+            <button class="btn btn-secondary" onclick="copyWinCmd()">⎘ Copy PowerShell command</button>
+          </div>
+          <div class="dl-other-note">The .ps1 compiles from source with built-in csc.exe — no SDK needed.</div>
+        </div>
+      </div>
+    </div>
+    </div>
+        <div class="steps">
+      <h2>How to install (legacy)</h2>
+      <div class="step"><div class="step-num">1</div><div class="step-content">
+        <h3>Download the ZIP (easiest)</h3>
+        <p>Download <strong>MacBar-v6.0.2-Windows-x64.zip</strong> and unzip it anywhere. Right-click <code>MacBar.exe</code> → Properties → <strong>Unblock</strong> if Windows flags it, then run it. If Windows asks for a runtime, install .NET 8 Desktop Runtime x64 first.</p>
+      </div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-content">
+        <h3>Or compile from source</h3>
+        <p>Download <code>MacBar-v4.2.4-Windows-Final-x86.ps1</code>, open PowerShell, and run:</p>
+        <div class="code-block">powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\Downloads\MacBar-v4.2.4-Windows-Final-x86.ps1</div>
+      </div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-content">
+        <h3>Use MacBar</h3>
+        <p>MacBar runs in the system tray, not the taskbar. Click for live stats; right-click to quit. Run as administrator if you want real CPU temperatures — Windows hides thermal sensors from unelevated apps.</p>
+      </div></div>
+    </div>
+
+    <div class="footer">
+      <a href="/macbar/">macOS</a>
+      <a href="/macbar/cli.html">CLI</a>
+      <a href="/macbar/linux.html">Linux</a>
+      <a href="/macbar/windows.html">Windows</a>
+      <a href="/macbar/faq.html">FAQ</a>
+      <a href="/macbar/privacy.html">Privacy</a>
+      <a href="/macbar/terms.html">Terms</a>
+      <a href="https://github.com/ilikemacos/MacBar">GitHub</a>
+    </div>
+  </div>
+  
+<div id="tc-overlay" class="tc-overlay" role="dialog" aria-modal="true">
+  <div class="tc-box">
+    <h2 id="tc-title">Terms &amp; Conditions</h2>
+    <p>By downloading you agree to the <a href="/macbar/terms.html" target="_blank" rel="noopener">MacBar Terms</a>. Software is provided as-is. Beta features may be unstable.</p>
+    <p id="tc-download-file" style="font-family:var(--mono); font-size:12px; color:var(--cyan);"></p>
+    <div class="tc-actions">
+      <button type="button" class="btn btn-secondary" id="tc-disagree-btn">I Disagree</button>
+      <button type="button" class="btn btn-primary" style="background:var(--text); color:#0a0a0c;" id="tc-agree-btn">I Agree &amp; download</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+  
+<script>
+  const MACBAR_VERSIONS = {
+  "stable": {
+    "id": "v1.2.9-Final",
+    "sh": "MacBar-v1.2.9-Final.sh",
+    "curlInstall": "curl -fsSL https://chopstickshq.com/macbar/MacBar-v1.2.9-Final.sh -o /tmp/macbar-install.sh && bash /tmp/macbar-install.sh"
+  },
+  "beta": {
+    "id": "v1.2.14",
+    "sh": "MacBar-v1.2.14.sh",
+    "curlInstall": "curl -fsSL https://chopstickshq.com/macbar/MacBar-v1.2.14.sh -o /tmp/macbar-install.sh && bash /tmp/macbar-install.sh"
+  },
+  "windows": {
+    "id": "v6.0.2-Windows-x64",
+    "zip": "MacBar-v6.0.2-Windows-x64.zip",
+    "ps1": "MacBar-v4.2.4-Windows-Final-x86.ps1"
+  },
+  "linux": {
+    "id": "v0.1-Linux-Beta-Pre-release-x64",
+    "tar": "MacBar-v0.1-Linux-Beta-Pre-release-x64.tar.gz",
+    "sh": "install-MacBar-linux.sh"
+  },
+  "cli": {
+    "id": "v0.2-cli",
+    "tar": "MacBar-CLI.tar.gz",
+    "curlInstall": "curl -fsSL https://chopstickshq.com/macbar/MacBar-CLI.tar.gz -o /tmp/macbar-cli.tar.gz && mkdir -p /tmp/macbar-cli && tar xzf /tmp/macbar-cli.tar.gz -C /tmp/macbar-cli && bash /tmp/macbar-cli/install-cli.sh"
+  }
+};
+  let pendingDownload = null;
+
+  function homeUrl() {
+    const base = (window.__MACBAR_BASE__ || '').replace(/\/$/, '');
+    if (base) return base + '/';
+    const path = window.location.pathname || '/';
+    if (path === '/macbar' || path.startsWith('/macbar/')) return '/macbar/';
+    return '/';
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+  function toggleOtherDownloads(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    const open = panel.classList.toggle('is-open');
+    const btn = panel.querySelector('.prev-versions-toggle');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function requestDownload(url) {
+    if (!url) return;
+    pendingDownload = url;
+    const name = url.split('/').pop();
+    const label = document.getElementById('tc-download-file');
+    if (label) label.textContent = name;
+    document.getElementById('tc-overlay')?.classList.add('open');
+  }
+
+  function disagreeTcAndGoHome() {
+    pendingDownload = null;
+    document.getElementById('tc-overlay')?.classList.remove('open');
+    window.location.href = homeUrl();
+  }
+
+  document.getElementById('tc-agree-btn')?.addEventListener('click', () => {
+    document.getElementById('tc-overlay')?.classList.remove('open');
+    if (pendingDownload) {
+      const u = pendingDownload;
+      pendingDownload = null;
+      window.location.href = u;
+    }
+  });
+  document.getElementById('tc-disagree-btn')?.addEventListener('click', disagreeTcAndGoHome);
+  document.getElementById('tc-overlay')?.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'tc-overlay') disagreeTcAndGoHome();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('tc-overlay')?.classList.contains('open')) {
+      disagreeTcAndGoHome();
+    }
+  });
+
+  function copyText(cmd, okMsg) {
+    navigator.clipboard.writeText(cmd).then(() => toast(okMsg || '✓ Copied'));
+  }
+  function copyCliInstall() {
+    copyText(MACBAR_VERSIONS.cli?.curlInstall || '', '✓ CLI install command copied');
+  }
+  function copyLinuxCmd() {
+    const sh = MACBAR_VERSIONS.linux?.sh || 'install-MacBar-linux.sh';
+    copyText('bash ~/' + 'Downloads/' + sh, '✓ Bash command copied');
+  }
+  function copyWinCmd() {
+    const ps1 = MACBAR_VERSIONS.windows?.ps1 || '';
+    copyText('powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\\Downloads\\' + ps1, '✓ PowerShell command copied');
+  }
+</script>
+
+</body>
+</html>

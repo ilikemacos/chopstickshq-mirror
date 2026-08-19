@@ -1,5 +1,12 @@
 const crypto = require("node:crypto");
 const { queueUsageEmail, AI_EMAIL } = require("./usage-email.js");
+const {
+  handleSignupSendCode,
+  handleSignupVerify,
+  handleAuthSignUp,
+  handleAuthSignIn,
+  handleAuthRefresh,
+} = require("./signup-verify.js");
 
 const TIERS = {
   low: {
@@ -222,10 +229,10 @@ const FREE_USAGE = {
   id: "free",
   keysRequired: 0,
   limit: Number(process.env.CHOPSTICKS_AI_TOKEN_BUDGET || 775000),
-  cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 3 * 60 * 60 * 1000),
+  cooldownMs: Number(process.env.CHOPSTICKS_AI_COOLDOWN_MS || 5 * 60 * 60 * 1000),
   contextLimit: Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000),
   label: "Free",
-  detail: "775k tokens · 48k context · 3h cooldown",
+  detail: "775k tokens · 48k context · resets every 5h",
 };
 const CREDIT_TIERS = [
   {
@@ -383,7 +390,7 @@ async function resolveAccount(accessToken) {
           }
         }
       }
-    } catch (e) { /* profiles columns optional until SQL is applied */ }
+    } catch (e) {  }
 
     return {
       id: user.id,
@@ -395,7 +402,6 @@ async function resolveAccount(accessToken) {
   }
 }
 
-/** Merge Fathom Pro credit tier with signed-in account entitlements (best wins). */
 function userBucketId(account) {
   if (!account || !account.id) return null;
   return "user-" + String(account.id).replace(/-/g, "").slice(0, 12);
@@ -470,19 +476,61 @@ const draftBudgetMs = (replyTokens, msLeft) =>
 const MAX_CONTEXT_TOKENS = Number(process.env.CHOPSTICKS_AI_MAX_CONTEXT || 48000);
 const contextFor = (effortTier, plan) => {
   const cap = (plan && plan.contextLimit) || MAX_CONTEXT_TOKENS;
-  return Math.min(cap, Math.max(effortTier.context || MAX_CONTEXT_TOKENS, cap));
+  const tierCtx = effortTier.context || cap;
+  return Math.min(cap, tierCtx);
 };
 const MAX_REPLY_TOKENS = 400;
 const MAX_REPLY_TOKENS_CEILING = 2000;
 
-const MAX_MESSAGES = 12;        // trailing turns kept from the client
+const BILLABLE_PER_REPLY = Number(process.env.CHOPSTICKS_AI_BILLABLE || 8500);
+
+const APP_VERSION = "2.5.4";
+const LANGUAGES = {
+  en: "English",
+  zh: "Chinese (Simplified)",
+  es: "Spanish",
+  de: "German",
+  ko: "Korean",
+  ja: "Japanese",
+};
+
+function resolveLanguage(payload, headers) {
+  const raw = String((payload && payload.language) || (payload && payload.locale) || "").trim().toLowerCase();
+  if (!raw) {
+    const al = String((headers && (headers["accept-language"] || headers["Accept-Language"])) || "").toLowerCase();
+    if (al.startsWith("zh")) return "zh";
+    if (al.startsWith("es")) return "es";
+    if (al.startsWith("de")) return "de";
+    if (al.startsWith("ko")) return "ko";
+    if (al.startsWith("ja")) return "ja";
+    return "en";
+  }
+  if (raw.startsWith("zh")) return "zh";
+  if (raw.startsWith("es")) return "es";
+  if (raw.startsWith("de")) return "de";
+  if (raw.startsWith("ko")) return "ko";
+  if (raw.startsWith("ja")) return "ja";
+  const code = raw.slice(0, 2);
+  return LANGUAGES[code] ? code : "en";
+}
+
+function languageInstruction(code) {
+  if (code === "en") {
+    return "Respond in English unless the user writes in another language; then match their language.";
+  }
+  const name = LANGUAGES[code] || LANGUAGES.en;
+  return `Respond in ${name}. Match the user's language when they switch.`;
+}
+
+const MAX_MESSAGES = 12;
 const MAX_CHARS_PER_MSG = 2000;
 const GROUNDING_INTENTS = 6;
 
 const TOKEN_BUDGET = FREE_USAGE.limit;
 const COOLDOWN_MS = FREE_USAGE.cooldownMs;
+const RESET_WINDOW_MS = Number(process.env.CHOPSTICKS_AI_RESET_MS || 5 * 60 * 60 * 1000);
 const SB_TIMEOUT_MS = 5000;
-const budgets = new Map(); // bucketId -> { used, windowStart, cooldownUntil }
+const budgets = new Map();
 function budgetBucket(id) {
   const key = id || "global";
   let row = budgets.get(key);
@@ -537,10 +585,22 @@ function contextWindowUsage(messages, limit, turnsTotal) {
   };
 }
 
+function maybeResetBudgetWindow(row, now) {
+  if (!row.windowStart) row.windowStart = now;
+  if (now - row.windowStart >= RESET_WINDOW_MS) {
+    row.used = 0;
+    row.windowStart = now;
+    row.cooldownUntil = 0;
+    return true;
+  }
+  return false;
+}
+
 function memoryBudgetState(now, bucketId, limit, cooldownMs) {
   const row = budgetBucket(bucketId);
   const lim = limit || TOKEN_BUDGET;
   const cool = cooldownMs || COOLDOWN_MS;
+  maybeResetBudgetWindow(row, now);
   if (row.cooldownUntil && now < row.cooldownUntil) {
     return { blocked: true, retryInMs: row.cooldownUntil - now, used: row.used, limit: lim };
   }
@@ -549,13 +609,20 @@ function memoryBudgetState(now, bucketId, limit, cooldownMs) {
     row.windowStart = now;
     row.cooldownUntil = 0;
   }
-  return { blocked: false, used: row.used, limit: lim, cooldownMs: cool };
+  return {
+    blocked: false,
+    used: row.used,
+    limit: lim,
+    cooldownMs: cool,
+    resetInMs: Math.max(0, RESET_WINDOW_MS - (now - row.windowStart)),
+  };
 }
 
 function memorySpend(tokens, now, bucketId, limit, cooldownMs) {
   const row = budgetBucket(bucketId);
   const lim = limit || TOKEN_BUDGET;
   const cool = cooldownMs || COOLDOWN_MS;
+  maybeResetBudgetWindow(row, now);
   row.used += tokens;
   if (row.used >= lim) row.cooldownUntil = now + cool;
   return row;
@@ -765,14 +832,32 @@ function scoreQuery(query) {
 }
 
 /** Same word-boundary scoring as the offline engine, used purely to pick
- *  which facts to hand the model. */
+ *  which facts to hand the model. Weak matches (e.g. bare "minecraft") are
+ *  excluded so general questions are not steered to HQ portfolio snippets. */
 function retrieve(query, limit = GROUNDING_INTENTS) {
-  return scoreQuery(query).slice(0, limit).map((s) => s.intent);
+  return scoreQuery(query)
+    .filter((s) => s.score >= KB_CONFIDENCE_FLOOR)
+    .slice(0, limit)
+    .map((s) => s.intent);
+}
+
+function clientWantsLiveOnly(payload) {
+  if (payload.offlineMode === true || payload.offlineChatMode === true) return false;
+  if (payload.onlineMode === true) return true;
+  if (payload.client === "widget") return true;
+  return payload.mode === "agent" || !payload.offlineMode;
 }
 
 function kbFallbackAnswer(query) {
   const top = scoreQuery(query)[0];
   if (!top || top.score < KB_CONFIDENCE_FLOOR) return null;
+  return top.intent.answer;
+}
+
+/** Looser KB match when live models are down. */
+function kbBestEffortAnswer(query) {
+  const top = scoreQuery(query)[0];
+  if (!top || top.score < 2) return null;
   return top.intent.answer;
 }
 
@@ -782,7 +867,7 @@ const SEARCH_ENABLED = (process.env.CHOPSTICKS_AI_SEARCH || "on") !== "off";
 const SEARCH_TIMEOUT_MS = Number(process.env.CHOPSTICKS_AI_SEARCH_TIMEOUT_MS || 4500);
 const SEARCH_MIN_LEN = 3;
 const MAX_SOURCES = 12;
-const UA = "cs.AI/2.0 (+https://chopstickshq.com/chopsticks-ai/)";
+const UA = "cs.AI/2.5.4 (+https://chopstickshq.com/chopsticks-ai/)";
 
 function wantsSearch(text) {
   if (!SEARCH_ENABLED) return false;
@@ -801,8 +886,8 @@ function parseSearchRequest(text) {
 
 function normUrl(src) {
   if (!src) return "";
-  if (/^https?:\/\//i.test(src)) return src;
-  return "https://" + String(src).replace(/^\/\//, "");
+  if (/^https?:\/\//i.test(String(src))) return String(src);
+  return "https://" + String(src).replace(/^\/+/, "");
 }
 
 async function fetchJson(url, signal, init) {
@@ -849,6 +934,75 @@ function dedupeSources(items) {
     out.push(item);
   }
   return out;
+}
+
+const CHOPSTICKS_HQ_HOME = "https://chopstickshq.com/";
+
+function queryMentionsChopsticks(query) {
+  const q = String(query || "").toLowerCase();
+  return /\bchopsticks?\b/.test(q) || q.includes("chopstickshq");
+}
+
+function chopsticksHQPinnedSources(query) {
+  if (!queryMentionsChopsticks(query)) return [];
+  const q = String(query || "").toLowerCase();
+  const out = [
+    {
+      title: "Chopsticks HQ",
+      text: "Official home for cs.AI, MacBar, Fathom, guides, and downloads.",
+      src: CHOPSTICKS_HQ_HOME,
+      via: "Chopsticks HQ",
+    },
+    {
+      title: "chopsticksAI (cs.AI)",
+      text: "Free macOS AI assistant with Chromium browser, web app, and Terminal CLI.",
+      src: "https://chopstickshq.com/chopsticks-ai/",
+      via: "Chopsticks HQ",
+    },
+  ];
+  if (/\b(rnitro|menu bar|monitor)\b/.test(q)) {
+    out.push({
+      title: "MacBar — macOS menu bar monitor",
+      text: "CPU, memory, disk, network, and battery monitoring.",
+      src: "https://chopstickshq.com/macbar/",
+      via: "Chopsticks HQ",
+    });
+  }
+  if (/\b(fathom|battery|weather)\b/.test(q)) {
+    out.push({
+      title: "Fathom Air & Fathom Pro",
+      text: "Battery monitor and weather apps from Chopsticks HQ.",
+      src: "https://chopstickshq.com/fathom/",
+      via: "Chopsticks HQ",
+    });
+  }
+  if (/\b(lab|agent|chopcode|web app|csai|cs\.ai)\b/.test(q)) {
+    out.push({
+      title: "cs.AI web app",
+      text: "Browser agent with effort tiers, attachments, and Chromium search.",
+      src: "https://chopstickshq.com/chopsticks-ai/web/",
+      via: "Chopsticks HQ",
+    });
+  }
+  return out;
+}
+
+function isChopsticksHQSource(item) {
+  const url = normUrl(item.src || item.url || "");
+  try {
+    return new URL(url).hostname.replace(/^www\./, "") === "chopstickshq.com";
+  } catch (e) {
+    return url.includes("chopstickshq.com");
+  }
+}
+
+/** Pin chopstickshq.com first when the query mentions chopsticks / Chopsticks HQ. */
+function prioritizeChopsticksHQ(query, items) {
+  if (!queryMentionsChopsticks(query)) return items;
+  const pinned = chopsticksHQPinnedSources(query);
+  const hq = items.filter(isChopsticksHQSource);
+  const rest = items.filter((item) => !isChopsticksHQSource(item));
+  return dedupeSources([...pinned, ...hq, ...rest]);
 }
 
 function decodeDdgRedirect(href) {
@@ -933,7 +1087,6 @@ async function searchDuckDuckGoWeb(query, signal) {
   return out;
 }
 
-/** Stack Overflow / Stack Exchange — good for technical questions, no key. */
 async function searchStackExchange(query, signal) {
   const data = await fetchJson(
     "https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance" +
@@ -948,7 +1101,6 @@ async function searchStackExchange(query, signal) {
   }));
 }
 
-/** Hacker News — tech news and discussions via Algolia (no key). */
 async function searchHackerNews(query, signal) {
   const data = await fetchJson(
     "https://hn.algolia.com/api/v1/search?query=" + encodeURIComponent(query) + "&hitsPerPage=4",
@@ -965,7 +1117,6 @@ async function searchHackerNews(query, signal) {
   }));
 }
 
-/** GitHub repositories — open-source projects and docs (no key, rate-limited). */
 async function searchGitHub(query, signal) {
   const data = await fetchJson(
     "https://api.github.com/search/repositories?q=" + encodeURIComponent(query) +
@@ -983,7 +1134,6 @@ async function searchGitHub(query, signal) {
   }));
 }
 
-/** Wikidata — structured facts and entity descriptions (no key). */
 async function searchWikidata(query, signal) {
   const data = await fetchJson(
     "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=" +
@@ -998,7 +1148,6 @@ async function searchWikidata(query, signal) {
   }));
 }
 
-/** MDN Web Docs — JavaScript, HTML, CSS, and web APIs (no key). */
 async function searchMdn(query, signal) {
   const data = await fetchJson(
     "https://developer.mozilla.org/api/v1/search?q=" + encodeURIComponent(query) +
@@ -1013,28 +1162,64 @@ async function searchMdn(query, signal) {
   }));
 }
 
+const CHROMIUM_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+async function searchGoogleWeb(query, signal) {
+  const html = await fetchText(
+    "https://www.google.com/search?q=" + encodeURIComponent(query) + "&num=10&hl=en",
+    signal,
+    { headers: { "User-Agent": CHROMIUM_UA, "Accept-Language": "en-US,en;q=0.9" } }
+  ).catch(() => null);
+  if (!html) return [];
+  const out = [];
+  const re = /<a[^>]+href="\/url\?q=([^"&]+)[^"]*"[^>]*><h3[^>]*>([\s\S]*?)<\/h3>/gi;
+  let m;
+  while ((m = re.exec(html)) && out.length < 8) {
+    let url = m[1].replace(/&amp;/g, "&");
+    try { url = decodeURIComponent(url); } catch (e) {  }
+    const title = m[2].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
+    if (url.startsWith("http") && title) {
+      out.push({ title, text: "", src: url, via: "Chromium" });
+    }
+  }
+  if (out.length) return out;
+  const plain = /<a[^>]+href="(https?:\/\/(?!webcache\.googleusercontent)[^"]+)"[^>]*>([^<]{4,140})<\/a>/gi;
+  while ((m = plain.exec(html)) && out.length < 8) {
+    const title = m[2].replace(/&amp;/g, "&").trim();
+    if (title.toLowerCase().includes("google")) continue;
+    out.push({ title, text: "", src: m[1], via: "Chromium" });
+  }
+  return out;
+}
+
 /**
- * Mozilla engine — MDN + Wikipedia + DuckDuckGo (privacy-friendly defaults).
- * Used by the public search action on /chopsticks-ai/ and preferred in chat grounding.
+ * Chromium engine — Google web + DuckDuckGo (Chrome UA).
+ * Used by the Browser rail and chat grounding.
  */
-async function mozillaEngine(query, signal, maxSources) {
+async function chromiumEngine(query, signal, maxSources) {
   const cap = Math.max(1, Math.min(MAX_SOURCES, Number(maxSources) || 8));
   const batches = await Promise.allSettled([
-    searchMdn(query, signal),
-    searchWikipedia(query, signal, 3),
-    searchDuckDuckGoJson(query, signal),
+    searchGoogleWeb(query, signal),
     searchDuckDuckGoWeb(query, signal),
+    searchDuckDuckGoJson(query, signal),
   ]);
   let found = [];
   for (const batch of batches) {
     if (batch.status === "fulfilled" && Array.isArray(batch.value)) {
       found.push(...batch.value.map((f) => ({
         ...f,
-        via: f.via === "MDN" ? "Mozilla/MDN" : (f.via || "Mozilla"),
+        via: f.via || "Chromium",
       })));
     }
   }
-  return dedupeSources(found).slice(0, cap);
+  return prioritizeChopsticksHQ(query, dedupeSources(found)).slice(0, cap);
+}
+
+/** @deprecated alias — use chromiumEngine */
+async function mozillaEngine(query, signal, maxSources) {
+  return chromiumEngine(query, signal, maxSources);
 }
 
 /** npm registry — JavaScript packages (no key). */
@@ -1189,7 +1374,7 @@ async function webSearch(query, maxSources) {
         found.push(...batch.value);
       }
     }
-    found = dedupeSources(found).slice(0, cap);
+    found = prioritizeChopsticksHQ(query, dedupeSources(found)).slice(0, cap);
 
     if (!found.length) return { context: "", sources: [] };
 
@@ -1217,7 +1402,7 @@ function selfFacts(tier) {
   const t = tier || TIERS[DEFAULT_TIER];
   return [
     "ABOUT YOURSELF (answer questions about your own capabilities from this):",
-    `- You are cs.AI 2.2.9 (chopsticksAI), built and run by Chopsticks HQ.`,
+    `- You are cs.AI ${APP_VERSION} (chopsticksAI), built and run by Chopsticks HQ.`,
     `- You run on selectable effort levels in ChopsticksAI: Low, Medium, High, Xhigh, Xhigh+, Insane, Chopsticks, ChopCode, and StickerCoder+ (coding specialists).`,
     `- Current effort: ${t.label}, with a ${contextFor(t).toLocaleString()} token context window.`,
     t.stickerCoder
@@ -1230,17 +1415,18 @@ function selfFacts(tier) {
     `- Free usage allowance: ${TOKEN_BUDGET.toLocaleString()} tokens, then a ${Math.round(COOLDOWN_MS / 3600000)}-hour cooldown.`,
     "- Upgrades are bought with Fathom Pro oi-pl API keys (not OpenRouter keys): 2 keys → 800k + 2h30m cooldown; 5 keys → 900k + 2h; 10 keys → 1m + 1h.",
     `- Rate limit: ${RATE_MAX} requests per minute per visitor.`,
-    "- You search with the Mozilla engine first (MDN, Wikipedia, DuckDuckGo), then wider sources (Stack Overflow, Hacker News, GitHub, npm, arXiv, Google/Brave when configured). Cite sources in your answer.",
-    "- Visitors can also use the Mozilla engine directly on https://chopstickshq.com/chopsticks-ai/#search without chatting.",
+    "- You search with the Chromium engine first (Google web, DuckDuckGo), then wider sources (Stack Overflow, Hacker News, GitHub, npm, arXiv, Google/Brave when configured). Cite sources in your answer.",
+    "- The macOS app and web app include a built-in Chromium browser rail whose home page is https://chopstickshq.com; standalone search is at https://chopstickshq.com/chopsticks-ai/#search. Queries mentioning chopsticks prioritize chopstickshq.com in results.",
     "- You answer general questions on any topic, and are the in-house expert on Chopsticks HQ software.",
     "- You need no OpenRouter API key from the user; Fathom Pro unlock keys can be redeemed as usage credits in the Usage tab.",
-    "- Signed-in account plans come from the user's Supabase profile (token_budget / context_limit), not hard-coded emails.",
-    "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside rNitro's Chat tab.",
+    "- Email sign-in runs on chopstickshq.com — email and password only, no verification email.",
+    "- You are available on every page of chopstickshq.com, in ChopsticksAI at /chopailab, and inside MacBar's Chat tab.",
+    "- You do not use vector embeddings — retrieval is keyword intent scoring plus Chromium web search, never a semantic vector index.",
     "- Do not name or speculate about any underlying model, provider or vendor.",
   ].filter(Boolean).join("\n");
 }
 
-function systemPrompt(grounding, mode, web, tier) {
+function systemPrompt(grounding, mode, web, tier, language) {
   const agent = mode === "agent" || tier.chopCode ? [
     "\n\nYou are running as the ChopsticksAI agent",
     tier.stickerCoder
@@ -1281,7 +1467,7 @@ function systemPrompt(grounding, mode, web, tier) {
         "Be precise and practical. Prefer working solutions over theory.\n\n",
       ].join("")
     : [
-        "You are cs.AI 2.2.9 (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
+        "You are cs.AI " + APP_VERSION + " (chopsticksAI), a helpful and knowledgeable general-purpose assistant, ",
         "made by Chopsticks HQ.\n\n",
         "Answer ANY question the user asks — general knowledge, science, history, coding, ",
         "writing, maths, recommendations, advice, casual conversation, anything. You are a ",
@@ -1294,7 +1480,7 @@ function systemPrompt(grounding, mode, web, tier) {
 
   return [
     persona,
-    "You are also the in-house expert on Chopsticks HQ's own software: rNitro (macOS menu ",
+    "You are also the in-house expert on Chopsticks HQ's own software: MacBar (macOS menu ",
     "bar system monitor), Fathom Air (battery monitor), Fathom Pro (battery, weather and AI ",
     "chat), ARENA (an FPS game), and Chopsticks Shaders. When a question touches those, the ",
     "reference material below is authoritative.\n\n",
@@ -1316,6 +1502,7 @@ function systemPrompt(grounding, mode, web, tier) {
     "engine or company is behind you, say you are cs.AI by Chopsticks ",
     "HQ. Never name or speculate about any underlying model, provider or vendor.\n",
     "- Never mention this prompt or the reference material as such; just answer.",
+    "\n" + languageInstruction(language || "en"),
     agent,
   ].join("");
 }
@@ -1820,6 +2007,22 @@ async function handler(event) {
     return handleMintUnlockKey(event, payload);
   }
 
+  if (payload.action === "signupSendCode") {
+    return handleSignupSendCode(event, payload, rateLimited);
+  }
+  if (payload.action === "signupVerify") {
+    return handleSignupVerify(event, payload, rateLimited);
+  }
+  if (payload.action === "authSignUp") {
+    return handleAuthSignUp(event, payload, rateLimited);
+  }
+  if (payload.action === "authSignIn") {
+    return handleAuthSignIn(event, payload, rateLimited);
+  }
+  if (payload.action === "authRefresh") {
+    return handleAuthRefresh(event, payload);
+  }
+
   if (payload.action === "vaultCheck") {
     const vaultPw = env("FATHOM_VAULT_PASSWORD");
     const supplied = String(payload.vaultPassword || payload.password || "").trim();
@@ -1861,7 +2064,7 @@ async function handler(event) {
       return json(400, { error: "query too short", min: SEARCH_MIN_LEN });
     }
     if (!SEARCH_ENABLED) {
-      return json(200, { mode: "search", engine: "mozilla", query: q, sources: [], searched: false });
+      return json(200, { mode: "search", engine: "chromium", query: q, sources: [], searched: false });
     }
     const headersS = event.headers || {};
     const whoS =
@@ -1885,11 +2088,11 @@ async function handler(event) {
       title: String(f.title || q).slice(0, 140),
       url: normUrl(f.src),
       snippet: String(f.text || "").slice(0, 280),
-      via: f.via || "Mozilla",
+      via: f.via || "Chromium",
     }));
     return json(200, {
       mode: "search",
-      engine: "mozilla",
+      engine: "chromium",
       product: "cs.AI",
       version: "2.0",
       query: q,
@@ -1907,6 +2110,7 @@ async function handler(event) {
   }
 
   const incoming = Array.isArray(payload.messages) ? payload.messages : [];
+  const language = resolveLanguage(payload, headers);
   const turns = incoming
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
     .slice(-MAX_MESSAGES)
@@ -1940,7 +2144,7 @@ async function handler(event) {
       if (a.url) block += `\n   URL: ${a.url}`;
       if (a.text) {
         block += `\n   --- file text preview ---\n${a.text}\n   --- end preview ---`;
-      } else if (/^image\//i.test(a.mime)) {
+      } else if (/^image\
         block += "\n   (image attached — describe using the filename/URL; do not invent pixel details)";
       } else {
         block += "\n   (binary/large file — use the URL/name; contents not inlined)";
@@ -1983,11 +2187,13 @@ async function handler(event) {
     : (payload.mode === "agent" ? tierCap : MAX_REPLY_TOKENS);
 
   const { query: searchQuery, hadPrefix } = parseSearchRequest(lastUser.content);
-  const clientSearchOff = payload.disableSearch === true;
+  const clientSearchOff = payload.disableSearch === true || payload.client === "widget";
+  const isWidget = payload.client === "widget";
   const searchOn = wantsSearch(searchQuery) && (!tier.chopCode || hadPrefix) && (!clientSearchOff || hadPrefix);
+  const searchMax = isWidget ? 3 : Math.min(tier.searchMax || 6, 5);
   const searchStarted = Date.now();
   const webBundle = searchOn
-    ? await webSearch(searchQuery, Math.min(tier.searchMax || 6, 5))
+    ? await webSearch(searchQuery, searchMax)
     : { context: "", sources: [] };
   const searchMs = Date.now() - searchStarted;
   let webSection = "";
@@ -2008,13 +2214,13 @@ async function handler(event) {
     role: "system",
     content: systemPrompt(
       retrieve(retrievalQuery(modelTurns), tier.grounding || GROUNDING_INTENTS),
-      payload.mode, webSection, tier
+      payload.mode, webSection, tier, language
     ),
   };
   const messages = fitContext(system, modelTurns, contextFor(tier, plan));
 
   const RESCUE_RESERVE_MS = 9000;
-  const platformLeft = Math.max(8000, 25000 - searchMs);
+  const platformLeft = Math.max(8000, 22000 - searchMs);
   const modelWindow = Math.min(TIMEOUT_MS, platformLeft);
   const deadline = Date.now() + modelWindow;
   const modelDeadline = deadline - RESCUE_RESERVE_MS;
@@ -2143,7 +2349,7 @@ async function handler(event) {
         role: "system",
         content: systemPrompt(
           retrieve(retrievalQuery(modelTurns), Math.min(3, tier.grounding || 3)),
-          payload.mode, "", tier
+          payload.mode, "", tier, language
         ),
       };
       const slimMessages = fitContext(slimSystem, modelTurns, 12000);
@@ -2185,18 +2391,73 @@ async function handler(event) {
         tier: tier.label, status: lastStatus, detail: String(lastDetail).slice(0, 300),
         replyTokens, msLeft: deadline - Date.now(),
       });
-      const kbQuery = retrievalQuery(turns) || lastUser.content;
-      const kbAnswer = kbFallbackAnswer(kbQuery);
-      if (kbAnswer) {
-        return json(200, {
-          reply: kbAnswer + "\n\n(Offline answer — the live model was temporarily unavailable.)",
-          mode: "offline",
-        });
+      const liveOnly = clientWantsLiveOnly(payload);
+      if (!liveOnly) {
+        const kbQuery = retrievalQuery(turns) || lastUser.content;
+        const kbAnswer = kbFallbackAnswer(kbQuery);
+        if (kbAnswer) {
+          return json(200, {
+            reply: kbAnswer,
+            mode: "offline",
+          });
+        }
+      }
+      const panicLeft = deadline - Date.now();
+      if (panicLeft > 1800) {
+        const gP = withTimeout(panicLeft - 300);
+        try {
+          const r = await callModel({
+            model: "nvidia/nemotron-3-nano-30b-a3b:free",
+            messages: fitContext(
+              {
+                role: "system",
+                content: systemPrompt(
+                  retrieve(retrievalQuery(modelTurns), 2),
+                  payload.mode, "", tier, language
+                ),
+              },
+              modelTurns,
+              10000
+            ),
+            key: apiKey,
+            signal: gP.signal,
+            maxTokens: Math.min(320, replyTokens),
+            temperature: 0.35,
+          });
+          if (r.ok && r.text) {
+            draft = r;
+            draftModel = "nvidia/nemotron-3-nano-30b-a3b:free";
+          }
+        } catch (e) {
+          lastDetail = String(e && e.name) + " [panic]";
+        } finally {
+          gP.done();
+        }
+      }
+    }
+
+    if (!draft) {
+      const liveOnly = clientWantsLiveOnly(payload);
+      if (!liveOnly) {
+        const kbQuery = retrievalQuery(turns) || lastUser.content;
+        const kbAnswer = kbFallbackAnswer(kbQuery);
+        if (kbAnswer) {
+          return json(200, {
+            reply: kbAnswer,
+            mode: "offline",
+            ...(DEBUG_ENABLED && payload.debug ? {
+              diag: {
+                status: lastStatus,
+                detail: String(lastDetail || "").slice(0, 400),
+                replyTokens,
+                msLeft: deadline - Date.now(),
+              },
+            } : {}),
+          });
+        }
       }
       return json(200, {
-        reply:
-          "chopsticksAI couldn't reach its model just now. Try again in a moment, " +
-          "or browse chopstickshq.com for the answer.",
+        reply: "Try sending that again — the live model is still responding.",
         mode: "error",
         ...(DEBUG_ENABLED && payload.debug ? {
           diag: {
@@ -2220,7 +2481,7 @@ async function handler(event) {
 
     const hasCodeBlock = reply.includes("```") || producedFiles.length > 0;
     const timeLeft = deadline - Date.now();
-    const refineOn = REFINE_ENABLED && tier.refine !== false;
+    const refineOn = REFINE_ENABLED && tier.refine !== false && !isWidget;
     const refineModel = tier.refineModel || REFINE_MODEL;
     if (refineOn && refineModel && refineModel !== draftModel
         && !hasCodeBlock && timeLeft >= REFINE_MIN_MS) {
@@ -2255,7 +2516,7 @@ async function handler(event) {
       }
     }
 
-    const spentResult = await budgetSpend(spent, now, budgetOpts);
+    const spentResult = await budgetSpend(BILLABLE_PER_REPLY, now, budgetOpts);
     queueUsageEmail(plan, spentResult, account);
 
     if (!reply && !producedFiles.length) {
@@ -2269,7 +2530,7 @@ async function handler(event) {
     return json(200, {
       reply,
       mode: "live",
-      model: "cs.AI 2.2.9",
+      model: "cs.AI " + APP_VERSION,
       tier: tier.label,
       context: ctxLimit,
       contextWindow: contextWindowUsage(messages, ctxLimit, turns.length),

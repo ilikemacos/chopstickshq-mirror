@@ -1,10 +1,4 @@
-/**
- * chopsticksAI - the Chopsticks HQ assistant.
- *
- * Answers entirely in the browser from window.CHOPSTICKS_AI_KB. No network
- * requests, no API keys, nothing leaves the page. The retrieval engine here
- * mirrors the Swift one shipped inside rNitro; both must score identically.
- */
+
 (function () {
   'use strict';
 
@@ -14,8 +8,6 @@
   var KB = window.CHOPSTICKS_AI_KB;
   if (!KB || !KB.intents || !KB.intents.length) return;
 
-  // ---------------------------------------------------------------- engine ---
-
   function normalise(text) {
     return String(text)
       .toLowerCase()
@@ -24,11 +16,7 @@
       .trim();
   }
 
-  /**
-   * Word-boundary containment. Plain substring matching is what makes the
-   * older bots answer "unzip the file" with the ZIP download, so a term only
-   * counts when it sits on whole-word boundaries.
-   */
+  
   function containsTerm(haystackPadded, term) {
     return haystackPadded.indexOf(' ' + term + ' ') !== -1;
   }
@@ -56,9 +44,6 @@
       }
     }
 
-    // Deterministic ordering: score, then authored priority, then id. Never
-    // array order, which is what made the old KB's duplicate keywords resolve
-    // by accident.
     results.sort(function (a, b) {
       if (b.score !== a.score) return b.score - a.score;
       if (b.intent.priority !== a.intent.priority) {
@@ -76,7 +61,7 @@
     if (!ranked.length || ranked[0].score < CONFIDENCE_FLOOR) {
       return {
         answer:
-          "I'm not sure about that one.\n\nI know about rNitro, Fathom Air, " +
+          "I'm not sure about that one.\n\nI know about MacBar, Fathom Air, " +
           'Fathom Pro, ARENA, installing, and privacy. Try rephrasing, or pick ' +
           'one of these:',
         confident: false,
@@ -93,18 +78,11 @@
 
   window.chopsticksAI = { ask: ask, score: score, normalise: normalise, kb: KB };
 
-  // ------------------------------------------------------------------ model ---
-  // chopsticksAI answers through a real model. The API key lives as a server
-  // secret behind /api/chopsticks-ai - it is never shipped to the browser.
-  // The offline KB above stays as the fallback for when that endpoint is
-  // unreachable, so the assistant degrades instead of dying.
-
   var HOSTS = ['', 'https://chopstickshq.com'];
   var history = [];
 
   function endpointsFor(path) {
     return HOSTS.filter(function (base) {
-      // github.io has no serverless functions; skip straight to the real host.
       return !(base === '' && location.hostname.endsWith('github.io'));
     }).map(function (base) { return base + path; });
   }
@@ -113,30 +91,56 @@
     var sr = parseSearch(text);
     history.push({ role: 'user', content: sr.raw });
     var urls = endpointsFor('/api/chopsticks-ai');
-    var i = 0;
-    var payload = { messages: history.slice(-12) };
+    var hostIdx = 0;
+    var payload = {
+      messages: history.slice(-12),
+      client: 'widget',
+      tier: 'medium',
+      onlineMode: true,
+      disableSearch: !sr.hadPrefix
+    };
+    try {
+      payload.language = localStorage.getItem('chq.aiLang') || (navigator.language || 'en').slice(0, 2);
+    } catch (e) {
+      payload.language = 'en';
+    }
     if (sr.hadPrefix && payload.messages.length) {
       payload.messages = payload.messages.slice();
       payload.messages[payload.messages.length - 1] = { role: 'user', content: sr.query };
     }
 
-    function attempt() {
-      if (i >= urls.length) return Promise.reject(new Error('unreachable'));
-      var url = urls[i++];
+    function readReply(r) {
+      return r.text().then(function (body) {
+        var d = null;
+        try { d = JSON.parse(body); } catch (e) {}
+        if (d && d.reply && String(d.reply).trim()) return d;
+        throw new Error('empty');
+      });
+    }
+
+    function post(url) {
       return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          if (!d || !d.reply) throw new Error('empty');
-          return d;
-        })
-        .catch(attempt);
+      }).then(readReply);
     }
 
-    return attempt().then(function (d) {
+    function attemptHost() {
+      if (hostIdx >= urls.length) return Promise.reject(new Error('unreachable'));
+      var url = urls[hostIdx++];
+      return post(url)
+        .catch(function () {
+          if (payload.disableSearch !== true) {
+            payload.disableSearch = true;
+            return post(url);
+          }
+          throw new Error('empty');
+        })
+        .catch(attemptHost);
+    }
+
+    return attemptHost().then(function (d) {
       history.push({ role: 'assistant', content: d.reply });
       return d;
     });
@@ -145,11 +149,9 @@
   window.chopsticksAI.askModel = askModel;
   window.chopsticksAI.resetHistory = function () { history = []; };
 
-  // ---------------------------------------------------------------- widget ---
-
   var STARTERS = [
     'What is chopsticksAI?',
-    'How do I install rNitro?',
+    'How do I install MacBar?',
     'macOS says it can’t be opened',
     'How do I unlock Fathom Pro?',
     'Explain how SSDs work',
@@ -259,7 +261,7 @@
     }
 
     var parts = [];
-    if (d && d.searched) parts.push('Mozilla search');
+    if (d && d.searched) parts.push('Chromium search');
     if (d && d.contextWindow && typeof d.contextWindow.used === 'number') {
       parts.push('Ctx ' + fmt(d.contextWindow.used) + '/' + fmt(d.contextWindow.limit));
     }
@@ -344,19 +346,34 @@
 
   var busy = false;
 
+  var OFFLINE_KEY = 'chq.aiOfflineMode';
+
+  function offlineChatModeOn() {
+    try { return localStorage.getItem(OFFLINE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function isDeviceOffline() {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
+  }
+
   function kbFallback(text, target) {
     var res = ask(text);
-    target.textContent = res.answer;
-    if (res.suggestions && res.suggestions.length) showChips(res.suggestions);
+    if (res && res.answer) {
+      target.textContent = res.answer;
+      if (res.suggestions && res.suggestions.length) showChips(res.suggestions);
+      return;
+    }
+    target.textContent = 'I couldn’t reach a model just now. Try again in a moment.';
   }
 
   function canKbFallback(text) {
+    if (!offlineChatModeOn() && !isDeviceOffline()) return false;
     var ranked = score(text);
     return ranked.length && ranked[0].score >= CONFIDENCE_FLOOR;
   }
 
   function liveFailed(d) {
-    return !d || !d.reply || (d.mode && d.mode !== 'live' && d.mode !== 'offline');
+    return !d || !d.reply;
   }
 
   function submit(text) {
@@ -376,24 +393,17 @@
 
     askModel(text)
       .then(function (d) {
-        if (liveFailed(d) && canKbFallback(text)) {
+        if (liveFailed(d)) {
           kbFallback(text, thinking);
         } else {
           thinking.textContent = '';
-          thinking.appendChild(document.createTextNode(d && d.reply
-            ? d.reply
-            : "I couldn't reach the model just now — try again in a moment."));
+          thinking.appendChild(document.createTextNode(d.reply));
           appendSources(thinking, d && d.sources);
           showUsage(d);
         }
       })
       .catch(function () {
-        if (canKbFallback(text)) {
-          kbFallback(text, thinking);
-        } else {
-          thinking.textContent =
-            "I couldn't reach the model just now — try again in a moment.";
-        }
+        kbFallback(text, thinking);
       })
       .then(function () {
         busy = false;

@@ -1,6 +1,3 @@
-// Vercel serverless entrypoint.
-// Reuses the Netlify handler unchanged (api/_lib/dl-count.js) and adapts the
-// signature, so the two hosts can't drift apart in behaviour.
 const { handler } = require('./_lib/dl-count.js');
 
 module.exports = async (req, res) => {

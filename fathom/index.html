@@ -9,6 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Fathom Air — Local battery drain for macOS · Chopsticks HQ</title>
 <meta name="description" content="Fathom Air is the free local-only macOS menu bar battery app — charge watts, package power, top energy processes, and plain-language drain attribution. No accounts, no telemetry.">
+<meta name="keywords" content="Fathom Air, Mac battery drain app, menu bar battery monitor, MacBook power drain, free battery app macOS, energy usage menu bar, battery attribution Mac, Chopsticks HQ Fathom, macOS battery widget free">
 <link rel="canonical" href="https://chopstickshq.com/fathom/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fathom Air">
@@ -55,7 +56,7 @@
   }
 
   :root {
-    /* 101mogged-inspired tokens (same family as rNitro) */
+    
     --bg:       #0a0a0c;
     --bg2:      #0e0e12;
     --card:     #121216;
@@ -88,7 +89,7 @@
   a { color: inherit; text-decoration: none; }
   code, pre, .mono { font-family: var(--mono); }
 
-  /* Soft radial glow + grid */
+  
   body::before {
     content: '';
     position: fixed;
@@ -104,7 +105,7 @@
   }
   .app { position: relative; z-index: 1; }
 
-  /* Fixed glass nav */
+  
   nav {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -171,6 +172,10 @@
     color: var(--bg);
   }
   .btn-primary:hover { opacity: 0.92; }
+  .btn:focus-visible, .theme-toggle:focus-visible, a:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
   .btn-outline {
     border-color: rgba(255,255,255,0.12);
     background: transparent;
@@ -186,7 +191,7 @@
     margin-inline: auto;
   }
 
-  /* Hero */
+  
   .hero {
     padding: 7.5rem 0 3.5rem;
   }
@@ -262,7 +267,7 @@
     border: 1px solid var(--border);
   }
 
-  /* Product preview card (menubar mock) */
+  
   .preview {
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -358,7 +363,7 @@
   .preview-row span:first-child { color: var(--muted); }
   .preview-row span:last-child { font-weight: 500; }
 
-  /* Sections */
+  
   .sec { padding: 3rem 0; }
   .sec-tight { padding-top: 1rem; }
   .kicker {
@@ -422,7 +427,7 @@
     color: var(--soft);
   }
 
-  /* Install */
+  
   .dl { display: grid; gap: 1rem; }
   @media (min-width: 800px) { .dl { grid-template-columns: 1.15fr 0.85fr; } }
   .dl-card {
@@ -467,7 +472,7 @@
   .note a { text-decoration: underline; text-underline-offset: 2px; }
   .note code { color: var(--text); font-size: 0.75rem; }
 
-  /* Steps strip */
+  
   .steps {
     display: grid;
     gap: 0.75rem;
@@ -496,7 +501,7 @@
   }
   .step p { font-size: 0.85rem; color: var(--muted); }
 
-  /* Footer */
+  
   .foot {
     border-top: 1px solid rgba(255,255,255,0.08);
     padding: 2rem 0 3rem;
@@ -567,7 +572,7 @@
       <a class="nav-logo" href="/">Chopsticks HQ <span>· Fathom Air</span></a>
       <div class="nav-mid">
         <a class="nav-link" href="/">HQ</a>
-        <a class="nav-link" href="/rnitro/">rNitro</a>
+        <a class="nav-link" href="/macbar/">MacBar</a>
         <a class="nav-link" href="/fathom-pro/">Fathom Pro</a>
         <a class="nav-link" href="/chopsticks-ai/">chopsticksAI</a>
         <a class="nav-link" href="#compare">Compare</a>
@@ -576,7 +581,7 @@
         <a class="nav-link" href="#privacy">Privacy</a>
       </div>
       <div class="nav-right">
-        <a class="btn btn-outline btn-sm" href="/rnitro/">rNitro</a>
+        <a class="btn btn-outline btn-sm" href="/macbar/">MacBar</a>
         <a class="btn btn-primary btn-sm" href="#downloads">Download</a>
       </div>
     </nav>
@@ -588,13 +593,14 @@
           <h1>Fathom Air <span class="dim">— battery,<br>explained</span></h1>
           <p class="hero-lead">
             Free tier of Fathom: original-style battery menu for your Mac — live level, package watts, apps using energy,
-            and a plain-language “why drain?” timeline. No account. No telemetry. Data stays on this Mac.
+            and a plain-language “why drain?” timeline. Data stays on this Mac.
             Want weather + AI? That’s <a href="/fathom-pro/" style="color:var(--text)">Fathom Pro</a>.
           </p>
+          <p class="hero-privacy" style="font-weight:600;color:var(--text);margin:0 0 1rem;">No accounts. No telemetry.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#downloads">Download Fathom Air</a>
-            <a class="btn btn-outline" href="/fathom-pro/">Fathom Pro</a>
-            <a class="btn btn-outline" href="/rnitro/">Pair with rNitro</a>
+            <a class="btn btn-outline" href="/fathom-pro/" style="opacity:.75">Fathom Pro</a>
+            <a class="btn btn-outline" href="/macbar/" style="opacity:.75">Pair with MacBar</a>
           </div>
           <p class="hero-meta">
             Current · <code id="ver-label">v0.3.8-Beta</code>
@@ -743,7 +749,7 @@
       <div class="wrap">
         <div class="kicker">Gallery</div>
         <h2>What it looks like</h2>
-        <p class="sec-lead">Menu bar battery + popover — same family as the rNitro product pages.</p>
+        <p class="sec-lead">Menu bar battery + popover — same family as the MacBar product pages.</p>
         <div class="gallery">
           <figure class="gallery-card">
             <div class="preview" aria-hidden="true">
@@ -859,7 +865,7 @@
         <a href="/">HQ</a>
         <a href="/about/">About</a>
         <a href="/disclaimer/">Disclaimer</a>
-        <a href="/rnitro/">rNitro</a>
+        <a href="/macbar/">MacBar</a>
         <a href="/fathom-pro/">Fathom Pro</a>
         <a href="/fathom/terms.html">Terms</a>
         <a href="version.json">version.json</a>
@@ -900,7 +906,6 @@
       var text = CURL;
       var pre = document.getElementById('curl-cmd');
       if (pre && pre.textContent) text = pre.textContent.replace(/\u00a0/g, ' ').trim();
-      // Sync first while still in the click handler (Safari-safe)
       if (localExecCopy(text)) {
         toast('Curl command copied');
         return;

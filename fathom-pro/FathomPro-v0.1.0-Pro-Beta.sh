@@ -3,7 +3,6 @@ set -euo pipefail
 echo "Fathom Pro Installer"
 VER="v0.1.0-Pro-Beta"
 URL="https://chopstickshq.com/fathom-pro/FathomPro-${VER}.zip"
-# Fallback to GitHub releases
 GH_URL="https://github.com/ilikemacos/Fathom-Pro/releases/latest/download/FathomPro-${VER}.zip"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/fathom-pro-install.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT

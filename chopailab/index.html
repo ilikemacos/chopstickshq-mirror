@@ -270,6 +270,7 @@
   .auth-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
   .auth-err { color: #e07070; font-size: .78rem; min-height: 1.1em; margin-top: .55rem; }
   .auth-ok { color: #6dbf7a; font-size: .78rem; margin-top: .55rem; }
+  .auth-hint { color: var(--muted, #888); font-size: .76rem; margin: .35rem 0 0; line-height: 1.35; }
   #account-label { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
@@ -277,6 +278,15 @@
 <nav>
   <a class="brand" href="/">Chopsticks HQ <span>· ChopsticksAI</span></a>
   <div class="nav-right">
+    <button type="button" class="nbtn" id="offline-toggle" title="Offline mode — local KB only">Online</button>
+    <select class="nbtn" id="lang" aria-label="Reply language" title="Language for cs.AI replies">
+      <option value="en">English</option>
+      <option value="zh">中文</option>
+      <option value="es">Español</option>
+      <option value="de">Deutsch</option>
+      <option value="ko">한국어</option>
+      <option value="ja">日本語</option>
+    </select>
     <select class="nbtn" id="tier" aria-label="Effort level" title="Low → Insane raise depth and length. Chopsticks focuses on HQ apps. ChopCode and StickerCoder+ are for coding.">
       <option value="low">Low · quick</option>
       <option value="medium">Medium · balanced</option>
@@ -302,7 +312,7 @@
 <div class="auth-modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
   <div class="auth-card">
     <h2 id="auth-title">ChopsticksAI account</h2>
-    <p>Sign in to save chats to your account in Supabase. Guests still work locally.</p>
+    <p>Sign in with email and password. New accounts are created instantly — no verification email.</p>
     <label for="auth-email">Email</label>
     <input id="auth-email" type="email" autocomplete="username" placeholder="you@example.com">
     <label for="auth-password">Password</label>
@@ -326,7 +336,7 @@
       <p>
         Ask anything, or have it build something. Pick an effort level — Low through Insane,
         Chopsticks for HQ apps, ChopCode or StickerCoder+ for coding. Files and code come back as
-        complete, downloadable documents. Sign in with Account to sync chats to Supabase;
+        complete, downloadable documents. Sign in with Account to sync chats;
         guests stay on this device only.
       </p>
       <div class="suggest" id="suggest"></div>
@@ -523,6 +533,21 @@
   var WEB_SEARCH_KEY = 'chq.webSearch';
   var lastUsageData = null;
   var tierSel = document.getElementById('tier');
+  var langSel = document.getElementById('lang');
+  var offlineToggle = document.getElementById('offline-toggle');
+  var LANG_KEY = 'chq.aiLang';
+  var OFFLINE_KEY = 'chq.aiOfflineMode';
+
+  function offlineChatModeOn() {
+    try { return localStorage.getItem(OFFLINE_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function updateOfflineToggleUI() {
+    if (!offlineToggle) return;
+    var on = offlineChatModeOn();
+    offlineToggle.textContent = on ? 'Offline' : 'Online';
+    offlineToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
   var attachBtn = document.getElementById('attach-btn');
   var fileInput = document.getElementById('file-input');
   var attachRow = document.getElementById('attach-row');
@@ -570,6 +595,7 @@
     var mime = file.type || '';
     var name = (file.name || '').toLowerCase();
     var texty = /^text\
+      /\.(txt|md|json|js|ts|py|swift|html|css|xml|yaml|yml|sh|csv|log|env|toml|rs|go|java|c|cpp|h|sql|rb|php|vue|svelte|tsx|jsx)$/.test(name);
     if (!texty || file.size > 512 * 1024) return '';
     try {
       var t = await file.text();
@@ -723,6 +749,8 @@
   try {
     var savedTier = localStorage.getItem('chq.aiTier');
     if (savedTier && EFFORT[savedTier]) tierSel.value = savedTier;
+    var savedLang = localStorage.getItem(LANG_KEY);
+    if (savedLang && langSel.querySelector('option[value="' + savedLang + '"]')) langSel.value = savedLang;
   } catch (e) {}
   function effortInfo() {
     return EFFORT[tierSel.value] || EFFORT.high;
@@ -877,8 +905,8 @@
     var body = { action: 'usage', unlockKeys: unlockKeys() };
     var headers = { 'Content-Type': 'application/json' };
     try {
-      if (Cloud && Cloud.session && Cloud.session.access_token) {
-        headers.Authorization = 'Bearer ' + Cloud.session.access_token;
+      if (Cloud && Cloud.isSignedIn() && Cloud.getSession() && Cloud.getSession().access_token) {
+        headers.Authorization = 'Bearer ' + Cloud.getSession().access_token;
       }
     } catch (e) {}
     fetch(API, { method: 'POST', headers: headers, body: JSON.stringify(body) })
@@ -890,6 +918,19 @@
     try { localStorage.setItem('chq.aiTier', tierSel.value); } catch (e) {}
     showTier();
   });
+  langSel.addEventListener('change', function () {
+    try { localStorage.setItem(LANG_KEY, langSel.value); } catch (e) {}
+  });
+  if (offlineToggle) {
+    offlineToggle.addEventListener('click', function () {
+      try {
+        localStorage.setItem(OFFLINE_KEY, offlineChatModeOn() ? '0' : '1');
+      } catch (e) {}
+      updateOfflineToggleUI();
+      showTier();
+    });
+    updateOfflineToggleUI();
+  }
   showTier();
   updateSearchToggleUI();
   if (input && !webSearchOn()) {
@@ -904,7 +945,7 @@
     ['Write a Python script', 'that renames every file in a folder by date'],
     ['Make me a .gitignore', 'for a Node and Python project'],
     ['Explain how SSDs work', 'in plain language'],
-    ['How do I install rNitro?', 'on a Mac, step by step']
+    ['How do I install MacBar?', 'on a Mac, step by step']
   ];
 
   (function fillSuggestions() {
@@ -1050,12 +1091,22 @@
     return d;
   }
 
+  function isDeviceOffline() {
+    return typeof navigator !== 'undefined' && navigator.onLine === false;
+  }
+
   function offline(text) {
+    if (!offlineChatModeOn() && !isDeviceOffline()) {
+      return 'The model is unreachable right now. Check your connection and try again.';
+    }
     if (window.chopsticksAI && window.chopsticksAI.ask) {
       var r = window.chopsticksAI.ask(text);
-      return r.answer + '\n\n(Offline answer — the model was unreachable.)';
+      var tag = offlineChatModeOn()
+        ? '(Offline mode · local product help.)'
+        : '(Offline answer — no network connection.)';
+      return r.answer + '\n\n' + tag;
     }
-    return 'The model is unreachable right now. Try again shortly.';
+    return 'No network connection. Connect to Wi‑Fi or enable Offline mode for local product help.';
   }
 
   
@@ -1143,14 +1194,37 @@
     send.disabled = true;
     var thinking = addTurn('bot', plain('Working', 'dots'));
 
+    if (offlineChatModeOn()) {
+      var localMsg = offline(text || 'Please review the attached files.');
+      history.push({ role: 'assistant', content: localMsg });
+      thinking.replaceChild(renderAssistant(localMsg), thinking.lastChild);
+      busy = false;
+      send.disabled = false;
+      saveSession();
+      stage.scrollTop = stage.scrollHeight;
+      return;
+    }
+    if (isDeviceOffline()) {
+      var noNet = 'No network connection detected. Connect to Wi‑Fi or turn on Offline mode for local product help.';
+      history.push({ role: 'assistant', content: noNet });
+      thinking.replaceChild(renderAssistant(noNet), thinking.lastChild);
+      busy = false;
+      send.disabled = false;
+      saveSession();
+      stage.scrollTop = stage.scrollHeight;
+      return;
+    }
+
     var payload = {
       messages: history.slice(-12),
       mode: 'agent',
       tier: tierSel.value,
+      language: langSel.value,
+      onlineMode: !offlineChatModeOn(),
       maxTokens: effortInfo().maxTokens,
       unlockKeys: unlockKeys(),
       enableTools: true,
-      disableSearch: !webSearchOn(),
+      disableSearch: !sr.hadPrefix && !webSearchOn(),
       attachments: ready.map(function (a) {
         return {
           name: a.name,
@@ -1191,16 +1265,6 @@
           saveSession();
           return;
         }
-        if (d.mode === 'error' && window.chopsticksAI && window.chopsticksAI.ask) {
-          var off = window.chopsticksAI.ask(text);
-          if (off.confident) {
-            history.push({ role: 'assistant', content: off.answer });
-            thinking.replaceChild(renderAssistant(off.answer + '\n\n(Offline answer — the live model was temporarily unavailable.)'), thinking.lastChild);
-            showTier();
-            saveSession();
-            return;
-          }
-        }
         var replyText = d.reply;
         
         if (d.files && d.files.length) {
@@ -1224,7 +1288,9 @@
         });
       })
       .catch(function () {
-        var msg = offline(text);
+        var msg = (typeof offline === 'function')
+          ? offline(text)
+          : 'I couldn’t reach a model just now. Try Rice, or send the question again.';
         history.push({ role: 'assistant', content: msg });
         thinking.replaceChild(renderAssistant(msg), thinking.lastChild);
         saveSession();
@@ -1312,7 +1378,7 @@
       Cloud.signUp(email.value.trim(), pass.value)
         .then(function (r) {
           if (r && r.needsConfirm) {
-            ok.textContent = 'Check your email to confirm, then sign in.';
+            ok.textContent = r.message || 'Account created. Sign in.';
           } else {
             ok.textContent = 'Account created. Loading…';
             updateAccountUI();
@@ -1395,7 +1461,9 @@
       updateAccountUI();
       if (Cloud.isSignedIn()) loadAccountChats();
       else restoreGuestSession();
-    }).catch(function () {});
+    }).catch(function () { restoreGuestSession(); });
+  } else {
+    restoreGuestSession();
   }
 
   input.focus();

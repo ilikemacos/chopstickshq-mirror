@@ -1,10 +1,8 @@
-/**
- * ChopsticksAI cloud accounts + chat sync (Supabase Auth + PostgREST).
- * Optional — guests keep using localStorage only.
- */
+
 (function (global) {
   'use strict';
 
+  var API = '/api/chopsticks-ai';
   var CFG_URL = '/chopsticks-ai/supabase-public.json';
   var SESSION_KEY = 'chq.ai.auth';
   var cfg = null;
@@ -17,90 +15,176 @@
     });
   }
 
+  function storage() {
+    try {
+      return global.sessionStorage;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function loadLocalSession() {
     try {
-      var raw = localStorage.getItem(SESSION_KEY);
+      var store = storage();
+      if (!store) return null;
+      var raw = store.getItem(SESSION_KEY);
       if (!raw) return null;
       var s = JSON.parse(raw);
-      if (!s || !s.access_token) return null;
+      if (!s || !s.access_token || !s.user || !s.user.id) return null;
       return s;
     } catch (e) { return null; }
   }
 
   function saveLocalSession(s) {
     try {
-      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-      else localStorage.removeItem(SESSION_KEY);
+      var store = storage();
+      if (!store) return;
+      if (s && s.access_token && s.user && s.user.id) {
+        store.setItem(SESSION_KEY, JSON.stringify(s));
+      } else {
+        store.removeItem(SESSION_KEY);
+      }
     } catch (e) {}
   }
 
+  function clearStoredSession() {
+    session = null;
+    saveLocalSession(null);
+    try { global.localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  }
+
+  function wrapSecret() {
+    return ['chq', 'sb', '26', 'v1'].join('.') + '|chopstickshq.com';
+  }
+
+  async function decryptAnon(encB64, ivB64) {
+    var enc = Uint8Array.from(atob(encB64), function (c) { return c.charCodeAt(0); });
+    var iv = Uint8Array.from(atob(ivB64), function (c) { return c.charCodeAt(0); });
+    var hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(wrapSecret()));
+    var key = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['decrypt']);
+    var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, enc);
+    return new TextDecoder().decode(pt);
+  }
+
   async function ensureConfig() {
-    if (cfg) return cfg;
+    if (cfg && cfg.anonKey) return cfg;
     var res = await fetch(CFG_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Cloud config unavailable');
-    cfg = await res.json();
-    if (!cfg.url || !cfg.anonKey) throw new Error('Cloud config incomplete');
+    var raw = await res.json();
+    if (!raw.url || !raw.anonEnc || !raw.anonIv) throw new Error('Cloud config incomplete');
+    cfg = Object.assign({}, raw, { anonKey: await decryptAnon(raw.anonEnc, raw.anonIv) });
+    delete cfg.anonEnc;
+    delete cfg.anonIv;
     return cfg;
   }
 
-  async function authFetch(path, init) {
-    var c = await ensureConfig();
-    init = init || {};
-    var headers = Object.assign({
-      apikey: c.anonKey,
-      'Content-Type': 'application/json'
-    }, init.headers || {});
+  async function apiPost(body) {
+    var headers = { 'Content-Type': 'application/json' };
     if (session && session.access_token) {
       headers.Authorization = 'Bearer ' + session.access_token;
-    } else {
-      headers.Authorization = 'Bearer ' + c.anonKey;
     }
-    var res = await fetch(c.url + path, Object.assign({}, init, { headers: headers }));
+    var res = await fetch(API, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body)
+    });
+    var text = await res.text();
+    var out = null;
+    try { out = text ? JSON.parse(text) : null; } catch (e) { out = text; }
+    if (!res.ok) {
+      var msg = (out && (out.error || out.message)) || ('HTTP ' + res.status);
+      var err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      err.status = res.status;
+      err.body = out;
+      throw err;
+    }
+    return out;
+  }
+
+  async function rest(path, init) {
+    var c = await ensureConfig();
+    init = init || {};
+    if (!session || !session.access_token) {
+      throw new Error('Not signed in');
+    }
+    var headers = Object.assign({
+      apikey: c.anonKey,
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + session.access_token
+    }, init.headers || {});
+    var res = await fetch(c.url + '/rest/v1/' + path, Object.assign({}, init, { headers: headers }));
     var text = await res.text();
     var body = null;
     try { body = text ? JSON.parse(text) : null; } catch (e) { body = text; }
     if (!res.ok) {
-      var msg = (body && (body.error_description || body.msg || body.message || body.error)) || ('HTTP ' + res.status);
-      var err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-      err.status = res.status;
-      err.body = body;
-      throw err;
+      var msg = (body && (body.message || body.error || body.msg)) || ('HTTP ' + res.status);
+      throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
     return body;
   }
 
-  async function rest(path, init) {
-    return authFetch('/rest/v1/' + path, init);
+  async function validateSession() {
+    if (!session || !session.access_token) {
+      clearStoredSession();
+      emit();
+      return null;
+    }
+    try {
+      var me = await apiPost({ action: 'authMe' });
+      if (!me || !me.user || !me.user.id) {
+        clearStoredSession();
+        emit();
+        return null;
+      }
+      session.user = me.user;
+      session.modelPicker = !!me.modelPicker;
+      session.appVersion = me.appVersion || null;
+      saveLocalSession(session);
+      return session;
+    } catch (e) {
+      clearStoredSession();
+      emit();
+      return null;
+    }
   }
 
   async function refreshIfNeeded() {
     if (!session || !session.refresh_token) return session;
     var exp = session.expires_at ? session.expires_at * 1000 : 0;
-    if (exp && Date.now() < exp - 60000) return session;
+    if (exp && Date.now() < exp - 60000) return validateSession();
     try {
-      var body = await authFetch('/auth/v1/token?grant_type=refresh_token', {
-        method: 'POST',
-        body: JSON.stringify({ refresh_token: session.refresh_token })
+      var body = await apiPost({
+        action: 'authRefresh',
+        refresh_token: session.refresh_token
       });
       session = normalizeSession(body);
+      if (!session || !session.user || !session.user.id) {
+        clearStoredSession();
+        emit();
+        return null;
+      }
       saveLocalSession(session);
       emit();
-      return session;
+      return validateSession();
     } catch (e) {
-      session = null;
-      saveLocalSession(null);
+      clearStoredSession();
       emit();
       return null;
     }
   }
 
   function normalizeSession(body) {
-    if (!body || !body.access_token) return null;
+    if (!body || !body.access_token || !body.user || !body.user.id) return null;
     return {
       access_token: body.access_token,
       refresh_token: body.refresh_token,
       expires_at: body.expires_at || (Math.floor(Date.now() / 1000) + (body.expires_in || 3600)),
-      user: body.user || null
+      user: {
+        id: body.user.id,
+        email: body.user.email || null
+      },
+      modelPicker: !!body.modelPicker,
+      appVersion: body.appVersion || null
     };
   }
 
@@ -115,195 +199,192 @@
     userEmail: function () {
       return (session && session.user && session.user.email) || '';
     },
-    isSignedIn: function () { return Boolean(session && session.access_token); },
+    isSignedIn: function () {
+      return Boolean(session && session.access_token && session.user && session.user.id);
+    },
+    canPickModel: function () {
+      return Boolean(session && session.modelPicker);
+    },
+    getAppVersion: function () {
+      return (session && session.appVersion) || '3.3.10';
+    },
 
     init: async function () {
       await ensureConfig();
+      try { global.localStorage.removeItem(SESSION_KEY); } catch (e) {}
       session = loadLocalSession();
-      if (session) {
-        try {
-          await refreshIfNeeded();
-          var user = await authFetch('/auth/v1/user', { method: 'GET' });
-          if (user) {
-            session.user = user;
-            saveLocalSession(session);
-          }
-        } catch (e) {
-          session = null;
-          saveLocalSession(null);
-        }
+      if (session) await refreshIfNeeded();
+      else {
+        clearStoredSession();
+        emit();
       }
-      emit();
       return session;
     },
 
+    sendSignupCode: async function (email) {
+      return apiPost({ action: 'signupSendCode', email: email });
+    },
+
     signUp: async function (email, password) {
-      if (session) {
-        try { await authFetch('/auth/v1/logout', { method: 'POST', body: '{}' }); } catch (e) {}
-        session = null;
-        saveLocalSession(null);
-        emit();
-      }
-      var body = await authFetch('/auth/v1/signup', {
-        method: 'POST',
-        body: JSON.stringify({ email: email, password: password })
+      clearStoredSession();
+      emit();
+      var body = await apiPost({
+        action: 'authSignUp',
+        email: email,
+        password: password
       });
-      // When email confirm is on, session may be null.
       if (body.access_token) {
         session = normalizeSession(body);
+        if (!session) throw new Error('Sign up succeeded but session was invalid.');
         saveLocalSession(session);
-        emit();
-      } else if (body.user && !body.access_token) {
-        return { needsConfirm: true, user: body.user };
-      } else if (body.session) {
-        session = normalizeSession(body.session);
-        if (body.user) session.user = body.user;
-        saveLocalSession(session);
-        emit();
+        await validateSession();
+        return { needsConfirm: false, session: session };
       }
-      return { needsConfirm: false, session: session };
+      if (body.needsSignIn) {
+        return { needsConfirm: true, message: body.message };
+      }
+      return { needsConfirm: false, session: null };
     },
 
     signIn: async function (email, password) {
-      var body = await authFetch('/auth/v1/token?grant_type=password', {
-        method: 'POST',
-        body: JSON.stringify({ email: email, password: password })
-      });
-      session = normalizeSession(body);
-      saveLocalSession(session);
+      clearStoredSession();
       emit();
+      var body = await apiPost({ action: 'authSignIn', email: email, password: password });
+      session = normalizeSession(body);
+      if (!session) throw new Error('Sign in failed — invalid session.');
+      saveLocalSession(session);
+      await validateSession();
       return session;
     },
 
     signOut: async function () {
-      try {
-        if (session) await authFetch('/auth/v1/logout', { method: 'POST', body: '{}' });
-      } catch (e) {}
-      session = null;
-      saveLocalSession(null);
+      clearStoredSession();
       emit();
     },
 
     listChats: async function () {
       await refreshIfNeeded();
-      if (!session) return [];
-      var rows = await rest(
-        'chats?select=id,title,client,tier,created_at,updated_at&order=updated_at.desc&limit=50',
-        { method: 'GET', headers: { Accept: 'application/json' } }
-      );
-      return Array.isArray(rows) ? rows : [];
+      if (!Cloud.isSignedIn()) return [];
+      var body = await apiPost({ action: 'chatsList' });
+      return Array.isArray(body.chats) ? body.chats : [];
     },
 
     createChat: async function (opts) {
       await refreshIfNeeded();
-      if (!session) throw new Error('Not signed in');
+      if (!Cloud.isSignedIn()) throw new Error('Not signed in');
       opts = opts || {};
-      var row = {
-        user_id: session.user && session.user.id,
+      var body = await apiPost({
+        action: 'chatCreate',
         title: opts.title || 'New Chat',
-        client: opts.client || 'lab',
+        client: opts.client || 'web',
         tier: opts.tier || null
-      };
-      var rows = await rest('chats', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify(row)
       });
-      return Array.isArray(rows) ? rows[0] : rows;
+      return body.chat;
     },
 
     updateChat: async function (id, patch) {
       await refreshIfNeeded();
-      if (!session) throw new Error('Not signed in');
-      patch = Object.assign({ updated_at: new Date().toISOString() }, patch || {});
-      var rows = await rest('chats?id=eq.' + encodeURIComponent(id), {
-        method: 'PATCH',
-        headers: {
-          Accept: 'application/json',
-          Prefer: 'return=representation'
-        },
-        body: JSON.stringify(patch)
+      if (!Cloud.isSignedIn()) throw new Error('Not signed in');
+      patch = patch || {};
+      await apiPost({
+        action: 'chatPatch',
+        chatId: id,
+        title: patch.title,
+        tier: patch.tier
       });
-      return Array.isArray(rows) ? rows[0] : rows;
+      return patch;
     },
 
     deleteChat: async function (id) {
       await refreshIfNeeded();
-      if (!session) throw new Error('Not signed in');
-      await rest('chats?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!Cloud.isSignedIn()) throw new Error('Not signed in');
+      await apiPost({ action: 'chatDelete', chatId: id });
     },
 
     loadMessages: async function (chatId) {
       await refreshIfNeeded();
-      if (!session) return [];
-      var rows = await rest(
-        'chat_messages?chat_id=eq.' + encodeURIComponent(chatId) +
-          '&select=id,role,content,sources,seq,created_at&order=seq.asc',
-        { method: 'GET', headers: { Accept: 'application/json' } }
-      );
-      return Array.isArray(rows) ? rows : [];
-    },
-
-    /** Replace all messages for a chat (simple durable sync). */
-    saveMessages: async function (chatId, messages, meta) {
-      await refreshIfNeeded();
-      if (!session) throw new Error('Not signed in');
-      meta = meta || {};
-      if (meta.title || meta.tier) {
-        await Cloud.updateChat(chatId, {
-          title: meta.title,
-          tier: meta.tier
+      if (!Cloud.isSignedIn()) return [];
+      var body = await apiPost({ action: 'chatMessages', chatId: chatId });
+      return (Array.isArray(body.messages) ? body.messages : []).map(function (m) {
+        var sources = Array.isArray(m.sources) ? m.sources : [];
+        var extra = {};
+        var visible = [];
+        sources.forEach(function (s) {
+          if (s && s.title === '\u200Bcsai' && s.snippet) {
+            try { extra = JSON.parse(s.snippet) || {}; } catch (e) {}
+          } else {
+            visible.push(s);
+          }
         });
-      } else {
-        await Cloud.updateChat(chatId, {});
-      }
-      await rest('chat_messages?chat_id=eq.' + encodeURIComponent(chatId), {
-        method: 'DELETE'
-      });
-      var rows = (messages || []).map(function (m, i) {
         return {
-          chat_id: chatId,
-          role: m.role === 'user' ? 'user' : (m.role === 'system' ? 'system' : 'assistant'),
-          content: String(m.content || '').slice(0, 100000),
-          sources: Array.isArray(m.sources) ? m.sources : [],
-          seq: i
+          role: m.role,
+          content: m.content,
+          sources: visible,
+          agents: extra.agents || null,
+          conversation: extra.conversation || null,
+          files: extra.files || null
         };
       });
-      if (!rows.length) return [];
-      // Insert in chunks to stay under payload limits.
-      var saved = [];
-      for (var i = 0; i < rows.length; i += 40) {
-        var chunk = rows.slice(i, i + 40);
-        var out = await rest('chat_messages', {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            Prefer: 'return=representation'
-          },
-          body: JSON.stringify(chunk)
-        });
-        if (Array.isArray(out)) saved = saved.concat(out);
-      }
-      return saved;
     },
 
-    /** 500 MiB per object / per attach batch. */
+    saveMessages: async function (chatId, messages, meta) {
+      await refreshIfNeeded();
+      if (!Cloud.isSignedIn()) throw new Error('Not signed in');
+      meta = meta || {};
+      var rows = (messages || []).map(function (m) {
+        var sources = (m.sources || []).slice();
+        if (m.agents || m.conversation || m.files) {
+          sources.push({
+            title: '\u200Bcsai',
+            snippet: JSON.stringify({
+              agents: m.agents || null,
+              conversation: m.conversation || null,
+              files: m.files || null
+            })
+          });
+        }
+        return {
+          role: m.role,
+          content: m.content || m.text || '',
+          sources: sources
+        };
+      });
+      await apiPost({
+        action: 'chatSave',
+        chatId: chatId,
+        title: meta.title,
+        tier: meta.tier,
+        messages: rows
+      });
+      return messages;
+    },
+
+    listModels: async function (keys) {
+      keys = keys || {};
+      var req = { action: 'listModels' };
+      if (keys.groqKey) req.groqKey = keys.groqKey;
+      if (keys.openRouterKey) req.openRouterKey = keys.openRouterKey;
+      if (keys.anthropicKey) req.anthropicKey = keys.anthropicKey;
+      var body = await apiPost(req);
+      return body;
+    },
+
+    listOpenRouterModels: async function (groqKey) {
+      await refreshIfNeeded();
+      if (!Cloud.canPickModel()) throw new Error('Model picker not enabled');
+      var req = { action: 'openRouterModels' };
+      if (groqKey) req.groqKey = groqKey;
+      var body = await apiPost(req);
+      return Array.isArray(body.models) ? body.models : [];
+    },
+
     MAX_ATTACH_BYTES: 500 * 1024 * 1024,
     ATTACH_BUCKET: 'cs-ai-attachments',
 
-    /**
-     * Upload a File/Blob to private storage. Uses resumable TUS when tus-js-client
-     * is loaded and the file is > 5 MiB; otherwise a single POST.
-     * onProgress(ratio 0..1) optional.
-     * Returns { path, name, mime, size, signedUrl }.
-     */
     uploadAttachment: async function (file, opts) {
       opts = opts || {};
       await refreshIfNeeded();
-      if (!session || !session.user || !session.user.id) {
+      if (!Cloud.isSignedIn()) {
         throw new Error('Sign in to upload files (up to 500 MB).');
       }
       if (!file || !file.size) throw new Error('Empty file');
@@ -364,34 +445,13 @@
         if (opts.onProgress) opts.onProgress(1);
       }
 
-      try {
-        await rest('chat_attachments', {
-          method: 'POST',
-          headers: { Accept: 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({
-            user_id: session.user.id,
-            chat_id: opts.chatId || null,
-            storage_path: path,
-            file_name: safeName,
-            mime: mime,
-            size_bytes: file.size
-          })
-        });
-      } catch (e) { /* metadata optional */ }
-
       var signedUrl = await Cloud.createSignedUrl(path, 60 * 60 * 24);
-      return {
-        path: path,
-        name: safeName,
-        mime: mime,
-        size: file.size,
-        signedUrl: signedUrl
-      };
+      return { path: path, name: safeName, mime: mime, size: file.size, signedUrl: signedUrl };
     },
 
     createSignedUrl: async function (path, expiresSec) {
       await refreshIfNeeded();
-      if (!session) throw new Error('Not signed in');
+      if (!Cloud.isSignedIn()) throw new Error('Not signed in');
       var c = await ensureConfig();
       var body = await fetch(
         c.url + '/storage/v1/object/sign/' + Cloud.ATTACH_BUCKET + '/' +

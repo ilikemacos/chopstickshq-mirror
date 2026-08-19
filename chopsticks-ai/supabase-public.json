@@ -1,6 +1,7 @@
 {
   "url": "https://bohvvkpvnnqigfdcuhnp.supabase.co",
-  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvaHZ2a3B2bm5xaWdmZGN1aG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njk3NjEsImV4cCI6MjEwMTE0NTc2MX0.oVanbpY_NPRGG9B4YIHNx1cYbnZddpDCMpYDsumtl2s",
+  "anonEnc": "tLC5hX46iOY40SrxLJ4XeT83EjoeaM2sz5QfZg5qlJLbpltibWMb1+8KXzj4wpMw/MverFWaZHgGaMtMbfeQfM8wppGIFSmcfJ38Z62qwAqFPfOtSJ4qy2n2wbjHU7DMqr/DYqd1SsvpcIAhZEHqFJAhx6yraolLHxWYZwzHcsyJSCCXcO6bDB34rp5R6Usyk48p4E/qoeW4oFLPq/yRrsRvMUmUYyDMTRdmXjJPrSLZdJX5n9nTydwYMBzE45flDMg8imy62uGCP4b8wwO8BDmyhZOAF4PznVPIn8ttauI=",
+  "anonIv": "GUSWKrF09K0L6unV",
   "auth": true,
   "tables": [
     "chats",

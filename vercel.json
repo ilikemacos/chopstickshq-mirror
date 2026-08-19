@@ -39,23 +39,23 @@
       "permanent": true
     },
     {
-      "source": "/rnitro",
-      "destination": "/rnitro/",
+      "source": "/macbar",
+      "destination": "/macbar/",
       "permanent": true
     },
     {
       "source": "/macbar",
-      "destination": "/rnitro/",
+      "destination": "/macbar/",
       "permanent": true
     },
     {
       "source": "/macbar/:path*",
-      "destination": "/rnitro/:path*",
+      "destination": "/macbar/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "destination": "https://chopstickshq.com/rnitro/:path*",
+      "destination": "https://chopstickshq.com/macbar/:path*",
       "has": [
         {
           "type": "host",
@@ -66,11 +66,11 @@
     },
     {
       "source": "/:path*",
-      "destination": "https://chopstickshq.com/rnitro/:path*",
+      "destination": "https://chopstickshq.com/macbar/:path*",
       "has": [
         {
           "type": "host",
-          "value": "rnitro.chopstickshq.com"
+          "value": "macbar.chopstickshq.com"
         }
       ],
       "permanent": true
@@ -192,43 +192,43 @@
       "permanent": false
     },
     {
-      "source": "/rnitro/faq",
-      "destination": "/rnitro/faq.html",
+      "source": "/macbar/faq",
+      "destination": "/macbar/faq.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/terms",
-      "destination": "/rnitro/terms.html",
+      "source": "/macbar/terms",
+      "destination": "/macbar/terms.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/cli",
-      "destination": "/rnitro/cli.html",
+      "source": "/macbar/cli",
+      "destination": "/macbar/cli.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/linux",
-      "destination": "/rnitro/linux.html",
+      "source": "/macbar/linux",
+      "destination": "/macbar/linux.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/windows",
-      "destination": "/rnitro/windows.html",
+      "source": "/macbar/windows",
+      "destination": "/macbar/windows.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/privacy",
-      "destination": "/rnitro/privacy.html",
+      "source": "/macbar/privacy",
+      "destination": "/macbar/privacy.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/archives",
-      "destination": "/rnitro/archives.html",
+      "source": "/macbar/archives",
+      "destination": "/macbar/archives.html",
       "permanent": true
     },
     {
       "source": "/macbar/",
-      "destination": "/rnitro/",
+      "destination": "/macbar/",
       "permanent": true
     },
     {
@@ -237,38 +237,38 @@
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/cli",
-      "destination": "/rnitro/cli.html",
+      "source": "/macbar/macbar/cli",
+      "destination": "/macbar/cli.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/linux",
-      "destination": "/rnitro/linux.html",
+      "source": "/macbar/macbar/linux",
+      "destination": "/macbar/linux.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/windows",
-      "destination": "/rnitro/windows.html",
+      "source": "/macbar/macbar/windows",
+      "destination": "/macbar/windows.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/privacy",
-      "destination": "/rnitro/privacy.html",
+      "source": "/macbar/macbar/privacy",
+      "destination": "/macbar/privacy.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/terms",
-      "destination": "/rnitro/terms.html",
+      "source": "/macbar/macbar/terms",
+      "destination": "/macbar/terms.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/faq",
-      "destination": "/rnitro/faq.html",
+      "source": "/macbar/macbar/faq",
+      "destination": "/macbar/faq.html",
       "permanent": true
     },
     {
-      "source": "/rnitro/rnitro/archives",
-      "destination": "/rnitro/archives.html",
+      "source": "/macbar/macbar/archives",
+      "destination": "/macbar/archives.html",
       "permanent": true
     }
   ],
@@ -345,7 +345,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.zip",
+      "source": "/macbar/:path*.zip",
       "headers": [
         {
           "key": "Content-Type",
@@ -366,7 +366,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.dmg",
+      "source": "/macbar/:path*.dmg",
       "headers": [
         {
           "key": "Content-Type",
@@ -387,7 +387,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.pkg",
+      "source": "/macbar/:path*.pkg",
       "headers": [
         {
           "key": "Content-Type",
@@ -408,7 +408,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.sh",
+      "source": "/macbar/:path*.sh",
       "headers": [
         {
           "key": "Content-Type",
@@ -429,7 +429,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.exe",
+      "source": "/macbar/:path*.exe",
       "headers": [
         {
           "key": "Content-Type",
@@ -446,7 +446,7 @@
       ]
     },
     {
-      "source": "/rnitro/:path*.ps1",
+      "source": "/macbar/:path*.ps1",
       "headers": [
         {
           "key": "Content-Type",
@@ -463,7 +463,7 @@
       ]
     },
     {
-      "source": "/rnitro/version.json",
+      "source": "/macbar/version.json",
       "headers": [
         {
           "key": "Cache-Control",
@@ -476,7 +476,7 @@
       ]
     },
     {
-      "source": "/rnitro/reviews.json",
+      "source": "/macbar/reviews.json",
       "headers": [
         {
           "key": "Cache-Control",

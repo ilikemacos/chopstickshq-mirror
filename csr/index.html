@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSR — Chopsticks Super Resolution</title>
+<meta name="description" content="CSR upscales your macOS display or a single window in real time on the GPU with Metal. Edge-adaptive reconstruction, temporal accumulation, optional frame generation. 2.3 MB, Apple silicon.">
+<meta name="keywords" content="CSR, Chopsticks Super Resolution, macOS upscaler MetalFX, ScreenCaptureKit, Metal, Apple silicon, Chopsticks HQ">
+<link rel="canonical" href="https://chopstickshq.com/csr/">
+<meta property="og:title" content="CSR — Chopsticks Super Resolution">
+<meta property="og:description" content="Real-time GPU display upscaling for Apple silicon. 2.3 MB, no ML models, no telemetry.">
+<meta property="og:url" content="https://chopstickshq.com/csr/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CSR — Chopsticks Super Resolution">
+<meta name="twitter:description" content="Real-time GPU display upscaling for Apple silicon.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0b;
+    --bg-soft:   #0f0f11;
+    --card:      #121214;
+    --card-hi:   #17171a;
+    --border:    rgba(255,255,255,0.07);
+    --border-hi: rgba(255,255,255,0.12);
+    --text:      #f5f5f7;
+    --muted:     #8a8a94;
+    --dim:       #5f5f68;
+    --accent:    #4d9eff;
+    --accent2:   #8c5cfa;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* ── Nav ──────────────────────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.75rem;
+    background: rgba(10,10,11,0.6); backdrop-filter: blur(24px) saturate(1.4);
+    border-bottom: 1px solid transparent; transition: border-color .3s, background .3s;
+  }
+  nav.stuck { border-bottom-color: var(--border); background: rgba(10,10,11,0.85); }
+  .nav-logo { font-weight: 700; font-size: .95rem; letter-spacing: -.01em; }
+  .nav-logo span { color: var(--dim); font-weight: 500; }
+  .nav-links { display: flex; gap: 1.6rem; }
+  .nav-links a { color: var(--muted); font-size: .85rem; font-weight: 500; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+
+  /* ── Buttons ──────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    padding: .8rem 1.5rem; border-radius: 12px; font-size: .9rem; font-weight: 600;
+    border: 1px solid var(--border-hi); background: var(--card-hi); color: var(--text);
+    cursor: pointer; font-family: inherit; transition: background .2s, border-color .2s, transform .2s;
+  }
+  .btn:hover { background: #1e1e22; border-color: rgba(255,255,255,.2); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--muted); }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-sm { padding: .55rem 1rem; font-size: .82rem; border-radius: 10px; }
+
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    position: relative; padding: 7rem 1.5rem 4rem;
+  }
+  /* The soft radial bloom behind the wordmark. */
+  .hero::before {
+    content: ''; position: absolute; top: 42%; left: 50%;
+    width: min(1100px, 130vw); height: min(700px, 90vh);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center,
+      rgba(255,255,255,0.055) 0%,
+      rgba(120,150,255,0.03) 34%,
+      transparent 68%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; }
+  .wordmark {
+    font-size: clamp(3.6rem, 13vw, 9.5rem); font-weight: 900;
+    letter-spacing: -.045em; line-height: .92;
+    background: linear-gradient(180deg, #ffffff 22%, #8e8e99 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: clamp(1rem, 2.4vw, 1.4rem); color: var(--muted);
+    font-weight: 500; margin-top: .9rem; letter-spacing: -.01em;
+  }
+  .hero-lede { color: var(--dim); max-width: 40ch; margin: 1.4rem auto 0; font-size: .98rem; }
+  .hero-cta { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; margin-top: 2.2rem; }
+  .hero-pills { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+  .pill {
+    font-family: var(--mono); font-size: .68rem; color: var(--dim);
+    border: 1px solid var(--border); border-radius: 999px; padding: .3rem .75rem;
+  }
+  .chev {
+    position: absolute; bottom: 2.2rem; left: 50%; transform: translateX(-50%);
+    color: var(--dim); animation: bob 2.4s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(7px); } }
+
+  /* ── Sections ─────────────────────────────────────────────────────── */
+  section { padding: 6rem 0; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 1rem;
+  }
+  h2 {
+    font-size: clamp(2rem, 5.5vw, 3.1rem); font-weight: 800;
+    letter-spacing: -.035em; line-height: 1.05; margin-bottom: 1.1rem;
+  }
+  .lede { color: var(--muted); max-width: 60ch; font-size: 1rem; }
+
+  .panel-card {
+    background: linear-gradient(180deg, var(--card-hi), var(--card));
+    border: 1px solid var(--border); border-radius: 22px;
+    padding: 2.2rem; margin-top: 2.2rem;
+  }
+  .grid { display: grid; gap: 1.1rem; margin-top: 2.2rem; }
+  @media (min-width: 720px) { .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3,1fr); } }
+  .tile {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 1.5rem; transition: border-color .25s, background .25s;
+  }
+  .tile:hover { border-color: var(--border-hi); background: var(--card-hi); }
+  .tile h3 { font-size: 1.02rem; font-weight: 700; letter-spacing: -.015em; margin-bottom: .5rem; }
+  .tile p { color: var(--muted); font-size: .9rem; }
+  .tile .big { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; display: block; margin-bottom: .2rem; }
+
+  pre {
+    background: #0d0d0f; border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.1rem 1.2rem; overflow-x: auto;
+    font-family: var(--mono); font-size: .78rem; color: var(--muted); line-height: 1.65;
+  }
+  code { font-family: var(--mono); font-size: .88em; }
+
+  .cmd {
+    display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+    background: #0d0d0f; border: 1px solid var(--border-hi); border-radius: 14px;
+    padding: 1rem 1.1rem; margin-top: 1.6rem;
+  }
+  .cmd code { color: var(--text); font-size: .82rem; flex: 1; min-width: 260px; word-break: break-all; }
+  .cmd .prompt { color: var(--dim); user-select: none; }
+  .copy {
+    border: 1px solid var(--border-hi); background: transparent; color: var(--muted);
+    border-radius: 9px; padding: .42rem .8rem; font-size: .76rem; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: color .2s, border-color .2s;
+  }
+  .copy:hover { color: var(--text); border-color: rgba(255,255,255,.25); }
+
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .scroll-x { overflow-x: auto; margin-top: 2rem; }
+  th, td { text-align: left; padding: .8rem .9rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); font-weight: 500; }
+  td.n { font-family: var(--mono); color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+
+  .req { display: grid; gap: 0; margin-top: 2.2rem; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+  .req-row {
+    display: grid; grid-template-columns: 130px 1fr 1fr; gap: 1rem;
+    padding: 1.05rem 1.4rem; border-bottom: 1px solid var(--border); align-items: baseline;
+  }
+  .req-row:last-child { border-bottom: none; }
+  .req-row.head { background: #0d0d0f; }
+  .req-row.head span { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .req-k { font-weight: 600; font-size: .9rem; }
+  .req-v { color: var(--muted); font-size: .88rem; }
+  .req-v.rec { color: var(--text); }
+  @media (max-width: 640px) {
+    .req-row { grid-template-columns: 1fr; gap: .25rem; padding: 1rem 1.1rem; }
+    .req-row.head { display: none; }
+    .req-v::before { content: attr(data-l) ' '; color: var(--dim); font-family: var(--mono); font-size: .7rem; }
+  }
+
+  .note {
+    border: 1px solid var(--border); border-left: 2px solid var(--accent);
+    background: var(--card); border-radius: 0 16px 16px 0;
+    padding: 1.2rem 1.4rem; margin-top: 2rem; color: var(--muted); font-size: .9rem;
+  }
+  .note strong { color: var(--text); }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 3rem 1.5rem 4rem;
+    display: flex; justify-content: space-between; gap: 1.2rem; flex-wrap: wrap;
+    max-width: 980px; margin: 0 auto; color: var(--dim); font-size: .82rem;
+  }
+  footer .links { display: flex; gap: 1.3rem; flex-wrap: wrap; }
+  footer a:hover { color: var(--text); }
+
+  /* ── Scroll reveal ────────────────────────────────────────────────── */
+  .rev { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s ease; }
+  .rev.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .rev { opacity: 1; transform: none; transition: none; }
+    .chev { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ── Replica of the CSR control panel ─────────────────────────────── */
+  .shot { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .panel {
+    width: 330px; background: #17171d; border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.85);
+    overflow: hidden; font-size: 12px; user-select: none; line-height: 1.45;
+  }
+  .panel-bar { display: flex; gap: 6px; padding: 10px 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .panel-inner { padding: 2px 15px 14px; }
+  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .glyph { width: 32px; height: 32px; border-radius: 9px; flex: none; position: relative;
+           background: linear-gradient(135deg, #4d9eff, #8c5cfa); }
+  .glyph i { position: absolute; left: 50%; top: 16%; width: 2.6px; height: 68%;
+             background: #fff; border-radius: 2px; transform-origin: 50% 100%; }
+  .glyph i:first-child { transform: translateX(-50%) rotate(-15deg); }
+  .glyph i:last-child  { transform: translateX(-50%) rotate(15deg); }
+  .p-title { font-weight: 600; font-size: 12px; }
+  .p-sub { color: #8a8a94; font-size: 10.5px; }
+  .pcard { border: 1px solid rgba(255,255,255,.09); border-radius: 11px;
+           padding: 11px; margin-bottom: 10px; background: rgba(255,255,255,.025); }
+  .pcard-l { font-size: 9px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+             color: #8a8a94; margin-bottom: 9px; }
+  .sel { border: 1px solid rgba(255,255,255,.1); border-radius: 7px; padding: 5px 9px;
+         display: flex; justify-content: space-between; font-size: 11px; }
+  .sel span:last-child { color: #8a8a94; }
+  .tiles { display: flex; gap: 6px; }
+  .t { flex: 1; text-align: center; padding: 7px 0; border-radius: 9px; background: rgba(255,255,255,.06); }
+  .t.on { background: #4d9eff; color: #fff; }
+  .t b { display: block; font-size: 11.5px; }
+  .t small { font-family: var(--mono); font-size: 8px; opacity: .75; }
+  .mrow { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 8px; }
+  .mrow.on { background: rgba(77,158,255,.13); }
+  .radio { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #6a6a76; flex: none; }
+  .mrow.on .radio { border: 4px solid #4d9eff; }
+  .mrow b { font-size: 11px; font-weight: 500; }
+  .mrow small { display: block; color: #8a8a94; font-size: 9.5px; }
+  .seg { display: flex; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; overflow: hidden; }
+  .seg div { flex: 1; text-align: center; padding: 4px 0; font-size: 10.5px; color: #8a8a94; }
+  .seg div.on { background: rgba(255,255,255,.12); color: #f5f5f7; }
+  .slider { height: 3px; border-radius: 3px; background: rgba(255,255,255,.15); position: relative; margin: 8px 0 3px; }
+  .slider i { position: absolute; inset: 0 50% 0 0; background: #4d9eff; border-radius: 3px; }
+  .slider::after { content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px;
+                   border-radius: 50%; background: #fff; transform: translate(-50%,-50%); }
+  .panel-foot { display: flex; align-items: center; justify-content: space-between;
+                padding: 11px 15px; border-top: 1px solid rgba(255,255,255,.09);
+                background: rgba(255,255,255,.025); }
+  .start { background: #ff453a; color: #fff; border-radius: 8px; padding: 6px 18px; font-weight: 600; font-size: 11.5px; }
+  .hud { width: 250px; border-radius: 13px; padding: 12px 14px;
+         background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.12); font-size: 11px; }
+  .hud-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .hud-fps { font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+  .hud-chip { font-size: 9.5px; background: rgba(255,255,255,.13); border-radius: 999px; padding: 2px 7px; color: var(--muted); }
+  .hud hr { border: 0; border-top: 1px solid rgba(255,255,255,.1); margin: 7px 0; }
+  .hud-row { display: flex; justify-content: space-between; padding: 1.5px 0; }
+  .hud-row span:first-child { color: rgba(255,255,255,.5); font-size: 9.5px; }
+  .hud-row span:last-child { font-family: var(--mono); font-size: 10px; }
+
+  .toast {
+    position: fixed; bottom: 1.6rem; left: 50%; transform: translateX(-50%) translateY(140%);
+    background: var(--card-hi); border: 1px solid var(--border-hi); color: var(--text);
+    padding: .7rem 1.2rem; border-radius: 11px; font-size: .84rem; font-weight: 500;
+    transition: transform .3s ease; z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <a class="nav-logo" href="/">Chopsticks HQ <span>· CSR</span></a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#performance">Performance</a>
+    <a href="#requirements">Requirements</a>
+    <a href="#install">Install</a>
+  </div>
+  <a class="btn btn-sm" href="#install">Install</a>
+</nav>
+
+<header class="hero">
+  <div class="wordmark">CSR</div>
+  <div class="hero-sub">Chopsticks Super Resolution</div>
+  <p class="hero-lede">
+    Real-time GPU upscaling for your Mac's display — or any single window.
+    Edge-adaptive reconstruction with temporal accumulation, running entirely in Metal.
+  </p>
+  <div class="hero-cta">
+    <a class="btn" href="#install">Install</a>
+    <a class="btn btn-ghost" href="#how">How it works</a>
+  </div>
+  <div class="hero-pills">
+    <span class="pill">2.3 MB</span>
+    <span class="pill">Apple silicon</span>
+    <span class="pill">macOS 14+</span>
+    <span class="pill">4K @ 125 fps</span>
+    <span class="pill">No ML models</span>
+  </div>
+  <div class="chev">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── The app ─────────────────────────────────────────────────── -->
+  <section class="wrap rev" id="app">
+    <div class="eyebrow">The app</div>
+    <h2>One window,<br>every control.</h2>
+    <p class="lede">
+      Pick a source, pick a target resolution, press Start. The output opens in
+      its own window with a live HUD showing exactly what the GPU is doing.
+    </p>
+
+    <div class="panel-card">
+      <div class="shot">
+        <div class="panel">
+          <div class="panel-bar">
+            <span class="dot" style="background:#ff5f57"></span>
+            <span class="dot" style="background:#febc2e"></span>
+            <span class="dot" style="background:#28c840"></span>
+          </div>
+          <div class="panel-inner">
+            <div class="panel-head">
+              <div class="glyph"><i></i><i></i></div>
+              <div>
+                <div class="p-title">Chopsticks Super Resolution</div>
+                <div class="p-sub">Real-time display upscaling</div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-l">Source</div>
+              <div class="sel"><span>Main Display</span><span>⌄</span></div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-l">Target resolution</div>
+              <div class="tiles">
+                <div class="t"><b>1080p</b><small>1920×1080</small></div>
+                <div class="t"><b>1440p</b><small>2560×1440</small></div>
+                <div class="t on"><b>4K</b><small>3840×2160</small></div>
+              </div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-l">Upscaling method</div>
+              <div class="mrow"><span class="radio"></span><div><b>Auto</b><small>Pick the best available</small></div></div>
+              <div class="mrow on"><span class="radio"></span><div><b>CSR Ultra</b><small>Highest quality reconstruction</small></div></div>
+              <div class="mrow"><span class="radio"></span><div><b>CSR Temporal</b><small>Temporal accumulation + frame gen</small></div></div>
+              <div class="mrow"><span class="radio"></span><div><b>CSR Spatial</b><small>Edge-adaptive, single frame</small></div></div>
+              <div class="mrow"><span class="radio"></span><div><b>MetalFX</b><small>Apple spatial scaler</small></div></div>
+              <div class="mrow"><span class="radio"></span><div><b>Metal GPU</b><small>Lightweight resample</small></div></div>
+            </div>
+            <div class="pcard">
+              <div class="pcard-l">Tuning</div>
+              <div class="p-sub" style="margin-bottom:5px">Aspect ratio</div>
+              <div class="seg"><div class="on">Fit</div><div>Fill</div></div>
+              <div class="p-sub" style="margin:10px 0 5px">Frame generation</div>
+              <div class="seg"><div class="on">1×</div><div>2×</div><div>3×</div></div>
+              <div class="p-sub" style="margin:10px 0 0">Sharpness</div>
+              <div class="slider"><i></i></div>
+            </div>
+          </div>
+          <div class="panel-foot">
+            <div>
+              <div style="font-weight:600;font-size:11.5px">Running</div>
+              <div class="p-sub" style="font-family:var(--mono);font-size:9.5px">60 fps · CSR Ultra</div>
+            </div>
+            <div class="start">Stop</div>
+          </div>
+        </div>
+
+        <div class="hud">
+          <div class="hud-top">
+            <span class="dot" style="background:#30d158"></span>
+            <span class="hud-fps">60 FPS</span>
+            <span class="hud-chip">CSR Ultra</span>
+          </div>
+          <hr>
+          <div class="hud-row"><span>Capture</span><span>60 fps</span></div>
+          <div class="hud-row"><span>GPU</span><span>7.99 ms</span></div>
+          <div class="hud-row"><span>Scale</span><span>1920×1080 → 3840×2160</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── How it works ────────────────────────────────────────────── -->
+  <section class="wrap rev" id="how">
+    <div class="eyebrow">How it works</div>
+    <h2>Nothing ever<br>leaves the GPU.</h2>
+    <p class="lede">
+      ScreenCaptureKit delivers frames that are already GPU-resident, so captured
+      pixels never make a round trip through system memory. Everything after that
+      is Metal compute.
+    </p>
+
+    <pre>ScreenCaptureKit ──► IOSurface ──► MTLTexture   (zero copy)
+                                       │
+                        ┌──────────────┴──────────────┐
+                        │       optical flow          │  once per captured pair
+                        └──────┬───────────────┬──────┘
+                               │               │
+                  reprojection │               │ interpolation
+                               ▼               ▼
+                    EASU ─► accumulate ─► RCAS   generated frame
+                               │
+                               ▼
+                  aspect-correct present ──► CAMetalLayer</pre>
+
+    <div class="grid g2">
+      <div class="tile">
+        <h3>CSR Ultra</h3>
+        <p>The default. Variance clipping in <strong>YCoCg</strong> instead of a
+        min/max box, so one outlier pixel cannot let stale history through; a
+        hue-preserving clip toward the current colour; and anti-flicker
+        weighting. A better safeguard means it can accumulate harder.</p>
+      </div>
+      <div class="tile">
+        <h3>CSR Temporal</h3>
+        <p>Motion-driven history reprojection with neighbourhood rectification and
+        disocclusion rejection. Kills the shimmer and crawl a purely spatial
+        upscaler shows on text and thin UI lines — the dominant artefact on
+        desktop content.</p>
+      </div>
+      <div class="tile">
+        <h3>CSR Spatial</h3>
+        <p>Edge-adaptive spatial upsampling, both stages: a 12-tap neighbourhood
+        with four overlapping 5-tap crosses and the kernel rotated onto the
+        detected edge, then contrast-adaptive sharpening with a per-channel
+        limiter that provably keeps the result in range.</p>
+      </div>
+      <div class="tile">
+        <h3>Frame generation</h3>
+        <p>Optional 2× or 3×, driven by the <em>same</em> optical-flow field the
+        temporal path uses. Sharing one flow result is why 3× costs barely more
+        than 2×. Off by default — it interpolates, so it adds latency.</p>
+      </div>
+      <div class="tile">
+        <h3>Fallbacks that cannot fail</h3>
+        <p>If a backend will not initialise, CSR walks down to Apple's MetalFX
+        spatial scaler, then to an MPS resample that works on any Metal device.
+        You always get a picture.</p>
+      </div>
+      <div class="tile">
+        <h3>Zero-copy capture</h3>
+        <p>Captured frames arrive as IOSurfaces that are already GPU-resident and
+        are wrapped as Metal textures directly. Pixels never make a round trip
+        through system memory on their way into the upscaler.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>An honest limitation.</strong> Renderer-integrated temporal
+      upscalers need per-pixel motion vectors, a depth buffer and a known jitter
+      sequence from the app that drew the frame. CSR upscales an
+      already-composited desktop, where none of that exists. So it derives motion
+      with its own optical flow, replaces depth with colour-space disocclusion
+      rejection, and has no jitter at all — meaning it buys temporal
+      <em>stability</em>, not jitter-driven sub-pixel reconstruction. Where
+      history cannot be trusted it falls back to the spatial result, so the worst
+      case is CSR Spatial, never a smear.
+    </div>
+  </section>
+
+  <!-- ── Performance ─────────────────────────────────────────────── -->
+  <section class="wrap rev" id="performance">
+    <div class="eyebrow">Performance</div>
+    <h2>4K, in eight<br>milliseconds.</h2>
+    <p class="lede">
+      Mean GPU time per frame on an <strong>Apple M1</strong> (8-core GPU), 60
+      iterations, measured by the app's own <code>--selftest</code>.
+    </p>
+
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr><th>Stage</th><th>1080p → 4K</th><th>1440p → 4K</th><th>720p → 1080p</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CSR Ultra</td><td class="n">8.0 ms · 125 fps</td><td class="n">7.6 ms · 133 fps</td><td class="n">1.9 ms · 526 fps</td></tr>
+          <tr><td>CSR Temporal</td><td class="n">7.7 ms · 130 fps</td><td class="n">7.2 ms · 139 fps</td><td class="n">1.8 ms · 545 fps</td></tr>
+          <tr><td>CSR Spatial</td><td class="n">5.3 ms · 190 fps</td><td class="n">4.7 ms · 211 fps</td><td class="n">1.2 ms · 818 fps</td></tr>
+          <tr><td>MetalFX</td><td class="n">3.6 ms · 281 fps</td><td class="n">3.6 ms · 280 fps</td><td class="n">0.9 ms · 1066 fps</td></tr>
+          <tr><td>Metal GPU</td><td class="n">2.1 ms · 487 fps</td><td class="n">2.6 ms · 392 fps</td><td class="n">0.6 ms · 1614 fps</td></tr>
+          <tr><td>Optical flow <small>(per pair)</small></td><td class="n">3.7 ms</td><td class="n">6.8 ms</td><td class="n">2.1 ms</td></tr>
+          <tr><td>Frame generation</td><td class="n">0.5 ms</td><td class="n">0.8 ms</td><td class="n">0.2 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="lede" style="margin-top:1.6rem">
+      Cost scales with the <strong>output</strong> resolution, not the ratio —
+      1080p→4K and 1440p→4K cost the same, because both passes run at 4K.
+      Choosing a lower target is the effective lever, not a smaller source.
+    </p>
+  </section>
+
+  <!-- ── Requirements ────────────────────────────────────────────── -->
+  <section class="wrap rev" id="requirements">
+    <div class="eyebrow">Requirements</div>
+    <h2>What you need.</h2>
+    <p class="lede">
+      CSR is small, but it is a real-time GPU workload. The minimum column is
+      what runs; the recommended column is what runs 4K comfortably.
+    </p>
+
+    <div class="req">
+      <div class="req-row head"><span>Component</span><span>Minimum</span><span>Recommended</span></div>
+      <div class="req-row">
+        <div class="req-k">Processor</div>
+        <div class="req-v" data-l="Min">Apple M1</div>
+        <div class="req-v rec" data-l="Rec">Apple M1 Pro or newer</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">GPU</div>
+        <div class="req-v" data-l="Min">7-core Apple GPU (integrated)</div>
+        <div class="req-v rec" data-l="Rec">14-core or better for 4K + frame gen</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">Memory</div>
+        <div class="req-v" data-l="Min">8 GB unified</div>
+        <div class="req-v rec" data-l="Rec">16 GB for 4K targets</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">Storage</div>
+        <div class="req-v" data-l="Min">10 MB free (SSD)</div>
+        <div class="req-v rec" data-l="Rec">100 MB free for updates</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">macOS</div>
+        <div class="req-v" data-l="Min">macOS 14 Sonoma</div>
+        <div class="req-v rec" data-l="Rec">macOS 15 or newer</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">Display</div>
+        <div class="req-v" data-l="Min">Any Retina display</div>
+        <div class="req-v rec" data-l="Rec">4K panel to see a 4K target at 1:1</div>
+      </div>
+      <div class="req-row">
+        <div class="req-k">Permission</div>
+        <div class="req-v" data-l="Min">Screen Recording</div>
+        <div class="req-v rec" data-l="Rec">Granted once, on first capture</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Intel Macs are not supported.</strong> CSR depends on MetalFX and on
+      the unified-memory zero-copy capture path, neither of which exists on Intel
+      hardware. The installer checks and stops rather than installing something
+      that cannot run. GPU memory use is about <strong>130 MB</strong> of private
+      textures for the 4K temporal path.
+    </div>
+  </section>
+
+  <!-- ── Install ─────────────────────────────────────────────────── -->
+  <section class="wrap rev" id="install">
+    <div class="eyebrow">Install</div>
+    <h2>One line.</h2>
+    <p class="lede">
+      Verifies the machine, checks the download against its published SHA-256,
+      installs to Applications, and runs the built-in self-test to confirm the
+      GPU pipeline actually works. No sudo, no Xcode.
+    </p>
+
+    <div class="cmd">
+      <span class="prompt">$</span>
+      <code id="cmd">curl -fsSL https://chopstickshq.com/csr/install.sh | bash</code>
+      <button class="copy" onclick="copyCmd()">Copy</button>
+    </div>
+
+    <div class="hero-cta" style="justify-content:flex-start;margin-top:1.6rem">
+      <a class="btn" href="/csr/CSR-1.0.zip">Download .zip · 1.4 MB</a>
+      <a class="btn btn-ghost" href="/csr/version.json">version.json</a>
+    </div>
+
+    <div class="note">
+      <strong>Updates are automatic.</strong> CSR checks this page's
+      <code>version.json</code> on launch and offers the update in-app. The
+      download is verified against its published SHA-256 before anything on disk
+      is touched, and a failed check stays silent so being offline never nags.
+    </div>
+
+    <div class="grid g3">
+      <div class="tile"><span class="big">2.3 MB</span><p>Installed bundle, shaders included.</p></div>
+      <div class="tile"><span class="big">0</span><p>Dependencies. Apple frameworks only.</p></div>
+      <div class="tile"><span class="big">None</span><p>Telemetry. Only the update check leaves the Mac.</p></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div>© ChopsticksHQ 2026</div>
+  <div class="links">
+    <a href="/">HQ</a>
+    <a href="/about/">About</a>
+    <a href="/disclaimer/">Disclaimer</a>
+    <a href="/cs0s/">cs-OS</a>
+    <a href="/csr/install.sh">install.sh</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+  // Nav border appears only once the hero is scrolled past.
+  var nav = document.getElementById('nav');
+  addEventListener('scroll', function () {
+    nav.classList.toggle('stuck', scrollY > 40);
+  }, { passive: true });
+
+  // Scroll reveal.
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.rev').forEach(function (el) { io.observe(el); });
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2000);
+  }
+  function copyCmd() {
+    var text = document.getElementById('cmd').textContent;
+    navigator.clipboard.writeText(text).then(function () {
+      toast('Copied');
+    }, function () {
+      toast('Copy failed');
+    });
+  }
+</script>
+</body>
+</html>

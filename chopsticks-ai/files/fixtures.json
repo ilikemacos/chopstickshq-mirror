@@ -79,127 +79,127 @@
     ],
     [
       "what is rnitro",
-      "rnitro.what"
+      "macbar.what"
     ],
     [
       "what does r nitro do",
-      "rnitro.what"
+      "macbar.what"
     ],
     [
       "how do i install rnitro",
-      "rnitro.install.macos"
+      "macbar.install.macos"
     ],
     [
       "brew install rnitro",
-      "rnitro.install.homebrew"
+      "macbar.install.homebrew"
     ],
     [
       "macos says it cant be opened",
-      "rnitro.gatekeeper"
+      "macbar.gatekeeper"
     ],
     [
       "apple could not verify",
-      "rnitro.gatekeeper"
+      "macbar.gatekeeper"
     ],
     [
       "gatekeeper blocked the app",
-      "rnitro.gatekeeper"
+      "macbar.gatekeeper"
     ],
     [
       "how do i uninstall",
-      "rnitro.uninstall"
+      "macbar.uninstall"
     ],
     [
       "how do i update",
-      "rnitro.update"
+      "macbar.update"
     ],
     [
       "what version is current",
-      "rnitro.version"
+      "macbar.version"
     ],
     [
       "what are the system requirements",
-      "rnitro.requirements"
+      "macbar.requirements"
     ],
     [
       "does it work on intel",
-      "rnitro.intel"
+      "macbar.intel"
     ],
     [
       "how accurate is the temperature",
-      "rnitro.temperature"
+      "macbar.temperature"
     ],
     [
       "is the temp reading real",
-      "rnitro.temperature"
+      "macbar.temperature"
     ],
     [
       "does it show cpu usage",
-      "rnitro.cpu"
+      "macbar.cpu"
     ],
     [
       "does it show ram",
-      "rnitro.memory"
+      "macbar.memory"
     ],
     [
       "does it show gpu",
-      "rnitro.gpu"
+      "macbar.gpu"
     ],
     [
       "network speed",
-      "rnitro.network"
+      "macbar.network"
     ],
     [
       "is there a benchmark",
-      "rnitro.benchmark"
+      "macbar.benchmark"
     ],
     [
       "game overlay",
-      "rnitro.overlay"
+      "macbar.overlay"
     ],
     [
       "bitcoin price",
-      "rnitro.bitcoin"
+      "macbar.bitcoin"
     ],
     [
       "what is the advisor tab",
-      "rnitro.advisor"
+      "macbar.advisor"
     ],
     [
       "how do i set a warning threshold",
-      "rnitro.thresholds"
+      "macbar.thresholds"
     ],
     [
       "which ai providers are supported",
-      "rnitro.chat.providers"
+      "macbar.chat.providers"
     ],
     [
       "does it support ollama",
-      "rnitro.chat.providers"
+      "macbar.chat.providers"
     ],
     [
       "is it safe",
-      "rnitro.safety"
+      "macbar.safety"
     ],
     [
       "is there a cli",
-      "rnitro.cli"
+      "macbar.cli"
     ],
     [
       "is there a command line version",
-      "rnitro.cli"
+      "macbar.cli"
     ],
     [
       "does it work on linux",
-      "rnitro.linux"
+      "macbar.linux"
     ],
     [
       "is there a windows version",
-      "rnitro.windows"
+      "macbar.windows"
     ],
     [
       "where are older versions",
-      "rnitro.archives"
+      "macbar.archives"
     ],
     [
       "what is fathom air",

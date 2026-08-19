@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){try{var t=localStorage.getItem('chq.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Code of Conduct · Chopsticks HQ</title>
+<meta name="description" content="Chopsticks HQ Contributor Covenant Code of Conduct. Report concerns to chopstickshq@lam.ws.">
+<link rel="canonical" href="https://chopstickshq.com/code-of-conduct/">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  :root, html[data-theme="dark"] {
+    --bg:#0a0a0c; --border:#26262e; --text:#f2f2f5; --muted:#8b8b9a;
+    --nav-bg:rgba(10,10,12,0.72); --nav-border:rgba(255,255,255,0.08);
+    --sans: Inter, system-ui, -apple-system, sans-serif;
+  }
+  html[data-theme="light"] {
+    --bg:#f4f4f6; --border:#d8d8e0; --text:#121218; --muted:#5c5c6a;
+    --nav-bg:rgba(244,244,246,0.85); --nav-border:rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.65; }
+  a { color: inherit; }
+  nav { position: fixed; inset: 0 0 auto; z-index: 10; display: flex; justify-content: space-between; align-items: center; min-height: 4rem; padding: 0 20px; background: var(--nav-bg); border-bottom: 1px solid var(--nav-border); backdrop-filter: blur(18px); }
+  .wrap { width: min(42rem, calc(100% - 2rem)); margin: 6rem auto 3rem; }
+  h1 { font-size: 1.8rem; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.05rem; margin: 1.4rem 0 0.45rem; }
+  .kicker { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.6rem; }
+  p, li { color: var(--muted); }
+  ul { padding-left: 1.2rem; margin: 0.4rem 0 0.8rem; }
+  li { margin: 0.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; margin-top: 1rem; }
+  footer { width: min(42rem, calc(100% - 2rem)); margin: 0 auto 2.5rem; color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 1rem; }
+</style>
+</head>
+<body>
+  <nav>
+    <a href="/" style="text-decoration:none;font-weight:600">Chopsticks HQ <span style="color:var(--muted);font-weight:400">· Conduct</span></a>
+    <a href="/" style="text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600">Back to HQ</a>
+  </nav>
+  <main class="wrap">
+    <div class="kicker">Community</div>
+    <h1>Code of Conduct</h1>
+    <p>This project follows the <a href="https://www.contributor-covenant.org/version/2/1/code_of_conduct.html">Contributor Covenant 2.1</a>. The canonical file lives at the repository root: <a href="/CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a>.</p>
+    <div class="card">
+      <h2>Our pledge</h2>
+      <p>We pledge to make participation a harassment-free experience for everyone, and to act in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.</p>
+      <h2>Standards</h2>
+      <ul>
+        <li>Empathy, kindness, and respect for differing viewpoints</li>
+        <li>Graceful feedback; responsibility for mistakes</li>
+        <li>No sexualized language, harassment, trolling, or doxxing</li>
+      </ul>
+      <h2>Enforcement</h2>
+      <p>Report concerns to community leaders at <a href="mailto:chopstickshq@lam.ws">chopstickshq@lam.ws</a>. Leaders will follow the impact guidelines in the full Code of Conduct (correction, warning, temporary ban, permanent ban).</p>
+    </div>
+    <p style="margin-top:1.2rem"><a href="/license/">MIT License</a> · <a href="https://github.com/ilikemacos">GitHub</a></p>
+  </main>
+  <footer>
+    <div>© Chopsticks HQ 2026</div>
+    <a href="https://www.netlify.com">This site is powered by Netlify</a>
+  </footer>
+  <script src="/js/theme.js"></script>
+</body>
+</html>

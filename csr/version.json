@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "platform": "macos-arm64",
+  "min_macos": "14.0",
+  "notes": "First release. Real-time display upscaling with CSR Temporal, CSR Spatial, MetalFX and Metal GPU backends, optional frame generation, and a live performance HUD.",
+  "app": {
+    "bundle": "https://chopstickshq.com/csr/CSR-1.0.zip",
+    "sha256": "1e0f3dc494d107dc03176dfec044ea826fb57070ae4a1016383f149ff4b83c30",
+    "min_macos": "14.0",
+    "signed": "ad-hoc"
+  }
+}
